@@ -90,7 +90,7 @@ class LLMService:
             api_key: 主力模型 API 密钥（aiping 网关 Kimi-K3）
             base_url: 主力模型 API 基础地址
             model: 主力模型名称
-            fallback_api_key: 备选模型 API 密钥（阿里云 DashScope）
+            fallback_api_key: 备选模型 API 密钥（阶跃星辰，变量名沿用 DASHSCOPE_）
             fallback_base_url: 备选模型 API 基础地址
             fallback_model: 备选模型名称
         """
@@ -100,19 +100,22 @@ class LLMService:
         self._client = None
         self._initialized = False
 
-        # 备选模型（阿里云 DashScope）
+        # 备选模型（阶跃星辰）
         self._fallback_api_key = fallback_api_key
         self._fallback_base_url = fallback_base_url.rstrip("/")
         self._fallback_model = fallback_model
         self._fallback_client = None
         self._fallback_initialized = False
 
+        # 视觉模型客户端（aiping 网关 GLM-4.6V，懒加载）
+        self._vision_client = None
+
         self._init_client()
         if fallback_api_key and not self._is_placeholder_key(fallback_api_key):
             self._init_fallback_client()
         elif fallback_api_key:
             # 占位符密钥（如 your-xxx）会导致每次主力模型波动都附带 401 报错噪音，直接禁用备选层
-            logger.warning("备选模型密钥为占位符，已禁用 DashScope 备选层（主力模型不受影响）")
+            logger.warning("备选模型密钥为占位符，已禁用备选层（主力模型不受影响）")
             self._fallback_initialized = False
 
     @staticmethod
@@ -145,7 +148,7 @@ class LLMService:
             self._initialized = False
 
     def _init_fallback_client(self):
-        """初始化备选模型 OpenAI 客户端（阿里云 DashScope）"""
+        """初始化备选模型 OpenAI 客户端（阶跃星辰）"""
         try:
             from openai import OpenAI
             self._fallback_client = OpenAI(
@@ -203,7 +206,7 @@ class LLMService:
             except Exception as e:
                 logger.warning("主力 LLM 对话失败，尝试备选模型: %s", e)
 
-        # 尝试备选模型（阿里云 DashScope）
+        # 尝试备选模型（阶跃星辰）
         if self._fallback_initialized:
             try:
                 response = await asyncio.to_thread(
@@ -226,22 +229,26 @@ class LLMService:
         raise RuntimeError("LLM 服务未初始化，无法调用")
 
     async def chat_vision(self, messages: list[dict], temperature: float = 0.1) -> str:
-        """多模态（图片）对话：走阿里云 DashScope 视觉模型（qwen-vl-*）。
+        """多模态（图片）对话：走 aiping 网关视觉模型（GLM-4.6V，VISION_* 配置）。
 
         messages 的 content 为 OpenAI 兼容多段格式：
         [{"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,..."}}, {"type": "text", "text": "..."}]
-        无 DashScope 配置时抛 RuntimeError，由调用方降级。
+        未配置视觉模型时抛 RuntimeError，由调用方降级。
         """
         from app.config import settings
 
-        client = self._fallback_client if self._fallback_initialized else None
-        if client is None and self._initialized and "dashscope" in self._base_url:
-            client = self._client
-        if client is None:
-            raise RuntimeError("视觉模型不可用：未配置 DASHSCOPE_API_KEY")
-
-        response = client.chat.completions.create(
-            model=settings.DASHSCOPE_VL_MODEL,
+        if not settings.VISION_API_KEY:
+            raise RuntimeError("视觉模型不可用：未配置 VISION_API_KEY")
+        if self._vision_client is None:
+            from openai import OpenAI
+            self._vision_client = OpenAI(
+                api_key=settings.VISION_API_KEY,
+                base_url=settings.VISION_BASE_URL,
+                timeout=90.0,
+                max_retries=0,
+            )
+        response = self._vision_client.chat.completions.create(
+            model=settings.VISION_MODEL,
             messages=messages,
             temperature=temperature,
             max_tokens=2048,

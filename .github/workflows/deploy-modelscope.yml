@@ -225,12 +225,12 @@ jobs:
           # 非敏感配置 → 明文 variables（config.py 默认值已正确，此处同步防止平台残留旧值覆盖）
           sync_kv variables DEMO_OFFLINE "false"
           sync_kv variables ADMIN_USERNAME "admin"
-          sync_kv variables LLM_BASE_URL "https://llm-uarugoa0rqgduef5.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"
-          sync_kv variables LLM_MODEL "qwen-max"
-          sync_kv variables VISION_BASE_URL "https://llm-uarugoa0rqgduef5.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"
-          sync_kv variables VISION_MODEL "qwen3-vl-plus"
-          sync_kv variables DASHSCOPE_BASE_URL "https://dashscope.aliyuncs.com/compatible-mode/v1"
-          sync_kv variables DASHSCOPE_MODEL "qwen-plus"
+          sync_kv variables LLM_BASE_URL "https://aiping.cn/api/v1"
+          sync_kv variables LLM_MODEL "Kimi-K3"
+          sync_kv variables VISION_BASE_URL "https://aiping.cn/api/v1"
+          sync_kv variables VISION_MODEL "GLM-4.6V"
+          sync_kv variables DASHSCOPE_BASE_URL "https://api.stepfun.com/step_plan/v1"
+          sync_kv variables DASHSCOPE_MODEL "step-3.7-flash"
           # Chroma 索引持久化到魔搭挂载点（容器内路径重启即丢，曾致重启后 KB 重建+模型重下）
           sync_kv variables CHROMA_PERSIST_DIR "/mnt/workspace/chroma_data"
 
