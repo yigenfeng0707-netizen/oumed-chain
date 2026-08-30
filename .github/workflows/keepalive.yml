@@ -36,7 +36,7 @@ jobs:
             exit 0
           fi
           echo "Ping -> ${DEMO_URL}/api/health"
-          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 60 "${DEMO_URL}/api/health" || echo 000)
+          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 60 -A 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120' "${DEMO_URL}/api/health" || echo 000)
           echo "HTTP ${code}"
           if [ "$code" = "200" ]; then
             exit 0
@@ -44,7 +44,7 @@ jobs:
           # 冷启动可能超时：等待后重试一次
           echo "未就绪，等待 20s 后重试..."
           sleep 20
-          code2=$(curl -s -o /dev/null -w '%{http_code}' --max-time 90 "${DEMO_URL}/api/health" || echo 000)
+          code2=$(curl -s -o /dev/null -w '%{http_code}' --max-time 90 -A 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120' "${DEMO_URL}/api/health" || echo 000)
           echo "Retry HTTP ${code2}"
           if [ "$code2" = "200" ]; then
             exit 0
