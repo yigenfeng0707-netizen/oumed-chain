@@ -192,44 +192,82 @@ def _clean_structured(data: dict) -> dict:
     return data
 
 
-def llm_structure(note: str) -> dict | None:
-    """本地 Ollama 结构化（原生 /api/chat：think=false + format=json，约6-10秒）。
-
-    失败返回 None 走规则兜底。
-    """
+def _extract_json(content: str) -> dict | None:
+    content = content.strip()
+    if not content.startswith("{"):
+        logger.warning("LLM 输出非 JSON: %s", content[:150])
+        return None
     try:
-        import httpx
-
-        resp = httpx.post(
-            "http://localhost:11434/api/chat",
-            json={
-                "model": "qwen3:4b",
-                "messages": [{
-                    "role": "user",
-                    "content": STRUCTURE_PROMPT.format(note=note[:3000]),
-                }],
-                "stream": False,
-                "think": False,   # 结构化任务禁用思考模式（qwen3）
-                "format": "json",  # Ollama JSON 语法约束采样
-                "options": {"temperature": 0.1, "num_predict": 800},
-            },
-            timeout=150,  # 模型冷加载首次可达 35s+
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        content = (data.get("message") or {}).get("content") or ""
-        content = content.strip()
-        # format=json 下偶发约束失败会返回错误 JSON，先校验
-        if not content.startswith("{"):
-            logger.warning("LLM 输出非 JSON，降级规则引擎: %s", content[:150])
-            return None
         parsed = json.loads(content)
-        if not isinstance(parsed, dict):
-            return None
-        parsed["extractor"] = "llm:qwen3:4b"
-        return _clean_structured(parsed)
+    except json.JSONDecodeError:
+        return None
+    return parsed if isinstance(parsed, dict) else None
+
+
+def _ollama_structure(note: str) -> dict | None:
+    """本地 Ollama（原生 /api/chat：think=false + format=json）。失败返回 None。"""
+    import httpx
+
+    resp = httpx.post(
+        "http://localhost:11434/api/chat",
+        json={
+            "model": "qwen3:4b",
+            "messages": [{"role": "user", "content": STRUCTURE_PROMPT.format(note=note[:3000])}],
+            "stream": False,
+            "think": False,   # 结构化任务禁用思考模式（qwen3）
+            "format": "json",  # Ollama JSON 语法约束采样
+            "options": {"temperature": 0.1, "num_predict": 800},
+        },
+        timeout=150,  # 模型冷加载首次可达 35s+
+    )
+    resp.raise_for_status()
+    content = ((resp.json().get("message") or {}).get("content") or "").strip()
+    parsed = _extract_json(content)
+    if parsed is None:
+        return None
+    parsed["extractor"] = "llm:qwen3:4b(本地)"
+    return _clean_structured(parsed)
+
+
+def _cloud_structure(note: str) -> dict | None:
+    """云端大模型结构化（OpenAI 兼容协议，读取平台注入的 LLM 配置）。云部署用。"""
+    from openai import OpenAI
+
+    from app.config import settings
+
+    if not settings.LLM_API_KEY:
+        return None
+    client = OpenAI(api_key=settings.LLM_API_KEY, base_url=settings.LLM_BASE_URL)
+    resp = client.chat.completions.create(
+        model=settings.LLM_MODEL,
+        messages=[{"role": "user", "content": STRUCTURE_PROMPT.format(note=note[:3000])}],
+        temperature=0.1,
+        timeout=90,
+    )
+    content = resp.choices[0].message.content or ""
+    content = re.sub(r"<think>.*?</think>", "", content, flags=re.S).strip()
+    start, end = content.find("{"), content.rfind("}")
+    if start < 0 or end <= start:
+        return None
+    parsed = json.loads(content[start : end + 1])
+    if not isinstance(parsed, dict):
+        return None
+    parsed["extractor"] = f"llm:{settings.LLM_MODEL}(云端)"
+    return _clean_structured(parsed)
+
+
+def llm_structure(note: str) -> dict | None:
+    """结构化：本地 Ollama 优先（院内网场景）→ 云端大模型（云部署场景）→ 规则兜底。"""
+    try:
+        result = _ollama_structure(note)
+        if result is not None:
+            return result
     except Exception as e:  # noqa: BLE001
-        logger.warning("LLM 结构化失败，降级规则引擎: %s", e)
+        logger.warning("本地 Ollama 不可用，尝试云端: %s", e)
+    try:
+        return _cloud_structure(note)
+    except Exception as e:  # noqa: BLE001
+        logger.warning("云端结构化失败，降级规则引擎: %s", e)
         return None
 
 
@@ -242,6 +280,11 @@ def govern(note: str, use_llm: bool = True) -> dict:
     return {
         "deid": deid.to_dict(),
         "structured": structured,
-        "pipeline": ["PHI脱敏(规则)", "结构化(LLM本地)" if structured.get("extractor", "").startswith("llm") else "结构化(规则兜底)"],
+        "pipeline": [
+            "PHI脱敏(规则)",
+            "结构化(LLM本地)" if "本地" in structured.get("extractor", "")
+            else "结构化(LLM云端)" if structured.get("extractor", "").startswith("llm")
+            else "结构化(规则兜底)",
+        ],
         "compliance": "治理全程院内网完成；仅脱敏后结构化结果可进入流通环节",
     }

@@ -442,7 +442,7 @@ export default function HealthPage() {
                       {IconComp ? <IconComp className="h-5 w-5" /> : <Activity className="h-5 w-5" />}
                     </div>
                     <h4 className="text-sm font-semibold text-foreground mb-1">{s.title}</h4>
-                    <p className="text-xs text-muted-foreground leading-relaxed">{s.desc}</p>
+                    <p className="text-xs text-muted-foreground leading-relaxed">{s.desc || s.description}</p>
                   </motion.div>
                 );
               })}
