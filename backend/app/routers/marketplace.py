@@ -144,11 +144,12 @@ async def purchase(req: PurchaseRequest, db: AsyncSession = Depends(get_db)):
     tx = DataTransaction(
         id=str(uuid.uuid4()), product_id=p.id, product_name=p.name,
         buyer=req.buyer, amount=p.price, status="已成交",
-        revenue_provider=int(p.price * REVENUE_SPLIT["provider"]),
-        revenue_platform=int(p.price * REVENUE_SPLIT["platform"]),
-        revenue_contributor=int(p.price * REVENUE_SPLIT["contributor"]),
+        revenue_provider=round(p.price * REVENUE_SPLIT["provider"]),
+        revenue_contributor=round(p.price * REVENUE_SPLIT["contributor"]),
+        revenue_platform=0,  # 平台取余数，保证三分成之和恒等于交易额
         purpose=req.purpose,
     )
+    tx.revenue_platform = tx.amount - tx.revenue_provider - tx.revenue_contributor
     db.add(tx)
     await _append_chain(db, tx)
     await db.commit()

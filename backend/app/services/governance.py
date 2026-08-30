@@ -181,12 +181,12 @@ def _extract_json_block(text: str) -> str | None:
 
 
 def _clean_structured(data: dict) -> dict:
-    """LLM 输出的字段级清洗：修正常见小错（如血压 158/9:92）。"""
+    """LLM 输出的字段级清洗：修正常见小错（如血压 158/9:92 → 158/92）。"""
     vitals = data.get("vitals")
     if isinstance(vitals, dict) and vitals.get("bp"):
-        m = re.search(r"(\d{2,3})\D+(\d{2,3})", str(vitals["bp"]))
-        if m:
-            vitals["bp"] = f"{m.group(1)}/{m.group(2)}"
+        nums = re.findall(r"\d{1,3}", str(vitals["bp"]))
+        if len(nums) >= 2:
+            vitals["bp"] = f"{nums[0]}/{nums[-1]}"  # 首个=收缩压，末个=舒张压
     for key in ("patient", "chief_complaint", "diagnoses", "vitals", "medications", "history"):
         data.setdefault(key, None if key in ("patient", "chief_complaint") else [])
     return data
