@@ -34,6 +34,7 @@ class Orchestrator:
                      "能报多少", "报多少", "账户余额", "参保", "权益"],
         "claims": ["理赔", "报销流程", "发票", "OCR", "上传", "预审", "报销材料",
                    "票据", "报销单", "提交报销"],
+        "governance": ["病历治理", "病历", "脱敏", "结构化", "PHI", "病历质控", "治理病历", "病历脱敏", "入院记录"],
         "health_profile": ["健康", "体检", "画像", "慢病", "用药", "趋势", "预警",
                            "健康风险", "身体状况", "身体", "不舒服", "症状", "血压", "血糖"],
         "policy": ["政策", "规定", "通知", "办法", "文件", "异地", "省钱",
@@ -571,7 +572,9 @@ class Orchestrator:
         self._last_user_profile = user_profile
 
         # 根据智能体类型分发
-        if agent_type == "policy":
+        if agent_type == "governance":
+            return await self._handle_governance_agent(message)
+        elif agent_type == "policy":
             return await self._handle_policy_agent(message, user_profile)
         elif agent_type == "health_profile":
             return await self._handle_health_agent(message, user_id, user_profile)
@@ -592,6 +595,55 @@ class Orchestrator:
         else:
             # claims / security 等暂时使用 LLM 或 mock
             return await self._handle_generic_agent(agent_type, message, user_profile, extra_context)
+
+    async def _handle_governance_agent(self, message: str) -> dict[str, Any]:
+        """数据治理官：病历脱敏 + 结构化（调用 governance 服务，本地大模型优先）。"""
+        import anyio
+
+        from app.services.governance import govern
+
+        # 从消息中提取病历正文：去掉指令性短语后，剩余足够长则视为病历原文
+        note = message
+        for w in ("帮我", "请", "治理", "脱敏", "结构化", "病历质控", "一下", "这段", "处理"):
+            note = note.replace(w, "")
+        note = note.strip(" ：:，,。\n")
+        is_note = ("患者" in note and "诊断" in note) or len(note) >= 60
+
+        if not is_note:
+            return {
+                "response": (
+                    "我是数据治理官 🛡️ 请把**非结构化入院记录**发给我，我会：\n"
+                    "1️⃣ 自动脱敏 PHI（身份证/手机号/姓名/住院号）\n"
+                    "2️⃣ 用本地大模型结构化为标准数据集（全程院内网，数据不出院）\n\n"
+                    "示例：直接粘贴一段以「患者某某，X岁……」开头的病历，或在「AI病历治理」页使用完整流水线。"
+                ),
+                "data": {"agent_type": "governance", "mode": "guide"},
+            }
+
+        result = await anyio.to_thread.run_sync(lambda: govern(note, use_llm=True))
+        structured = result["structured"]
+        extractor = structured.get("extractor", "")
+        engine = "本地大模型 qwen3:4b" if extractor.startswith("llm") else "规则引擎（兜底）"
+        dx = "、".join(structured.get("diagnoses") or []) or "—"
+        meds = "、".join(
+            f"{m.get('name')}{m.get('dose') or ''}" for m in (structured.get("medications") or [])
+        ) or "—"
+        response = (
+            f"✅ 治理完成（{engine}）\n\n"
+            f"🔒 脱敏：识别并掩码 {result['deid']['entity_count']} 处敏感实体\n"
+            f"📋 诊断：{dx}\n"
+            f"💊 用药：{meds}\n\n"
+            f"治理产物已满足进入数据要素市场的合规要求，完整明细见「AI病历治理」页。"
+        )
+        return {
+            "response": response,
+            "data": {
+                "agent_type": "governance",
+                "mode": "executed",
+                "entity_count": result["deid"]["entity_count"],
+                "structured": structured,
+            },
+        }
 
     async def _handle_general_agent(
         self, message: str, user_profile: dict | None = None
@@ -1658,7 +1710,8 @@ class Orchestrator:
                 "查看报销所需材料清单",
                 "了解报销进度和到账情况",
             ],
-            "health_profile": [
+            "governance": ["病历治理", "病历", "脱敏", "结构化", "PHI", "病历质控", "治理病历", "病历脱敏", "入院记录"],
+        "health_profile": [
                 "查看完整的健康画像雷达图",
                 "了解近期用药安全提醒",
                 "获取个性化健康改善建议",
