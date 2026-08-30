@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>全量健康档案 · 嘀嗒医</title>
+<style>
+  :root { --ink:#183247; --muted:#688095; --line:#dce9f1; --cyan:#0ea5c6; --blue:#2676d9; --bg:#f3f8fb; --card:#fff; --green:#168b69; }
+  * { box-sizing:border-box; }
+  body { margin:0; color:var(--ink); background:linear-gradient(145deg,#edf8fc,#f7f9fc 48%,#eef5fb); font:14px/1.55 system-ui,"Microsoft YaHei",sans-serif; }
+  header { position:sticky; top:0; z-index:5; display:flex; align-items:center; gap:18px; padding:16px 30px; background:rgba(255,255,255,.92); border-bottom:1px solid var(--line); backdrop-filter:blur(14px); }
+  .brand { font-weight:700; font-size:18px; letter-spacing:1px; white-space:nowrap; }
+  .brand small { color:var(--muted); font-weight:400; margin-left:8px; }
+  select,button,a.btn { height:38px; border:1px solid #c9dae6; border-radius:9px; background:#fff; color:var(--ink); padding:0 14px; font:inherit; text-decoration:none; display:inline-flex; align-items:center; cursor:pointer; }
+  select { min-width:230px; margin-left:auto; }
+  button.primary,a.primary { background:linear-gradient(135deg,var(--cyan),var(--blue)); color:#fff; border:0; }
+  main { width:min(1320px,calc(100% - 40px)); margin:24px auto 56px; }
+  .hero { display:grid; grid-template-columns:1.3fr .7fr; gap:18px; margin-bottom:18px; }
+  .card { background:rgba(255,255,255,.94); border:1px solid var(--line); border-radius:16px; box-shadow:0 14px 34px rgba(40,90,120,.08); overflow:hidden; }
+  .identity { padding:26px; display:flex; gap:20px; align-items:center; }
+  .avatar { width:76px; height:76px; border-radius:22px; display:grid; place-items:center; color:#fff; font-size:30px; background:linear-gradient(145deg,var(--cyan),var(--blue)); }
+  h1 { margin:0 0 4px; font-size:26px; } .sub { color:var(--muted); }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; margin-top:13px; }
+  .chip { padding:4px 9px; border-radius:999px; background:#eaf8fb; color:#087b96; font-size:12px; }
+  .status { padding:22px; display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
+  .metric { background:#f5fafc; border:1px solid #e1edf3; padding:14px; border-radius:12px; }
+  .metric b { display:block; font-size:21px; color:var(--blue); }.metric span { color:var(--muted); font-size:12px; }
+  .notice { margin-bottom:18px; padding:12px 16px; border:1px solid #bfe6dd; background:#effaf7; color:#226b5a; border-radius:12px; }
+  section { margin-top:18px; }
+  .section-head { padding:17px 20px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:center; }
+  .section-head h2 { margin:0; font-size:16px; }.section-head span { color:var(--muted); font-size:12px; }
+  .table-wrap { overflow:auto; }
+  table { width:100%; border-collapse:collapse; }
+  th,td { padding:12px 16px; border-bottom:1px solid #e8f0f5; text-align:left; vertical-align:top; }
+  th { color:#647c91; font-weight:600; background:#f8fbfd; white-space:nowrap; }
+  tr:last-child td { border-bottom:0; }
+  .kv { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); padding:4px 20px 18px; }
+  .kv div { padding:14px 12px; border-bottom:1px solid #e8f0f5; }
+  .kv label { display:block; color:var(--muted); font-size:12px; margin-bottom:4px; }.kv strong { font-weight:500; word-break:break-word; }
+  .empty { padding:28px; color:var(--muted); text-align:center; }
+  .preview-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; padding:18px; }
+  .preview { border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#f8fbfd; }
+  .preview .title { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 12px; font-weight:600; }
+  .preview img,.preview iframe { display:block; width:100%; height:330px; object-fit:contain; border:0; background:#fff; }
+  .preview .actions { display:flex; gap:8px; }.preview .actions a { color:var(--blue); text-decoration:none; font-size:12px; }
+  .upload { display:grid; grid-template-columns:1.2fr .7fr 1.5fr auto; gap:10px; padding:18px; align-items:center; }
+  .upload input,.upload select { width:100%; height:40px; border:1px solid #c9dae6; border-radius:9px; background:#fff; padding:0 12px; font:inherit; margin:0; min-width:0; }
+  .ai-note { margin:18px; padding:15px 18px; border-radius:12px; background:#eff8ff; border:1px solid #cfe6f5; color:#31556c; }
+  .lineage { display:flex; align-items:stretch; gap:10px; padding:18px; overflow:auto; }
+  .lineage .step { min-width:150px; flex:1; padding:14px; border-radius:12px; background:#f3f9fc; border:1px solid var(--line); }
+  .lineage .step b { display:block; color:var(--blue); margin-bottom:4px; }.lineage .arrow { align-self:center; color:var(--cyan); font-size:22px; }
+  .public-warning { margin:18px 18px 0; padding:12px 15px; border-radius:10px; background:#fff7ed; border:1px solid #fed7aa; color:#9a4b16; }
+  .file-link { color:var(--blue); text-decoration:none; white-space:nowrap; }.file-link:hover { text-decoration:underline; }
+  footer { color:var(--muted); text-align:center; padding:18px; }
+  @media(max-width:850px){ header{flex-wrap:wrap;padding:12px 16px} header select{order:3;width:100%;margin:0}.hero,.preview-grid{grid-template-columns:1fr}.kv{grid-template-columns:repeat(2,1fr)}.upload{grid-template-columns:1fr} main{width:min(100% - 20px,1320px)} .hide-mobile{display:none} }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">嘀嗒医 <small>全量健康档案</small></div>
+  <a class="btn" id="back" href="./">返回数字人体</a>
+  <a class="btn" href="cohort.html">10人数据总览</a>
+  <select id="patient" aria-label="选择患者"></select>
+  <a class="btn" id="export-one" download>当前报送表</a>
+  <a class="btn primary" id="zip-one" download>下载当前 ZIP</a>
+  <a class="btn" href="/api/body-archive/archive/all.zip" download>全部 ZIP</a>
+</header>
+<main>
+  <div class="notice">当前为全合成测试数据，仅用于流程联调。证件号、电话和地址均为不可用于真实业务的测试占位；接入具体省市平台前需按其接口文档完成字段映射、认证与合规评审。</div>
+  <div class="hero">
+    <div class="card identity">
+      <div class="avatar" id="avatar">测</div>
+      <div><h1 id="name">加载中…</h1><div class="sub" id="identity-line"></div><div class="chips" id="chips"></div></div>
+    </div>
+    <div class="card status" id="metrics"></div>
+  </div>
+  <div id="sections"></div>
+</main>
+<footer>本页只整理和展示测试档案，不提供诊断结论；导出模板为政府入口联调模拟格式。</footer>
+<script>
+const $=s=>document.querySelector(s);
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const show=v=>Array.isArray(v)?v.join('；'):(v===''||v==null?'—':String(v));
+const qs=new URLSearchParams(location.search); let current=qs.get('patient')||'user_001';
+let publicLibrary={assets:[],warning:''};
+function card(title,body,tip=''){return `<section class="card"><div class="section-head"><h2>${esc(title)}</h2><span>${esc(tip)}</span></div>${body}</section>`}
+function kv(items){return `<div class="kv">${items.map(([k,v])=>`<div><label>${esc(k)}</label><strong>${esc(show(v))}</strong></div>`).join('')}</div>`}
+function table(columns,rows){if(!rows.length)return '<div class="empty">暂无记录</div>';return `<div class="table-wrap"><table><thead><tr>${columns.map(c=>`<th>${esc(c[0])}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${columns.map(c=>`<td>${esc(show(typeof c[1]==='function'?c[1](r):r[c[1]]))}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`}
+function fileUrl(pid,name,download=false){return `/api/body-archive/patients/${encodeURIComponent(pid)}/files/${encodeURIComponent(name)}${download?'?download=1':''}`}
+function materialsView(d){
+  const rows=d.materials||[];
+  const list=rows.length?`<div class="table-wrap"><table><thead><tr><th>类别</th><th>原始文件</th><th>备注</th><th>时间</th><th>操作</th></tr></thead><tbody>${rows.map(m=>{const actions=m.stored_name?`<a class="file-link" href="${fileUrl(d.patient_id,m.stored_name)}" target="_blank">原样查看</a>　<a class="file-link" href="${fileUrl(d.patient_id,m.stored_name,true)}" download>下载</a>`:'仅登记元数据';return `<tr><td>${esc(m.category||'资料')}</td><td>${esc(m.filename||'')}</td><td>${esc(m.note||'')}</td><td>${esc(m.uploaded_at||'')}</td><td>${actions}</td></tr>`}).join('')}</tbody></table></div>`:'<div class="empty">暂无原始资料</div>';
+  const previews=rows.filter(m=>m.stored_name&&m.previewable).map(m=>`<div class="preview"><div class="title"><span>${esc(m.filename)}</span><span class="actions"><a href="${fileUrl(d.patient_id,m.stored_name)}" target="_blank">放大</a><a href="${fileUrl(d.patient_id,m.stored_name,true)}" download>下载</a></span></div>${m.mime_type==='application/pdf'?`<iframe src="${fileUrl(d.patient_id,m.stored_name)}" title="${esc(m.filename)}"></iframe>`:`<img src="${fileUrl(d.patient_id,m.stored_name)}" alt="${esc(m.filename)}">`}</div>`).join('');
+  return list+(previews?`<div class="preview-grid">${previews}</div>`:'');
+}
+function uploadView(){return `<form class="upload" id="upload-form"><input type="file" name="file" accept=".pdf,.png,.jpg,.jpeg,.csv,.json,.txt" required><select name="category"><option>脑电原始数据</option><option>检验报告</option><option>健康档案摘要</option><option>其他原始资料</option></select><input name="note" placeholder="资料备注（可选）"><button class="primary" type="submit">上传并归档</button></form><div class="sub" id="upload-status" style="padding:0 18px 18px">支持 PDF、PNG、JPG、CSV、JSON、TXT，单个不超过 25 MB。</div>`}
+function publicAssetsView(lib){const assets=lib.assets||[];return `<div class="public-warning">${esc(lib.warning||'公开参考素材不属于患者数据。')}</div><div class="preview-grid">${assets.map(a=>`<div class="preview"><div class="title"><span>${esc(a.modality)} · ${esc(a.title)}</span><span class="actions"><a href="data/public-assets/${encodeURIComponent(a.filename)}" target="_blank">查看高清原图</a></span></div><img src="data/public-assets/${encodeURIComponent(a.filename)}" alt="${esc(a.title)}"><div style="padding:12px"><div>${esc(a.author)} · ${esc(a.license)} · ${esc(a.dimensions)}</div><a class="file-link" href="${esc(a.source_page)}" target="_blank" rel="noopener">来源与许可</a></div></div>`).join('')}</div>`}
+async function json(url){const r=await fetch(url,{cache:'no-store'});if(!r.ok)throw Error(await r.text());return r.json()}
+function render(d){
+  const p=d.profile||{},h=d.health_summary||{},l=d.lifestyle||{},e=d.latest_exam||{},c=d.completeness||{};
+  $('#name').textContent=d.name; $('#avatar').textContent=(d.name||'测').slice(0,1);
+  $('#identity-line').textContent=`${d.archive_id} · 系统 ID ${d.patient_id} · ${d.sex==='m'?'男':'女'} · ${d.age}岁`;
+  $('#chips').innerHTML=(h.risk_tags||[]).map(x=>`<span class="chip">${esc(x)}</span>`).join('');
+  $('#metrics').innerHTML=[[c.record_count,'病史记录'],[c.lab_count,'检验结果'],[c.followup_count,'随访记录'],[c.ready_for_mock_export?'可导出':'待补齐','联调状态']].map(x=>`<div class="metric"><b>${esc(x[0])}</b><span>${esc(x[1])}</span></div>`).join('');
+  $('#back').href=`./?patient=${encodeURIComponent(d.patient_id)}`;
+  $('#export-one').href=`/api/body-archive/government-export?patient=${encodeURIComponent(d.patient_id)}&format=csv`;
+  $('#zip-one').href=`/api/body-archive/patients/${encodeURIComponent(d.patient_id)}/archive.zip`;
+  const basic=kv([['档案编号',d.archive_id],['主系统用户ID',d.source_system?.system_user_id],['同步来源',d.source_system?.system],['数据性质','合成测试数据'],['出生日期',p.birth_date],['证件类型',p.id_type],['证件号码',p.id_number],['民族',p.ethnicity],['婚姻状况',p.marital_status],['职业',p.occupation],['文化程度',p.education],['所在城市',p.city],['参保类型',p.insurance_type],['就业状态',p.employee_status],['主系统疾病标签',p.system_conditions],['联系电话',p.phone],['现住址',p.address],['行政区划代码',p.administrative_code],['紧急联系人',p.emergency_contact?`${p.emergency_contact.name} / ${p.emergency_contact.relationship} / ${p.emergency_contact.phone}`:''],['建档日期',p.registered_at],['管理机构',p.managing_org],['最后更新',d.updated_at]]);
+  const summary=kv([['血型',h.blood_type],['药物过敏史',h.allergies],['既往史',h.past_history],['家族史',h.family_history],['残疾情况',h.disability],['吸烟情况',l.smoking],['饮酒情况',l.alcohol],['运动情况',l.exercise],['饮食情况',l.diet],['平均睡眠',l.sleep_hours?`${l.sleep_hours} 小时`:'']]);
+  const exam=kv([['体检日期',e.exam_date],['身高',e.height_cm?`${e.height_cm} cm`:''],['体重',e.weight_kg?`${e.weight_kg} kg`:''],['BMI',e.bmi],['腰围',e.waist_cm?`${e.waist_cm} cm`:''],['体温',e.temperature_c?`${e.temperature_c} ℃`:''],['脉搏',e.pulse_bpm?`${e.pulse_bpm} 次/分`:''],['呼吸',e.respiratory_rate?`${e.respiratory_rate} 次/分`:''],['血压',e.blood_pressure?`${e.blood_pressure} mmHg`:''],['空腹血糖',e.fasting_glucose_mmol_l?`${e.fasting_glucose_mmol_l} mmol/L`:''],['总胆固醇',e.total_cholesterol_mmol_l?`${e.total_cholesterol_mmol_l} mmol/L`:''],['糖化血红蛋白',e.hba1c_percent?`${e.hba1c_percent}%`:'']]);
+  const meds=table([['药品','name'],['剂量','dose'],['频次','frequency'],['状态','status']],d.medications||[]);
+  const labs=table([['日期','date'],['项目','item'],['结果','value'],['单位','unit'],['参考范围','reference']],d.lab_results||[]);
+  const eeg=table([['采集时间','recorded_at'],['时长',x=>`${x.duration_seconds}秒`],['采样率',x=>`${x.sampling_rate_hz}Hz`],['通道',x=>(x.channels||[]).join('、')],['波段功率',x=>Object.entries(x.band_powers||{}).map(([k,v])=>`${k}:${v}`).join(' / ')],['指标',x=>Object.entries(x.metrics||{}).map(([k,v])=>`${k}:${v}`).join(' / ')],['说明','summary']],d.eeg_sessions||[]);
+  const follows=table([['日期','date'],['类型','type'],['记录结果','result'],['下次计划','next_due'],['状态','status']],d.followups||[]);
+  const history=table([['日期','event_date'],['身体部位','organ'],['记录内容','description'],['来源','source_label'],['来源引用','source_ref']],d.records||[]);
+  const ai=`<div class="ai-note"><b>${esc(d.ai_summary?.title||'AI 档案归整')}</b><br>${esc(d.ai_summary?.overview||'已按患者ID归集结构化数据。')}<br><span class="sub">${esc(d.ai_summary?.disclaimer||'AI仅归整，不作诊断。')}</span>　<a class="file-link" href="/api/body-archive/ai-table?patient=${encodeURIComponent(d.patient_id)}&format=csv" download>下载AI统表CSV</a></div>`+table([['分类','category'],['项目','item'],['值','value'],['日期','date'],['来源','source'],['状态','status']],d.ai_organized_table||[]);
+  const lineage=`<div class="lineage">${(d.data_lineage||[]).map((x,i)=>`${i?'<span class="arrow">→</span>':''}<div class="step"><b>${esc(x.stage)}</b><span>${esc(x.key)}</span><div class="sub">${esc(x.status)}</div></div>`).join('')}</div>`;
+  const eegPreview=(d.eeg_sessions||[])[0]?.preview_file?`<div class="preview-grid"><div class="preview"><div class="title"><span>脑电原始波形预览</span><span class="actions"><a href="${fileUrl(d.patient_id,(d.eeg_sessions||[])[0].waveform_file,true)}" download>下载原始CSV</a></span></div><img src="${fileUrl(d.patient_id,(d.eeg_sessions||[])[0].preview_file)}" alt="模拟脑电波形"></div></div>`:'';
+  $('#sections').innerHTML=card('数据整合链路',lineage,'主系统 → 档案 → 多模态 → AI → 导出')+card('AI 自动归整统表',ai,`${(d.ai_organized_table||[]).length} 行`)+card('个人基本信息',basic,'一人一档 · 稳定 ID')+card('健康摘要与生活方式',summary)+card('最近一次健康体检',exam)+card('脑电波数据',eeg+eegPreview,'模拟原始信号 · 不作诊断')+card('当前用药',meds)+card('检验结果',labs)+card('重点人群与随访管理',follows)+card('医疗服务与3D病史时间线',history,`${c.record_count||0} 条`)+card('上传新的原始资料',uploadView(),'上传后自动归入当前患者ID')+card('患者原始资料预览与下载',materialsView(d),'图片/PDF原样预览 · 全格式下载')+card('公开医学教学素材库',publicAssetsView(publicLibrary),'CT · PET · SVG 高清素材');
+  $('#upload-form').onsubmit=async ev=>{ev.preventDefault();const status=$('#upload-status');status.textContent='正在上传…';try{const body=new FormData(ev.currentTarget);const r=await fetch(`/api/body-archive/patients/${encodeURIComponent(d.patient_id)}/files`,{method:'POST',body});if(!r.ok)throw Error((await r.json()).detail||'上传失败');status.textContent='上传成功，正在刷新档案…';await load()}catch(err){status.textContent='上传失败：'+err.message}}
+}
+async function loadList(){const idx=await json('/api/body-archive/patients');const sel=$('#patient');sel.innerHTML=(idx.patients||[]).map(p=>`<option value="${esc(p.id)}" ${p.id===current?'selected':''}>${esc(p.name)} (${esc(p.id)})</option>`).join('');sel.onchange=()=>{current=sel.value;history.replaceState(null,'',`?patient=${encodeURIComponent(current)}`);load()}}
+async function load(){try{const [d,lib]=await Promise.all([json(`/api/body-archive/patients/${encodeURIComponent(current)}/dossier`),json('data/public-assets/index.json')]);publicLibrary=lib;render(d)}catch(e){$('#sections').innerHTML=card('加载失败',`<div class="empty">请确认嘀嗒医后端服务已启动。<br>${esc(e.message)}</div>`)} }
+loadList().then(load).catch(e=>{$('#sections').innerHTML=card('加载失败',`<div class="empty">${esc(e.message)}</div>`)})
+</script>
+</body>
+</html>
+

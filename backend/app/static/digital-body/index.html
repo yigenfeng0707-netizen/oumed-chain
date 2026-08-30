@@ -1,0 +1,1387 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>嘀嗒医 · 数字人体健康档案</title>
+<style>
+  :root {
+    --bg-0: #f3fbff;
+    --bg-1: #dff4fb;
+    --cyan: #20bde0;
+    --cyan-soft: #63cfe8;
+    --pink: #ff5fa8;
+    --amber: #ffc34d;
+    --green: #5ee08a;
+    --coral: #ff7a59;
+    --panel-bg: rgba(255, 255, 255, 0.84);
+    --panel-border: rgba(32, 189, 224, 0.30);
+    --panel-border-strong: rgba(32, 189, 224, 0.78);
+    --text: #173b56;
+    --muted: #68849a;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    font-family: "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+    color: var(--text);
+    background: var(--bg-0);
+  }
+  body::before {
+    content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background:
+      radial-gradient(ellipse 70% 55% at 50% 25%, rgba(102, 214, 240, 0.30) 0%, transparent 70%),
+      radial-gradient(ellipse 40% 30% at 15% 90%, rgba(255, 171, 145, 0.12) 0%, transparent 70%),
+      radial-gradient(ellipse 40% 30% at 85% 90%, rgba(111, 195, 255, 0.15) 0%, transparent 70%),
+      var(--bg-0);
+  }
+
+  #canvas-container { position: absolute; inset: 0; z-index: 1; }
+  canvas { display: block; }
+
+  /* ── HUD：四角折线 ── */
+  .hud-corner {
+    position: fixed; width: 80px; height: 80px; z-index: 5; pointer-events: none;
+    border: 1px solid var(--cyan); opacity: 0.55;
+    box-shadow: 0 0 18px rgba(79,216,255,0.22);
+  }
+  .hud-corner.tl { top: 22px; left: 22px; border-right: none; border-bottom: none; }
+  .hud-corner.tr { top: 22px; right: 22px; border-left: none; border-bottom: none; }
+  .hud-corner.bl { bottom: 22px; left: 22px; border-right: none; border-top: none; }
+  .hud-corner.br { bottom: 22px; right: 22px; border-left: none; border-top: none; }
+
+  /* ── 顶部标题 ── */
+  #hud-title {
+    position: fixed; top: 25px; left: 50%; transform: translateX(-50%);
+    z-index: 6; display: flex; align-items: center; gap: 12px;
+    filter: drop-shadow(0 5px 14px rgba(49,151,187,0.18));
+    white-space: nowrap; padding: 0 80px;
+  }
+  #hud-title .brand-mark { width: 46px; height: 46px; flex-shrink: 0; object-fit: contain; transform: scale(1.18) translateY(3px); }
+  #hud-title .brand-copy { display: flex; flex-direction: column; gap: 3px; }
+  #hud-title .brand-name {
+    font-size: 19px; letter-spacing: 5px; font-weight: 700;
+    background: linear-gradient(180deg, #173b56 0%, #159fc1 86%);
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  #hud-title .brand-sub { color: var(--cyan-soft); font-size: 9px; letter-spacing: 3.5px; font-weight: 400; opacity: .72; }
+  #hud-title::before, #hud-title::after {
+    content: ''; position: absolute; top: 50%; width: 70px; height: 1px;
+  }
+  #hud-title::before { right: 100%; background: linear-gradient(90deg, transparent, var(--cyan)); }
+  #hud-title::after  { left: 100%;  background: linear-gradient(270deg, transparent, var(--cyan)); }
+  #hud-title .deco-l, #hud-title .deco-r {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    width: 14px; height: 14px;
+  }
+  #hud-title .deco-l { right: 100%; margin-right: -1px; border-top: 1px solid var(--cyan); border-right: 1px solid var(--cyan); }
+  #hud-title .deco-r { left: 100%;  margin-left: -1px; border-bottom: 1px solid var(--cyan); border-left: 1px solid var(--cyan); }
+
+  /* ── 四角小标签 ── */
+  .corner-tag {
+    position: fixed; z-index: 6; font-size: 10px; letter-spacing: 2px;
+    color: var(--cyan-soft); font-weight: 300;
+  }
+  .corner-tag .lbl { color: var(--muted); }
+  .corner-tag b { color: #244b66; font-weight: 600; letter-spacing: 1.5px; }
+  .corner-tag.tl { top: 50px; left: 40px; }
+  .corner-tag.tr { top: 50px; right: 40px; text-align: right; }
+
+  /* ── 患者选择器 + 视图模式 + 图层控制 ── */
+  #left-controls { position: fixed; top: 100px; left: 50px; z-index: 7; display: flex; flex-direction: column; gap: 12px; width: 208px; }
+  #patient-select {
+    background: rgba(255,255,255,0.82); color: var(--text); border: 1px solid var(--panel-border);
+    border-radius: 2px; padding: 7px 22px 7px 12px; font-size: 13px;
+    appearance: none; outline: none; cursor: pointer; width: 100%;
+    backdrop-filter: blur(8px);
+    background-image:
+      linear-gradient(45deg, transparent 50%, var(--cyan) 50%),
+      linear-gradient(135deg, var(--cyan) 50%, transparent 50%);
+    background-position: calc(100% - 14px) 50%, calc(100% - 9px) 50%;
+    background-size: 5px 5px; background-repeat: no-repeat;
+  }
+  #patient-select:hover { border-color: var(--panel-border-strong); }
+  #viewmode, #layers {
+    background: rgba(255,255,255,0.76); border: 1px solid var(--panel-border);
+    backdrop-filter: blur(8px); padding: 10px 14px;
+    font-size: 12px; color: var(--text); line-height: 2;
+  }
+  #viewmode .layers-title, #layers .layers-title { font-size: 10px; color: var(--muted); letter-spacing: 2px; margin-bottom: 4px; }
+  .vm-btn {
+    display: block; width: 100%; text-align: left; margin-bottom: 6px;
+    background: rgba(79,216,255,0.06); color: var(--muted);
+    border: 1px solid rgba(79,216,255,0.22); border-radius: 2px;
+    padding: 7px 10px; font-size: 12px; cursor: pointer; letter-spacing: 1px;
+    transition: all .15s;
+  }
+  .vm-btn:last-child { margin-bottom: 0; }
+  .vm-btn:hover { border-color: var(--panel-border-strong); color: var(--text); }
+  .vm-btn.active {
+    background: rgba(32,189,224,0.16); color: #126d86;
+    border-color: var(--cyan); box-shadow: 0 0 12px rgba(79,216,255,0.3);
+  }
+  .vm-btn .sub { display: block; font-size: 10px; color: var(--muted); letter-spacing: 0.5px; margin-top: 2px; }
+  .vm-btn.active .sub { color: var(--cyan-soft); }
+  #layers label { display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; }
+  #layers input[type=checkbox] { accent-color: var(--cyan); width: 14px; height: 14px; cursor: pointer; }
+
+  /* ── 操作提示 ── */
+  #hint {
+    position: fixed; top: 100px; right: 50px; z-index: 6;
+    font-size: 11px; color: var(--muted); letter-spacing: 1px;
+    border: 1px solid var(--panel-border); background: rgba(255,255,255,0.76);
+    padding: 7px 14px; backdrop-filter: blur(6px);
+  }
+
+  /* ── 时间轴 ── */
+  #timeline {
+    position: fixed; bottom: 96px; left: 50%; transform: translateX(-50%);
+    z-index: 9; display: flex; align-items: center; gap: 14px;
+    background: rgba(255,255,255,0.84); border: 1px solid var(--panel-border);
+    backdrop-filter: blur(10px); padding: 12px 20px 8px; border-radius: 2px;
+    width: min(760px, 86vw);
+  }
+  #timeline::before {
+    content: ''; position: absolute; top: 0; left: 0; width: 60px; height: 2px;
+    background: linear-gradient(90deg, var(--cyan), transparent);
+  }
+  #tl-play {
+    width: 34px; height: 34px; flex-shrink: 0; border-radius: 50%;
+    border: 1px solid var(--cyan); background: rgba(79,216,255,0.12);
+    color: var(--cyan); font-size: 12px; cursor: pointer;
+    transition: all .15s; line-height: 1;
+  }
+  #tl-play:hover { background: rgba(79,216,255,0.3); box-shadow: 0 0 14px rgba(79,216,255,0.5); }
+  #tl-play.playing { background: rgba(94,224,138,0.2); border-color: var(--green); color: var(--green); }
+  #tl-main { flex: 1; position: relative; padding-bottom: 14px; }
+  #tl-slider {
+    width: 100%; appearance: none; height: 4px; border-radius: 2px;
+    background: linear-gradient(90deg, rgba(79,216,255,0.15), rgba(79,216,255,0.45));
+    outline: none; cursor: pointer;
+  }
+  #tl-slider::-webkit-slider-thumb {
+    appearance: none; width: 16px; height: 16px; border-radius: 50%;
+    background: var(--cyan); border: 2px solid #dff6ff;
+    box-shadow: 0 0 12px rgba(79,216,255,0.9); cursor: grab;
+  }
+  #tl-ticks { position: absolute; left: 0; right: 0; top: 12px; height: 14px; font-size: 9px; color: var(--muted); letter-spacing: 0.5px; }
+  #tl-ticks span { position: absolute; transform: translateX(-50%); }
+  #tl-ticks span::before {
+    content: ''; position: absolute; left: 50%; top: -8px; width: 1px; height: 5px;
+    background: rgba(79,216,255,0.4);
+  }
+  #tl-date {
+    flex-shrink: 0; min-width: 92px; text-align: center;
+    font-size: 15px; color: var(--cyan); font-weight: 600; letter-spacing: 2px;
+    font-variant-numeric: tabular-nums;
+  }
+  #tl-date.nodata { color: var(--muted); font-size: 12px; }
+  #tl-now {
+    flex-shrink: 0; background: none; border: 1px solid var(--panel-border);
+    color: var(--muted); font-size: 11px; padding: 5px 10px; border-radius: 2px;
+    cursor: pointer; letter-spacing: 1px; transition: all .15s;
+  }
+  #tl-now:hover { color: var(--cyan); border-color: var(--cyan); }
+  #tl-title { position: absolute; top: -7px; left: 14px; font-size: 9px; letter-spacing: 2px; color: var(--muted); background: rgba(244,251,255,0.96); padding: 0 6px; }
+
+  /* ── 底部 HUD 信息条 ── */
+  #hud-bottom {
+    position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+    z-index: 6; display: flex; gap: 28px; align-items: center;
+    background: rgba(255,255,255,0.82); border: 1px solid var(--panel-border);
+    backdrop-filter: blur(8px); padding: 10px 26px; border-radius: 2px;
+  }
+  .hud-stat { font-size: 11px; letter-spacing: 1.5px; display: flex; align-items: center; gap: 8px; }
+  .hud-stat .lbl { color: var(--muted); }
+  .hud-stat .val { color: var(--cyan); font-weight: 500; }
+  .hud-stat .val.amber { color: var(--amber); }
+  .hud-stat .val.live::before {
+    content: ''; display: inline-block; width: 7px; height: 7px;
+    border-radius: 50%; background: var(--green); margin-right: 4px;
+    box-shadow: 0 0 8px var(--green); animation: blink 1.4s infinite;
+  }
+  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+
+  /* ── 器官悬浮徽章 ── */
+  #badge-layer { position: fixed; inset: 0; z-index: 8; pointer-events: none; }
+  .organ-badge {
+    position: absolute; transform: translate(-50%, -50%);
+    background: rgba(255, 255, 255, 0.90); border: 1px solid var(--panel-border);
+    color: var(--text); font-size: 12px; line-height: 1.2;
+    padding: 7px 12px 8px; min-width: 96px;
+    backdrop-filter: blur(6px);
+    box-shadow: 0 0 16px rgba(79,216,255,0.28), inset 0 0 12px rgba(79,216,255,0.08);
+    pointer-events: auto; cursor: pointer; user-select: none;
+    transition: background .15s, border-color .15s, box-shadow .15s, transform .15s;
+  }
+  .organ-badge::before {
+    content: ''; position: absolute; top: 0; left: 0; width: 10px; height: 10px;
+    border-top: 2px solid var(--cyan); border-left: 2px solid var(--cyan);
+  }
+  .organ-badge::after {
+    content: ''; position: absolute; bottom: 0; right: 0; width: 10px; height: 10px;
+    border-bottom: 2px solid var(--cyan); border-right: 2px solid var(--cyan);
+  }
+  .organ-badge:hover, .organ-badge.active {
+    background: rgba(79, 216, 255, 0.22); border-color: var(--cyan);
+    box-shadow: 0 0 22px rgba(79,216,255,0.6), inset 0 0 16px rgba(79,216,255,0.18);
+  }
+  .organ-badge.hover { transform: translate(-50%, -50%) scale(1.05); }
+  .organ-badge .badge-date { display: block; color: var(--cyan-soft); font-size: 11px; margin-bottom: 3px; letter-spacing: 1px; }
+  .organ-badge .badge-stage { display: block; color: var(--text); font-size: 13px; font-weight: 600; letter-spacing: 1px; }
+  .organ-badge .arrow {
+    position: absolute; left: 50%; bottom: -8px; transform: translateX(-50%);
+    width: 0; height: 0;
+    border-left: 6px solid transparent; border-right: 6px solid transparent;
+    border-top: 8px solid var(--cyan);
+    filter: drop-shadow(0 0 4px var(--cyan));
+  }
+  /* 标签开关关闭时：徽章全部隐藏，只留 3D 小光标 */
+  #badge-layer.no-labels .organ-badge { display: none; }
+
+  /* ── tooltip ── */
+  #tooltip {
+    position: fixed; z-index: 12; display: none; pointer-events: none;
+    background: rgba(255, 255, 255, 0.96); border: 1px solid var(--panel-border);
+    border-radius: 3px; padding: 9px 12px; max-width: 280px;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.5); font-size: 12px;
+  }
+  #tooltip .t-head { color: var(--cyan); font-weight: 600; margin-bottom: 5px; letter-spacing: 1px; }
+
+  /* ── 右侧病例面板 ── */
+  #panel {
+    position: fixed; top: 0; right: 0; bottom: 0; z-index: 15;
+    width: 420px; max-width: 92vw;
+    background: var(--panel-bg); border-left: 1px solid var(--panel-border);
+    backdrop-filter: blur(14px);
+    display: flex; flex-direction: column;
+    transform: translateX(100%); transition: transform .28s ease;
+  }
+  #panel.open { transform: translateX(0); }
+  #panel-header {
+    padding: 26px 26px 18px; border-bottom: 1px solid var(--panel-border);
+    position: relative;
+  }
+  #panel-header::before {
+    content: ''; position: absolute; top: 0; left: 0; width: 80px; height: 2px;
+    background: linear-gradient(90deg, var(--cyan), transparent);
+  }
+  #panel-header::after {
+    content: ''; position: absolute; top: 0; right: 0; width: 80px; height: 2px;
+    background: linear-gradient(270deg, var(--cyan), transparent);
+  }
+  #panel-header .organ-name { font-size: 22px; color: var(--cyan); font-weight: 500; letter-spacing: 3px; }
+  #panel-header .organ-count { font-size: 11px; color: var(--muted); margin-left: 10px; letter-spacing: 1px; }
+  #panel-close {
+    position: absolute; top: 22px; right: 22px;
+    background: none; border: 1px solid var(--panel-border); color: var(--cyan);
+    font-size: 14px; cursor: pointer; padding: 2px 9px;
+    border-radius: 2px; transition: background .15s; line-height: 1;
+  }
+  #panel-close:hover { background: rgba(79,216,255,0.18); }
+
+  .panel-fields { padding: 12px 26px 4px; }
+  .pf-row {
+    display: flex; padding: 11px 0; border-bottom: 1px dashed rgba(80,180,255,0.18);
+    font-size: 13px; line-height: 1.6;
+  }
+  .pf-row:last-child { border-bottom: none; }
+  .pf-row .pf-lbl { color: var(--muted); width: 92px; flex-shrink: 0; font-size: 12px; letter-spacing: 1px; }
+  .pf-row .pf-val { color: var(--text); flex: 1; }
+  .pf-row .pf-val.cyan { color: var(--cyan); font-weight: 500; }
+  .pf-row .pf-val.muted { color: var(--muted); font-size: 12px; }
+
+  #panel-body { flex: 1; overflow-y: auto; padding: 6px 26px 18px; }
+  #panel-body::-webkit-scrollbar { width: 5px; }
+  #panel-body::-webkit-scrollbar-thumb { background: rgba(79,216,255,0.3); border-radius: 2px; }
+
+  .record-card {
+    position: relative;
+    background: rgba(246, 252, 255, 0.92); border: 1px solid rgba(80,180,255,0.24);
+    padding: 12px 14px 10px; margin-bottom: 10px;
+  }
+  .record-card::before {
+    content: ''; position: absolute; top: 0; left: 0; width: 30px; height: 2px;
+    background: linear-gradient(90deg, var(--cyan), transparent);
+  }
+  .record-card::after {
+    content: ''; position: absolute; bottom: 0; right: 0; width: 18px; height: 2px;
+    background: linear-gradient(270deg, rgba(79,216,255,0.5), transparent);
+  }
+  .record-card .rc-top { display: flex; gap: 6px; margin-bottom: 8px; align-items: center; flex-wrap: wrap; }
+  .badge {
+    font-size: 10px; padding: 2px 8px; border-radius: 2px;
+    background: rgba(79,216,255,0.1); color: var(--cyan); border: 1px solid rgba(79,216,255,0.35);
+    letter-spacing: 0.5px;
+  }
+  .badge.date { color: var(--amber); border-color: rgba(255,195,77,0.4); background: rgba(255,195,77,0.08); }
+  .badge.src  { color: var(--green); border-color: rgba(94,224,138,0.35); background: rgba(94,224,138,0.08); }
+  .record-card .rc-desc { font-size: 13px; line-height: 1.7; color: var(--text); }
+  .record-card summary {
+    font-size: 11px; color: var(--muted); cursor: pointer; margin-top: 8px;
+    user-select: none; outline: none;
+  }
+  .record-card summary:hover { color: var(--cyan); }
+  .record-card .rc-raw {
+    font-size: 12px; color: var(--muted); padding-left: 10px;
+    border-left: 2px solid rgba(79,216,255,0.4); margin-top: 6px; line-height: 1.7;
+  }
+  .record-card .rc-meta { font-size: 10px; color: #557190; margin-top: 8px; letter-spacing: 0.5px; }
+
+  .section-title {
+    font-size: 11px; color: var(--muted); letter-spacing: 3px;
+    margin: 18px 0 10px; padding-bottom: 6px;
+    border-bottom: 1px dashed rgba(80,180,255,0.2);
+  }
+  .material-item {
+    font-size: 12px; color: var(--text); padding: 5px 0;
+    display: flex; gap: 8px; align-items: baseline; line-height: 1.6;
+  }
+  .material-item .m-note { color: var(--muted); font-size: 11px; }
+
+  #panel-footer {
+    padding: 10px 26px; border-top: 1px solid var(--panel-border);
+    font-size: 10px; color: var(--muted); line-height: 1.6;
+    background: rgba(245,251,255,0.88);
+  }
+  #empty-records { color: var(--muted); font-size: 12px; padding: 16px 0; text-align: center; letter-spacing: 1px; }
+
+  /* ── 加载层 ── */
+  #loading {
+    position: fixed; inset: 0; z-index: 30; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 16px;
+    background: radial-gradient(ellipse at center, #e4f8ff 0%, #f7fcff 100%);
+    color: var(--cyan); font-size: 14px; letter-spacing: 6px;
+    transition: opacity .5s;
+  }
+  #loading.hidden { opacity: 0; pointer-events: none; }
+  .spinner {
+    width: 50px; height: 50px; border-radius: 50%;
+    border: 2px solid rgba(79,216,255,0.18); border-top-color: var(--cyan);
+    animation: spin 1.1s linear infinite;
+    box-shadow: 0 0 28px rgba(79,216,255,0.35);
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #loading-progress { font-size: 11px; letter-spacing: 2px; color: var(--muted); }
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+
+<div id="canvas-container"></div>
+
+<!-- HUD 装饰 -->
+<div class="hud-corner tl"></div>
+<div class="hud-corner tr"></div>
+<div class="hud-corner bl"></div>
+<div class="hud-corner br"></div>
+
+<div id="hud-title">
+  <span class="deco-l"></span>
+  <img class="brand-mark" src="branding/didayi-mascot.png" alt="">
+  <span class="brand-copy"><span class="brand-name">嘀嗒医 · 数字人体档案</span><span class="brand-sub">DIGITAL BODY HEALTH ARCHIVE</span></span>
+  <span class="deco-r"></span>
+</div>
+
+<div class="corner-tag tl">PATIENT&nbsp;ID&nbsp;<span class="lbl">/</span>&nbsp;<b id="corner-pid">demo</b></div>
+<div class="corner-tag tr">SYS&nbsp;STATUS&nbsp;<b><span style="color:var(--green)">●</span>&nbsp;ONLINE</b></div>
+
+<div id="left-controls">
+  <select id="patient-select" title="切换患者档案"></select>
+  <div id="viewmode">
+    <div class="layers-title">VIEW MODE / 视图模式</div>
+    <button class="vm-btn active" id="vm-full">⊙ 完整解剖<span class="sub">全部器官结构呈现</span></button>
+    <button class="vm-btn" id="vm-focus">◎ 档案聚焦<span class="sub">仅显示有记录的部位 · 身体线框化</span></button>
+  </div>
+  <div id="layers">
+    <div class="layers-title">LAYERS / 图层</div>
+    <label><input type="checkbox" id="layer-skin" checked> 皮肤外壳</label>
+    <label><input type="checkbox" id="layer-organs" checked> 内脏器官</label>
+    <label><input type="checkbox" id="layer-vasculature" checked> 血管网络</label>
+    <label><input type="checkbox" id="layer-skeleton"> 骨骼系统</label>
+    <label><input type="checkbox" id="layer-labels"> 悬浮标签卡片</label>
+  </div>
+</div>
+
+<div id="hint">拖动旋转 · 滚轮缩放 · 光标悬停查看 · 点击发光部位</div>
+
+<div id="badge-layer" class="no-labels"></div>
+<div id="tooltip"></div>
+
+<div id="panel">
+  <div id="panel-header">
+    <span class="organ-name" id="panel-organ">—</span>
+    <span class="organ-count" id="panel-count"></span>
+    <button id="panel-close" title="关闭">×</button>
+  </div>
+  <div id="panel-body"></div>
+  <div id="panel-footer">以上内容仅整理展示您在对话或上传资料中提供的信息，非诊断结论。本模块不是临床诊断工具，不自动检测或推断疾病。解剖模型：HuBMAP Human Reference Atlas（CC BY 4.0）；骨骼模型：Open3DModel / Caskanatomy（CC BY-SA 4.0）。</div>
+</div>
+
+<!-- 时间轴 -->
+<div id="timeline">
+  <span id="tl-title">TIMELINE / 时间轴</span>
+  <button id="tl-play" title="按月回放">▶</button>
+  <div id="tl-main">
+    <input type="range" id="tl-slider" min="0" max="1" value="1" step="1">
+    <div id="tl-ticks"></div>
+  </div>
+  <div id="tl-date" class="nodata">最新</div>
+  <button id="tl-now" title="回到最新（显示全部记录）">最新</button>
+</div>
+
+<div id="hud-bottom">
+  <div class="hud-stat"><span class="lbl">PATIENT</span><span class="val" id="hud-pid">demo</span></div>
+  <div class="hud-stat"><span class="lbl">TIME</span><span class="val" id="hud-time">实时</span></div>
+  <div class="hud-stat"><span class="lbl">RECORDS</span><span class="val" id="hud-rec-count">0</span></div>
+  <div class="hud-stat"><span class="lbl">ORGANS</span><span class="val" id="hud-organ-count">0</span></div>
+  <div class="hud-stat"><span class="lbl">SYNC</span><span class="val live">LIVE</span></div>
+  <div class="hud-stat"><span class="lbl">UPDATED</span><span class="val" id="hud-updated">--</span></div>
+</div>
+
+<div id="loading">
+  <div class="spinner"></div>
+  <div>嘀嗒医&nbsp;·&nbsp;LOADING&nbsp;ANATOMY</div>
+  <div id="loading-progress">正在加载真实解剖模型…</div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+
+/* ───────────────────────── 器官注册表 ─────────────────────────
+   key 与 taxonomy.md / ingest.py 保持一致
+   男/女各有真实 GLB 器官集（HuBMAP Visible Human，CC BY 4.0）
+   VH_F 无皮肤外壳文件，皮肤统一复用 VH_M（CCF 统一坐标系内可对齐） */
+const ORGANS = {
+  brain:      { label: '脑部' },
+  neck:       { label: '颈部' },
+  lungs:      { label: '肺部' },
+  heart:      { label: '心脏' },
+  liver:      { label: '肝脏' },
+  stomach:    { label: '胃部' },
+  kidneys:    { label: '肾脏' },
+  intestines: { label: '肠道' },
+  spleen:     { label: '脾脏' },
+  pancreas:   { label: '胰腺' },
+  spine:      { label: '脊柱' },
+  chest:      { label: '胸部' },
+  abdomen:    { label: '腹部' },
+  pelvis:     { label: '盆腔' },
+  uterus:     { label: '子宫' },
+  ovaries:    { label: '卵巢' },
+  prostate:   { label: '前列腺' },
+  shoulder_l: { label: '左肩' },
+  shoulder_r: { label: '右肩' },
+  shoulder:   { label: '肩部' },
+  arm_l:      { label: '左臂' },
+  arm_r:      { label: '右臂' },
+  arm:        { label: '手臂' },
+  knee_l:     { label: '左膝' },
+  knee_r:     { label: '右膝' },
+  knee:       { label: '膝盖' },
+  leg_l:      { label: '左腿' },
+  leg_r:      { label: '右腿' },
+  leg:        { label: '腿部' }
+};
+const KEY_ALIAS = {};
+['shoulder','arm','knee','leg'].forEach(k => {
+  KEY_ALIAS[k + '_left'] = k + '_l';
+  KEY_ALIAS[k + '_right'] = k + '_r';
+});
+
+/* 有真实 GLB 的器官（按性别分套，文件、颜色、透明度） */
+const MODELS_M = {
+  heart:      { files: ['models/VH_M_Heart.glb'],            color: 0xff6f8f, opacity: 0.42 },
+  lungs:      { files: ['models/VH_M_Lung.glb'],            color: 0x4fd8ff, opacity: 0.30 },
+  liver:      { files: ['models/VH_M_Liver.glb'],           color: 0xc08a5f, opacity: 0.38 },
+  kidneys:    { files: ['models/VH_M_Kidney_L.glb', 'models/VH_M_Kidney_R.glb'], color: 0x9f7fd8, opacity: 0.42 },
+  spleen:     { files: ['models/VH_M_Spleen.glb'],           color: 0x8f5fd8, opacity: 0.42 },
+  pancreas:   { files: ['models/VH_M_Pancreas.glb'],         color: 0xd8c84f, opacity: 0.42 },
+  intestines: { files: ['models/VH_M_Small_Intestine.glb', 'models/SBU_M_Intestine_Large.glb'], color: 0x4fd8a0, opacity: 0.34 },
+  spine:      { files: ['models/VH_M_Spinal_Cord.glb'],      color: 0x7f9fd8, opacity: 0.40 },
+  pelvis:     { files: ['models/VH_M_Pelvis.glb'],           color: 0x7f9fd8, opacity: 0.40 },
+  knee_l:     { files: ['models/VH_M_Knee_L.glb'],           color: 0x4fd8ff, opacity: 0.42 },
+  knee_r:     { files: ['models/VH_M_Knee_R.glb'],           color: 0x4fd8ff, opacity: 0.42 }
+};
+const MODELS_F = {
+  heart:      { files: ['models/VH_F_Heart.glb'],            color: 0xff6f8f, opacity: 0.42 },
+  lungs:      { files: ['models/VH_F_Lung.glb'],            color: 0x4fd8ff, opacity: 0.30 },
+  liver:      { files: ['models/VH_F_Liver.glb'],           color: 0xc08a5f, opacity: 0.38 },
+  kidneys:    { files: ['models/VH_F_Kidney_L.glb', 'models/VH_F_Kidney_R.glb'], color: 0x9f7fd8, opacity: 0.42 },
+  spleen:     { files: ['models/VH_F_Spleen.glb'],           color: 0x8f5fd8, opacity: 0.42 },
+  pancreas:   { files: ['models/VH_F_Pancreas.glb'],         color: 0xd8c84f, opacity: 0.42 },
+  intestines: { files: ['models/VH_F_Small_Intestine.glb', 'models/SBU_F_Intestine_Large.glb'], color: 0x4fd8a0, opacity: 0.34 },
+  spine:      { files: ['models/VH_F_Spinal_Cord.glb'],      color: 0x7f9fd8, opacity: 0.40 },
+  pelvis:     { files: ['models/VH_F_Pelvis.glb'],           color: 0x7f9fd8, opacity: 0.40 },
+  knee_l:     { files: ['models/VH_F_Knee_L.glb'],           color: 0x4fd8ff, opacity: 0.42 },
+  knee_r:     { files: ['models/VH_F_Knee_R.glb'],           color: 0x4fd8ff, opacity: 0.42 },
+  uterus:     { files: ['models/VH_F_Uterus.glb'],          color: 0xff8fc4, opacity: 0.45 },
+  ovaries:    { files: ['models/VH_F_Ovary_L.glb', 'models/VH_F_Ovary_R.glb'], color: 0xffa8d8, opacity: 0.45 }
+};
+const VASC_FILE = { m: 'models/VH_M_Blood_Vasculature.glb', f: 'models/VH_F_Blood_Vasculature.glb' };
+/* 女性外壳当前回退到男性文件；若补齐 VH_F_Skin.glb，只需改 f 项。 */
+const SKIN_FILE = { m: 'models/VH_M_Skin.glb', f: 'models/VH_M_Skin.glb' };
+
+/* 无 GLB 器官：按身高比例定位（y 从头顶向下、x 左右、z 前后，比例×身高 H） */
+const PROPORTION_ORGANS = {
+  brain:      { x: 0,     y: 0.075, z: 0 },
+  neck:       { x: 0,     y: 0.105, z: 0 },
+  chest:      { x: 0,     y: 0.205, z: 0.055 },
+  stomach:    { x: -0.035,y: 0.335, z: 0.045 },
+  abdomen:    { x: 0,     y: 0.435, z: 0.05 },
+  prostate:   { x: 0,     y: 0.50,  z: 0.03 },
+  shoulder_l: { x: -0.125,y: 0.165, z: 0 },
+  shoulder_r: { x: 0.125, y: 0.165, z: 0 },
+  arm_l:      { x: -0.145,y: 0.34,  z: 0 },
+  arm_r:      { x: 0.145, y: 0.34,  z: 0 },
+  leg_l:      { x: -0.04, y: 0.66,  z: 0.01 },
+  leg_r:      { x: 0.04,  y: 0.66,  z: 0.01 }
+};
+
+/* ───────────────────────── 场景 ───────────────────────── */
+const container = document.getElementById('canvas-container');
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0xeaf8fd, 0.045);
+
+const camera = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 0.1, 100);
+camera.position.set(0, 0.45, 4.8);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setClearColor(0x000000, 0);
+container.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.target.set(0, 0.1, 0);
+controls.autoRotate = true;
+controls.autoRotateSpeed = 0.7;
+controls.minDistance = 1.2;
+controls.maxDistance = 9;
+
+scene.add(new THREE.AmbientLight(0x88bbff, 0.55));
+const keyLight = new THREE.DirectionalLight(0xffffff, 1.1);
+keyLight.position.set(3, 5, 4);
+scene.add(keyLight);
+const rimLight = new THREE.PointLight(0x4fd8ff, 1.2, 14);
+rimLight.position.set(-2.5, 1.5, -3);
+scene.add(rimLight);
+
+const grid = new THREE.GridHelper(12, 60, 0x62c9df, 0xb8e6f0);
+grid.position.y = -1.78;
+grid.material.transparent = true;
+grid.material.opacity = 0.55;
+scene.add(grid);
+
+/* ───────────────────────── 全息材质工厂 ───────────────────────── */
+function organMat(color, opacity) {
+  return new THREE.MeshStandardMaterial({
+    color, emissive: color, emissiveIntensity: 0.55,
+    transparent: true, opacity, roughness: 0.35, metalness: 0.15,
+    depthWrite: false, side: THREE.DoubleSide
+  });
+}
+const SKIN_MAT = new THREE.MeshPhysicalMaterial({
+  color: 0x4fd8ff, emissive: 0x2a8cff, emissiveIntensity: 0.18,
+  transparent: true, opacity: 0.10, roughness: 0.25, metalness: 0.1,
+  depthWrite: false, side: THREE.DoubleSide, renderOrder: 3
+});
+const VASC_MAT = organMat(0xff6f9f, 0.34);
+VASC_MAT.emissiveIntensity = 1.4;
+const BONE_MAT = new THREE.MeshStandardMaterial({
+  color: 0xd8f2ff, emissive: 0x4fa8d8, emissiveIntensity: 0.25,
+  transparent: true, opacity: 0.55, roughness: 0.5, metalness: 0.05,
+  depthWrite: false
+});
+
+/* ───────────────────────── 模型加载（真实解剖 GLB，按性别） ───────────────────────── */
+const loader = new GLTFLoader();
+const dracoLoader = new DRACOLoader();
+dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
+loader.setDRACOLoader(dracoLoader);
+const modelGroup = new THREE.Group();   // CCF 坐标 → 归一化
+scene.add(modelGroup);
+
+const organAnchors = {};     // organKey -> Vector3
+const organPickMeshes = [];  // 可拾取器官 mesh
+let skinGroup = null, vasculatureGroup = null, skeletonGroup = null;
+let anatomySex = null;       // 当前已加载解剖模型的性别
+let activeOrganDefs = null;  // 当前性别对应的 ORGAN_MODELS 表
+
+async function loadGLB(url, progressLabel) {
+  document.getElementById('loading-progress').textContent = progressLabel || url;
+  const g = await loader.loadAsync(url);
+  return g.scene;
+}
+
+function fitGroupToSkin(group, skinBox) {
+  /* 把任意组的局部包围盒 fit 到皮肤世界包围盒：
+     1) 高度方向等比缩放 (避免器官拉伸失真)
+     2) 底部对齐 (脚底贴地)
+     3) x/z 中心对齐 (避免左右/前后偏移) */
+  group.updateMatrixWorld(true);
+  const b = new THREE.Box3().setFromObject(group);
+  const sz = b.getSize(new THREE.Vector3());
+  if (sz.y < 1e-4) return;
+  const H = skinBox.getSize(new THREE.Vector3()).y;
+  const k = H / sz.y;
+  group.scale.multiplyScalar(k);
+  group.updateMatrixWorld(true);
+  const b2 = new THREE.Box3().setFromObject(group);
+  const sc2 = b2.getCenter(new THREE.Vector3());
+  const ssc = skinBox.getCenter(new THREE.Vector3());
+  group.position.x += (ssc.x - sc2.x);
+  group.position.z += (ssc.z - sc2.z);
+  group.position.y += (skinBox.min.y - b2.min.y);
+  group.updateMatrixWorld(true);
+}
+
+async function buildAnatomy(sex) {
+  const defs = sex === 'f' ? MODELS_F : MODELS_M;
+  activeOrganDefs = defs;
+
+  /* skinGroup 只装皮肤；bodyGroup 装所有器官 + 血管 —— 分开归一化 */
+  skinGroup = new THREE.Group();
+  const bodyGroup = new THREE.Group();
+  modelGroup.add(skinGroup);
+  modelGroup.add(bodyGroup);
+
+  /* 1) 皮肤外壳（参考坐标系） */
+  let skinObj;
+  try {
+    skinObj = await loadGLB(SKIN_FILE[sex], '加载皮肤外壳…');
+  } catch (e) {
+    throw new Error('皮肤加载失败：' + e.message);
+  }
+  skinObj.traverse(o => { if (o.isMesh) { o.material = SKIN_MAT; o.renderOrder = 3; } });
+  skinGroup.add(skinObj);
+
+  /* 2) 内脏器官 → bodyGroup */
+  for (const [key, def] of Object.entries(defs)) {
+    const meshes = [];
+    for (const f of def.files) {
+      try {
+        const obj = await loadGLB(f, '加载器官 · ' + ORGANS[key].label + '…');
+        obj.traverse(o => {
+          if (o.isMesh) {
+            o.material = organMat(def.color, def.opacity);
+            o.renderOrder = 1;
+            o.userData.organKey = key;
+            meshes.push(o);
+            organPickMeshes.push({ mesh: o, organKey: key, baseEmissive: 0.55, baseOpacity: def.opacity });
+          }
+        });
+        bodyGroup.add(obj);
+      } catch (e) {
+        console.warn('器官加载失败（已跳过）', f, e.message);
+        document.getElementById('loading-progress').textContent = '跳过 ' + f.split('/').pop() + '（不影响其他）';
+      }
+    }
+    def._meshes = meshes;
+  }
+
+  /* 3) 血管网络 → bodyGroup */
+  try {
+    vasculatureGroup = await loadGLB(VASC_FILE[sex], '加载血管网络…');
+    vasculatureGroup.traverse(o => {
+      if (o.isMesh) { o.material = VASC_MAT; o.renderOrder = 2; }
+    });
+    bodyGroup.add(vasculatureGroup);
+  } catch (e) {
+    console.warn('血管网络加载失败（已跳过）', e.message);
+    vasculatureGroup = null;
+    document.getElementById('loading-progress').textContent = '血管网络跳过（不影响其他）';
+  }
+
+  /* 4) 归一化皮肤 → 高度 H、贴地（这是唯一的参考坐标系） */
+  skinGroup.updateMatrixWorld(true);
+  const skinBox = new THREE.Box3().setFromObject(skinGroup);
+  const skinH = skinBox.getSize(new THREE.Vector3()).y;
+  const H = 3.25;
+  const sk = H / skinH;
+  skinGroup.scale.setScalar(sk);
+  skinGroup.position.set(0, -skinBox.min.y * sk - 1.75, 0);
+  skinGroup.updateMatrixWorld(true);
+  const finalSkinBox = new THREE.Box3().setFromObject(skinGroup);
+
+  /* 5) 器官+血管 → fit 到皮肤坐标系（高度等比缩放 + 底/中心对齐） */
+  fitGroupToSkin(bodyGroup, finalSkinBox);
+
+  /* 6) 器官锚点：用当前世界坐标再算一次（fit 后的真实位置） */
+  for (const [key, def] of Object.entries(defs)) {
+    const b = new THREE.Box3();
+    let anyMesh = false;
+    def._meshes.forEach(m => { if (m.parent) { b.expandByObject(m); anyMesh = true; } });
+    organAnchors[key] = anyMesh ? b.getCenter(new THREE.Vector3()) : null;
+  }
+
+  /* 7) 无 GLB 器官：按真实世界身高比例定位 */
+  const wb = new THREE.Box3().setFromObject(modelGroup);
+  const topY = wb.max.y;
+  const groundY = wb.min.y;
+  const realH = topY - groundY;
+  for (const [key, p] of Object.entries(PROPORTION_ORGANS)) {
+    organAnchors[key] = new THREE.Vector3(p.x * realH, topY - p.y * realH, p.z * realH);
+  }
+  if (typeof window !== 'undefined' && window.__DBG) {
+    console.log('[DBG] skin box', JSON.stringify(finalSkinBox));
+    console.log('[DBG] body box', JSON.stringify(new THREE.Box3().setFromObject(bodyGroup)));
+    Object.entries(organAnchors).forEach(([k, v]) => console.log('[DBG] anchor', k, v && v.toArray().map(n=>n.toFixed(2)).join(',')));
+    console.log('[DBG] vasc visible', vasculatureGroup?.visible, 'children', vasculatureGroup?.children?.length);
+  }
+
+  /* 8) 骨骼图层（独立坐标系，按世界包围盒 fit 到皮肤 → 永远贴合身体） */
+  if (!skeletonGroup) {
+    try {
+      skeletonGroup = await loadGLB('models/skeleton/overview-skeleton.glb', '加载骨骼系统…');
+      skeletonGroup.traverse(o => { if (o.isMesh) { o.material = BONE_MAT; o.renderOrder = 2; } });
+      skeletonGroup.visible = false;
+      const sSkinBox = finalSkinBox.clone();
+      skeletonGroup.updateMatrixWorld(true);
+      const gBox = new THREE.Box3().setFromObject(skeletonGroup);
+      const gSz = gBox.getSize(new THREE.Vector3());
+      const sSz = sSkinBox.getSize(new THREE.Vector3());
+      if (gSz.y > 1e-4 && gSz.x > 1e-4 && gSz.z > 1e-4) {
+        const kx = sSz.x / gSz.x, ky = sSz.y / gSz.y, kz = sSz.z / gSz.z;
+        skeletonGroup.scale.set(kx, ky, kz);
+        skeletonGroup.updateMatrixWorld(true);
+        const gBox2 = new THREE.Box3().setFromObject(skeletonGroup);
+        const gSc2 = gBox2.getCenter(new THREE.Vector3());
+        const sSc = sSkinBox.getCenter(new THREE.Vector3());
+        skeletonGroup.position.x += (sSc.x - gSc2.x);
+        skeletonGroup.position.z += (sSc.z - gSc2.z);
+        skeletonGroup.position.y += (sSkinBox.min.y - gBox2.min.y);
+      }
+      scene.add(skeletonGroup);
+    } catch (e) { console.warn('骨骼图层加载失败（不影响主功能）', e); }
+  }
+  anatomySex = sex;
+}
+
+async function ensureAnatomy(sex) {
+  if (anatomySex === sex) return;
+  /* 换性别 → 清空重建（GLB 已有浏览器缓存，速度很快） */
+  modelGroup.traverse(o => {
+    if (!o.isMesh) return;
+    o.geometry?.dispose();
+    const materials = Array.isArray(o.material) ? o.material : [o.material];
+    materials.forEach(m => {
+      if (m && ![SKIN_MAT, VASC_MAT, BONE_MAT].includes(m)) m.dispose();
+    });
+  });
+  while (modelGroup.children.length) modelGroup.remove(modelGroup.children[0]);
+  organPickMeshes.length = 0;
+  Object.keys(organAnchors).forEach(k => delete organAnchors[k]);
+  clearMarkers();
+  await buildAnatomy(sex);
+}
+
+/* ───────────────────────── 状态：视图模式 / 标签 / 时间轴 ───────────────────────── */
+let viewMode = 'full';           // 'full' | 'focus'
+const badgeLayer = document.getElementById('badge-layer');
+let showBadges = false;          // 悬浮标签卡片，默认收起
+
+document.getElementById('vm-full').addEventListener('click', () => setViewMode('full'));
+document.getElementById('vm-focus').addEventListener('click', () => setViewMode('focus'));
+function setViewMode(m) {
+  viewMode = m;
+  document.getElementById('vm-full').classList.toggle('active', m === 'full');
+  document.getElementById('vm-focus').classList.toggle('active', m === 'focus');
+  applyViewMode();
+}
+document.getElementById('layer-labels').addEventListener('change', e => {
+  showBadges = e.target.checked;
+  badgeLayer.classList.toggle('no-labels', !showBadges);
+});
+
+/* 当前时间光标（YYYY-MM）或 null = 最新/全部 */
+let tlCursor = null;
+let tlRange = { min: 0, max: 0 };   // 月序号 = year*12+month
+let playTimer = null;
+
+function monthIndex(ds) {   // 'YYYY-MM' -> n
+  const m = /^(\d{4})-(\d{2})/.exec(ds || '');
+  if (!m) return null;
+  return (+m[1]) * 12 + (+m[2]) - 1;
+}
+function indexToYm(n) {
+  return String(Math.floor(n / 12)).padStart(4, '0') + '-' + String(n % 12 + 1).padStart(2, '0');
+}
+
+/* 时间过滤后的可见记录（无日期记录始终可见） */
+function visibleRecords() {
+  const recs = patientData?.records || [];
+  if (tlCursor == null) return recs;
+  return recs.filter(r => {
+    if (!r.event_date) return true;
+    return String(r.event_date).slice(0, 7) <= tlCursor;
+  });
+}
+
+function setupTimeline() {
+  const recs = patientData?.records || [];
+  const dates = recs.map(r => r.event_date)
+    .filter(d => /^\d{4}-(0[1-9]|1[0-2])(?:-|$)/.test(String(d)))
+    .map(d => String(d).slice(0, 7)).sort();
+  const slider = document.getElementById('tl-slider');
+  const dateEl = document.getElementById('tl-date');
+  const ticksEl = document.getElementById('tl-ticks');
+  const nowBtn = document.getElementById('tl-now');
+  const playBtn = document.getElementById('tl-play');
+
+  if (dates.length < 2) {
+    slider.disabled = true;
+    dateEl.textContent = dates.length ? dates[0] : '暂无日期记录';
+    dateEl.classList.add('nodata');
+    ticksEl.innerHTML = '';
+    nowBtn.style.display = 'none';
+    playBtn.style.display = 'none';
+    return;
+  }
+  slider.disabled = false;
+  dateEl.classList.remove('nodata');
+  nowBtn.style.display = '';
+  playBtn.style.display = '';
+
+  const min = monthIndex(dates[0]);
+  const max = monthIndex(dates[dates.length - 1]);
+  tlRange = { min, max };
+  slider.min = String(min);
+  slider.max = String(max);
+
+  /* 年份刻度（最多 16 个，避免拥挤） */
+  const y1 = Math.floor(min / 12), y2 = Math.floor(max / 12);
+  const span = Math.max(1, y2 - y1);
+  const step = Math.max(1, Math.ceil(span / 15));
+  let html = '';
+  for (let y = y1; y <= y2; y += step) {
+    const pos = ((y * 12 - min) / (max - min)) * 100;
+    html += '<span style="left:' + pos.toFixed(1) + '%">' + y + '</span>';
+  }
+  ticksEl.innerHTML = html;
+
+  /* 当前值 */
+  if (tlCursor == null) slider.value = String(max);
+  else {
+    const v = monthIndex(tlCursor);
+    slider.value = String(Math.max(min, Math.min(max, v)));
+  }
+
+  slider.oninput = () => {
+    const v = +slider.value;
+    if (v >= max) { tlCursor = null; } else { tlCursor = indexToYm(v); }
+    refreshTimeUI();
+    applyTimeFilter();
+  };
+  nowBtn.onclick = () => { tlCursor = null; slider.value = String(max); refreshTimeUI(); applyTimeFilter(); };
+  playBtn.onclick = () => {
+    if (playTimer) { stopPlay(); return; }
+    let v = +slider.value;
+    if (v >= max) v = min - 1;
+    playBtn.textContent = '⏸';
+    playBtn.classList.add('playing');
+    playTimer = setInterval(() => {
+      v += 1;
+      if (v > max) { stopPlay(); return; }
+      slider.value = String(v);
+      tlCursor = v >= max ? null : indexToYm(v);
+      refreshTimeUI();
+      applyTimeFilter();
+    }, 280);
+  };
+  function stopPlay() {
+    clearInterval(playTimer); playTimer = null;
+    playBtn.textContent = '▶';
+    playBtn.classList.remove('playing');
+  }
+  refreshTimeUI();
+}
+function refreshTimeUI() {
+  const dateEl = document.getElementById('tl-date');
+  if (tlCursor == null) { dateEl.textContent = '最新'; dateEl.classList.remove('nodata'); }
+  else { dateEl.textContent = tlCursor; dateEl.classList.remove('nodata'); }
+  document.getElementById('hud-time').textContent = tlCursor == null ? '实时' : tlCursor;
+  document.getElementById('hud-time').classList.toggle('amber', tlCursor != null);
+}
+
+/* 时间变化 → 重建标记 + 面板 */
+function applyTimeFilter() {
+  if (patientData) {
+    buildMarkers(patientData);
+    updateHUD();
+    if (selectedOrgan) {
+      if (organRecords(selectedOrgan).length) renderPanel(selectedOrgan);
+      else closePanel();
+    }
+  }
+  applyViewMode();
+}
+
+/* 视图模式应用：档案聚焦 = 皮肤线框化 + 只显示有记录的器官 */
+function applyViewMode() {
+  if (!skinGroup) return;
+  const focus = viewMode === 'focus';
+  const visRecs = visibleRecords();
+  const organSet = new Set(visRecs.map(r => normKey(r.organ)));
+
+  /* 皮肤：完整=半透明壳，聚焦=线框轮廓 */
+  SKIN_MAT.wireframe = focus;
+  SKIN_MAT.opacity = focus ? 0.16 : 0.10;
+  skinGroup.visible = document.getElementById('layer-skin').checked;
+
+  organPickMeshes.forEach(p => {
+    if (focus) p.mesh.visible = organSet.has(p.organKey);
+    else p.mesh.visible = document.getElementById('layer-organs').checked;
+  });
+  if (vasculatureGroup) {
+    vasculatureGroup.visible = !focus && document.getElementById('layer-vasculature').checked;
+  }
+  if (skeletonGroup) {
+    skeletonGroup.visible = document.getElementById('layer-skeleton').checked;
+  }
+}
+
+/* ───────────────────────── 器官标记球 + 徽章 ───────────────────────── */
+const markerGroup = new THREE.Group();
+scene.add(markerGroup);
+
+const markerMat = () => new THREE.MeshStandardMaterial({
+  color: 0x4fd8ff, emissive: 0x2ab8e8, emissiveIntensity: 2.2,
+  transparent: true, opacity: 0.95, roughness: 0.25
+});
+const hitMat = new THREE.MeshBasicMaterial({ visible: false });
+
+const markers = [];
+const labelEls = [];
+
+function normKey(k) { return KEY_ALIAS[k] || k; }
+
+function clearMarkers() {
+  markers.forEach(m => { markerGroup.remove(m.mesh); markerGroup.remove(m.hitMesh); });
+  labelEls.forEach(l => l.el.remove());
+  markers.length = 0; labelEls.length = 0;
+}
+
+function summarize(recs) {
+  const sorted = recs.slice().sort((a, b) =>
+    (b.event_date || '').localeCompare(a.event_date || '') ||
+    (b.created_at || '').localeCompare(a.created_at || '')
+  );
+  if (!sorted.length) return { date: '--', stage: '无记录' };
+  const r = sorted[0];
+  const date = r.event_date || r.created_at?.slice(0, 7) || '--';
+  let stage;
+  const n = sorted.length;
+  if (n === 1) stage = '首次记录';
+  else stage = '最新记录';
+  if (/复诊|复查|复检/.test(r.description || '')) stage = '复查';
+  if (/初诊|首诊|初查/.test(r.description || '')) stage = '初查';
+  if (/手术|术后/.test(r.description || '')) stage = '术后';
+  if (/住院|入院/.test(r.description || '')) stage = '住院';
+  return { date, stage };
+}
+
+function buildMarkers(patient) {
+  clearMarkers();
+  const byOrgan = {};
+  visibleRecords().forEach(r => {
+    const k = normKey(r.organ);
+    (byOrgan[k] = byOrgan[k] || []).push(r);
+  });
+  Object.entries(byOrgan).forEach(([key, recs]) => {
+    if (!ORGANS[key] || !organAnchors[key]) return;
+    const anchor = organAnchors[key];
+    /* 小光标：脉冲发光球（默认唯一可见的档案提示） */
+    const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.055, 18, 14), markerMat());
+    mesh.position.copy(anchor);
+    markerGroup.add(mesh);
+    const hit = new THREE.Mesh(new THREE.SphereGeometry(0.18, 10, 8), hitMat);
+    hit.position.copy(anchor);
+    hit.userData = { organKey: key };
+    markerGroup.add(hit);
+    markers.push({ organKey: key, mesh, hitMesh: hit, phase: Math.random() * Math.PI * 2 });
+
+    /* 悬浮徽章（开关开启时才显示） */
+    const sum = summarize(recs);
+    const badgeAnchor = anchor.clone().add(new THREE.Vector3(0, 0.28, 0));
+    const el = document.createElement('div');
+    el.className = 'organ-badge';
+    el.innerHTML =
+      '<span class="badge-date">' + escapeHtml(sum.date) + '</span>' +
+      '<span class="badge-stage">' + escapeHtml(sum.stage) + '</span>' +
+      '<span class="arrow"></span>';
+    el.addEventListener('click', e => { e.stopPropagation(); selectOrgan(key); });
+    badgeLayer.appendChild(el);
+    labelEls.push({ organKey: key, el, anchor: badgeAnchor });
+  });
+}
+
+/* ───────────────────────── 选中态（柔和内圈，仅器官内部） ───────────────────────── */
+const beamLineMat = new THREE.LineBasicMaterial({ color: 0x4fd8ff, transparent: true, opacity: 0.35 });
+const beamGroup = new THREE.Group();
+scene.add(beamGroup);
+let beamRings = [];
+
+function clearBeam() {
+  beamGroup.children.forEach(c => { if (c.geometry) c.geometry.dispose(); beamGroup.remove(c); });
+  beamRings = [];
+}
+function showBeamAt(pos) {
+  clearBeam();
+  /* 只保留 1 个非常细的内圈，扩散幅度小，透明度低 —— 表明"已选中"而不喧宾夺主 */
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.10, 0.12, 48), beamLineMat.clone());
+  ring.position.copy(pos);
+  ring.userData.phase = 0;
+  beamGroup.add(ring);
+  beamRings.push(ring);
+}
+
+/* ───────────────────────── 数据加载 & 轮询 ───────────────────────── */
+const params = new URLSearchParams(location.search);
+let currentPatient = params.get('patient') || 'demo';
+const apiBase = (params.get('apiBase') || '/api/body-archive').replace(/\/+$/, '');
+let patientData = null;
+let lastRaw = '';
+let selectedOrgan = null;
+let patientLoadActive = false;
+let patientLoadToken = 0;
+
+async function fetchJSON(url) {
+  const separator = url.includes('?') ? '&' : '?';
+  const res = await fetch(url + separator + 't=' + Date.now(), { cache: 'no-store' });
+  if (!res.ok) throw new Error(url + ' -> ' + res.status);
+  return res.json();
+}
+
+async function loadPatientList() {
+  try {
+    const idx = await fetchJSON(apiBase + '/patients');
+    const sel = document.getElementById('patient-select');
+    sel.innerHTML = '';
+    const patients = idx.patients || [];
+    if (!patients.some(p => p.id === currentPatient) && patients.length) {
+      currentPatient = patients[0].id;
+    }
+    patients.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = p.name + ' (' + p.id + ')';
+      if (p.id === currentPatient) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    sel.onchange = () => {
+      currentPatient = sel.value;
+      const u = new URL(location);
+      u.searchParams.set('patient', currentPatient);
+      history.replaceState(null, '', u);
+      selectedOrgan = null; closePanel();
+      tlCursor = null;
+      loadPatient(true);
+    };
+  } catch (e) { /* index 缺失时仅用当前 id */ }
+}
+
+function updateHUD() {
+  document.getElementById('corner-pid').textContent = currentPatient;
+  document.getElementById('hud-pid').textContent = patientData?.name || currentPatient;
+  const all = patientData?.records || [];
+  const recs = visibleRecords();
+  const organs = new Set();
+  recs.forEach(r => organs.add(normKey(r.organ)));
+  document.getElementById('hud-rec-count').textContent =
+    tlCursor == null ? String(recs.length) : (recs.length + '/' + all.length);
+  document.getElementById('hud-organ-count').textContent = String(organs.size);
+}
+
+async function loadPatient(force) {
+  if (!force && patientLoadActive) return;
+  const token = ++patientLoadToken;
+  const requestedPatient = currentPatient;
+  patientLoadActive = true;
+  try {
+    const data = await fetchJSON(apiBase + '/patients/' + encodeURIComponent(requestedPatient));
+    if (token !== patientLoadToken || requestedPatient !== currentPatient) return;
+    const raw = JSON.stringify(data);
+    if (force || raw !== lastRaw) {
+      lastRaw = raw;
+      patientData = data;
+      /* 性别模型切换（男/女两套解剖） */
+      document.getElementById('loading').classList.remove('hidden');
+      await ensureAnatomy(data.sex === 'f' ? 'f' : 'm');
+      if (token !== patientLoadToken || requestedPatient !== currentPatient) return;
+      buildMarkers(data);
+      setupTimeline();
+      applyViewMode();
+      const ts = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+      document.getElementById('hud-updated').textContent = ts;
+      updateHUD();
+      if (selectedOrgan) { renderPanel(selectedOrgan); showBeamAt(organAnchors[selectedOrgan]); }
+    }
+  } catch (e) {
+    if (token !== patientLoadToken || requestedPatient !== currentPatient) return;
+    patientData = { patient_id: currentPatient, name: currentPatient, records: [], materials: [] };
+    lastRaw = '';
+    buildMarkers(patientData);
+    setupTimeline();
+    updateHUD();
+    document.getElementById('hud-updated').textContent = '无数据';
+    console.warn('loadPatient 异常', e);
+  } finally {
+    if (token === patientLoadToken) {
+      patientLoadActive = false;
+      /* 兜底关闭加载遮罩：首屏/切换患者均要结束动画，避免盖在画面上阻塞点击 */
+      hideLoading();
+    }
+  }
+}
+
+/* ───────────────────────── 悬停 + 点击（标记球 + 器官 GLB 双通道拾取） ───────────────────────── */
+const raycaster = new THREE.Raycaster();
+const pointer = new THREE.Vector2();
+const tooltip = document.getElementById('tooltip');
+let hoveredKey = null;
+
+function organRecords(key) {
+  return visibleRecords().filter(r => normKey(r.organ) === key);
+}
+function latestDate(recs) {
+  const ds = recs.map(r => r.event_date || '').filter(Boolean).sort();
+  return ds.length ? ds[ds.length - 1] : '日期未注明';
+}
+
+function latestRecord(recs) {
+  return recs.slice().sort((a, b) =>
+    (b.event_date || '').localeCompare(a.event_date || '') ||
+    (b.created_at || '').localeCompare(a.created_at || '')
+  )[0];
+}
+
+function pickAt(e) {
+  pointer.x = (e.clientX / innerWidth) * 2 - 1;
+  pointer.y = -(e.clientY / innerHeight) * 2 + 1;
+  raycaster.setFromCamera(pointer, camera);
+  const hitMeshes = markers.map(m => m.hitMesh);
+  let hits = raycaster.intersectObjects(hitMeshes);
+  if (hits.length) return hits[0].object.userData.organKey;
+  hits = raycaster.intersectObjects(organPickMeshes.map(p => p.mesh));
+  if (hits.length && hits[0].object.visible) return hits[0].object.userData.organKey;
+  return null;
+}
+
+renderer.domElement.addEventListener('pointermove', e => {
+  const key = pickAt(e);
+  hoveredKey = key;
+  if (key) {
+    const recs = organRecords(key);
+    tooltip.innerHTML =
+      '<div class="t-head">' + escapeHtml(ORGANS[key].label) + ' · ' + recs.length + ' 条记录</div>' +
+      '<div>最近：' + escapeHtml(latestDate(recs)) + '</div>' +
+      '<div style="color:var(--muted);margin-top:4px;line-height:1.5">' +
+        escapeHtml(truncate(latestRecord(recs)?.description || '（无记录）', 50)) + '</div>' +
+      '<div style="color:var(--cyan);margin-top:6px">▸ 点击查看完整病史</div>';
+    tooltip.style.display = 'block';
+    tooltip.style.left = Math.min(e.clientX + 18, innerWidth - 300) + 'px';
+    tooltip.style.top = (e.clientY + 14) + 'px';
+    document.body.style.cursor = 'pointer';
+    labelEls.forEach(l => l.el.classList.toggle('hover', l.organKey === key));
+  } else {
+    tooltip.style.display = 'none';
+    document.body.style.cursor = 'default';
+    labelEls.forEach(l => l.el.classList.remove('hover'));
+  }
+});
+
+renderer.domElement.addEventListener('click', () => {
+  if (hoveredKey) selectOrgan(hoveredKey);
+});
+
+/* ───────────────────────── 右侧病例面板 ───────────────────────── */
+const panel = document.getElementById('panel');
+
+function selectOrgan(key) {
+  selectedOrgan = key;
+  controls.autoRotate = false;
+  renderPanel(key);
+  panel.classList.add('open');
+  if (organAnchors[key]) showBeamAt(organAnchors[key]);
+  labelEls.forEach(l => l.el.classList.toggle('active', l.organKey === key));
+}
+function closePanel() {
+  panel.classList.remove('open');
+  clearBeam();
+  controls.autoRotate = true;
+  labelEls.forEach(l => l.el.classList.remove('active'));
+  selectedOrgan = null;
+}
+document.getElementById('panel-close').addEventListener('click', closePanel);
+
+function trendSummary(recs) {
+  if (!recs.length) return '暂无记录';
+  const sorted = recs.slice().sort((a, b) => (a.event_date || '').localeCompare(b.event_date || ''));
+  if (sorted.length === 1) return '共 1 条记录';
+  const d1 = sorted[0].event_date || '--';
+  const d2 = sorted[sorted.length - 1].event_date || '--';
+  return d1 + ' → ' + d2 + '，共 ' + sorted.length + ' 条记录';
+}
+
+function renderPanel(key) {
+  if (!ORGANS[key] || !patientData) return;
+  const recs = organRecords(key)
+    .slice()
+    .sort((a, b) =>
+      (b.event_date || '').localeCompare(a.event_date || '') ||
+      (b.created_at || '').localeCompare(a.created_at || '')
+    );
+  document.getElementById('panel-organ').textContent = ORGANS[key].label;
+  document.getElementById('panel-count').textContent = recs.length + ' 条记录' +
+    (tlCursor != null ? ' · 截至 ' + tlCursor : '');
+  const body = document.getElementById('panel-body');
+  let html =
+    '<div class="section-title">档案概览</div>' +
+    '<div class="panel-fields">' +
+      '<div class="pf-row"><span class="pf-lbl">档案部位</span><span class="pf-val cyan">' + escapeHtml(ORGANS[key].label) + '</span></div>' +
+      '<div class="pf-row"><span class="pf-lbl">记录范围</span><span class="pf-val">' + escapeHtml(trendSummary(recs)) + '</span></div>' +
+      '<div class="pf-row"><span class="pf-lbl">说明</span><span class="pf-val muted">非诊断结论 · 仅整理患者已提供的信息</span></div>' +
+    '</div>' +
+    '<div class="section-title">病史时间线（新 → 旧）</div>';
+  if (!recs.length) html += '<div id="empty-records">该部位暂无相关医疗记录</div>';
+  recs.forEach(r => {
+    html +=
+      '<div class="record-card">' +
+        '<div class="rc-top">' +
+          '<span class="badge date">' + escapeHtml(r.event_date || '日期未注明') + '</span>' +
+          '<span class="badge src">' + escapeHtml(r.source_label || '来源未注明') + '</span>' +
+        '</div>' +
+        '<div class="rc-desc">' + escapeHtml(r.description || '') + '</div>' +
+        (r.raw_excerpt
+          ? '<details><summary>查看原文</summary><div class="rc-raw">' + escapeHtml(r.raw_excerpt) + '</div></details>'
+          : '') +
+        '<div class="rc-meta">来源：' + escapeHtml(r.source_ref || '-') + ' · 录入：' + escapeHtml(r.created_at || '-') + '</div>' +
+      '</div>';
+  });
+  const mats = patientData.materials || [];
+  if (mats.length) {
+    html += '<div class="section-title">患者资料（已上传）</div>';
+    mats.forEach(m => {
+      html += '<div class="material-item">▸ ' + escapeHtml(m.filename || m.note || '') +
+        (m.note ? ' <span class="m-note">— ' + escapeHtml(m.note) + '</span>' : '') + '</div>';
+    });
+  }
+  body.innerHTML = html;
+}
+
+/* URL ?focus=organ 直接打开对应部位 */
+const focusParam = params.get('focus');
+if (focusParam && ORGANS[normKey(focusParam)]) {
+  const waitFocus = setInterval(() => {
+    if (patientData) { clearInterval(waitFocus); selectOrgan(normKey(focusParam)); }
+  }, 200);
+  setTimeout(() => clearInterval(waitFocus), 15000);
+}
+
+/* URL ?view=focus 启动即进入档案聚焦视图 */
+if (params.get('view') === 'focus') setViewMode('focus');
+/* URL ?time=YYYY-MM 启动即定位到该时间点 */
+const timeParam = params.get('time');
+if (/^\d{4}-(0[1-9]|1[0-2])$/.test(timeParam || '')) { tlCursor = timeParam; }
+
+/* ───────────────────────── 图层开关 ───────────────────────── */
+document.getElementById('layer-skin').addEventListener('change', applyViewMode);
+document.getElementById('layer-organs').addEventListener('change', applyViewMode);
+document.getElementById('layer-vasculature').addEventListener('change', applyViewMode);
+document.getElementById('layer-skeleton').addEventListener('change', applyViewMode);
+
+/* ───────────────────────── 渲染循环 ───────────────────────── */
+const projVec = new THREE.Vector3();
+
+function animate(t) {
+  requestAnimationFrame(animate);
+  const sec = t * 0.001;
+  /* 标记球（小光标）脉冲 */
+  markers.forEach(m => {
+    const s = 1 + 0.16 * Math.sin(sec * 3 + m.phase);
+    const boost = (selectedOrgan === m.organKey || hoveredKey === m.organKey) ? 1.7 : 1;
+    m.mesh.scale.setScalar(s * boost);
+    m.mesh.material.emissiveIntensity = (selectedOrgan === m.organKey ? 2.8 : 2.0) *
+      (0.85 + 0.15 * Math.sin(sec * 3 + m.phase));
+  });
+  /* 器官 GLB 高亮呼吸（悬停/选中时增强） */
+  organPickMeshes.forEach(p => {
+    const active = (selectedOrgan === p.organKey || hoveredKey === p.organKey);
+    p.mesh.material.emissiveIntensity = active
+      ? p.baseEmissive + 0.8 + 0.25 * Math.sin(sec * 4)
+      : p.baseEmissive + (viewMode === 'focus' ? 0.35 : 0);
+    p.mesh.material.opacity = active ? Math.min(1, p.baseOpacity + 0.28) : p.baseOpacity;
+  });
+  /* 选中态内圈（柔和呼吸） */
+  beamRings.forEach(ring => {
+    const k = (sec * 0.9 + ring.userData.phase) % 1;
+    ring.scale.setScalar(1 + k * 0.35);    /* 扩散幅度从 1.4 → 0.35 */
+    ring.material.opacity = 0.4 * (1 - k);
+  });
+
+  controls.update();
+
+  /* 徽章投影 */
+  labelEls.forEach(l => {
+    projVec.copy(l.anchor).project(camera);
+    if (projVec.z > 1 || projVec.z < -1) { l.el.style.opacity = '0'; return; }
+    const x = (projVec.x * 0.5 + 0.5) * innerWidth;
+    const y = (-projVec.y * 0.5 + 0.5) * innerHeight;
+    l.el.style.left = Math.max(120, Math.min(innerWidth - 120, x)) + 'px';
+    l.el.style.top  = Math.max(80, Math.min(innerHeight - 80, y)) + 'px';
+    l.el.style.opacity = '1';
+  });
+
+  renderer.render(scene, camera);
+}
+requestAnimationFrame(animate);
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+/* ───────────────────────── 启动 ───────────────────────── */
+function hideLoading() {
+  document.getElementById('loading').classList.add('hidden');
+}
+(async () => {
+  try {
+    await loadPatientList();
+    await loadPatient(true);
+  } catch (e) {
+    console.error('首屏加载异常：', e);
+    document.getElementById('loading-progress').textContent = '部分模型加载失败：' + e.message + '（继续显示）';
+  }
+  /* 30 秒兜底：再慢也强制展示界面，避免用户以为卡死 */
+  setTimeout(hideLoading, 30000);
+  /* 档案并非实时监护数据：降低轮询频率，并在页面不可见时暂停请求。 */
+  setInterval(() => {
+    if (document.visibilityState === 'visible') loadPatient(false);
+  }, 30000);
+})();
+
+/* ───────────────────────── 工具 ───────────────────────── */
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+function truncate(s, n) { return s.length > n ? s.slice(0, n) + '…' : s; }
+</script>
+</body>
+</html>

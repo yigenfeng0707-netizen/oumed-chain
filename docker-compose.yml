@@ -1,0 +1,178 @@
+# ============================================================
+# MedSignal Docker Compose
+# ============================================================
+# 使用方式：
+#   开发模式：docker compose --profile dev up
+#   生产模式：docker compose --profile prod up -d
+# ============================================================
+
+services:
+  # ============================================================
+  # 后端 API
+  # ============================================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: yibao-backend
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-yibao}:${POSTGRES_PASSWORD:-yibao123}@postgres:5432/${POSTGRES_DB:-yibao}
+      - REDIS_URL=redis://redis:6379
+      - LLM_API_KEY=${LLM_API_KEY:-}
+      - LLM_BASE_URL=${LLM_BASE_URL:-https://aiping.cn/api/v1}
+      - LLM_MODEL=${LLM_MODEL:-Kimi-K3}
+      - DASHSCOPE_API_KEY=${DASHSCOPE_API_KEY:-}
+      - DASHSCOPE_BASE_URL=${DASHSCOPE_BASE_URL:-https://dashscope.aliyuncs.com/compatible-mode/v1}
+      - DASHSCOPE_MODEL=${DASHSCOPE_MODEL:-qwen-plus}
+      - OCR_API_KEY=${OCR_API_KEY:-}
+      - OCR_API_URL=${OCR_API_URL:-https://api.ocr.space/parse/image}
+      - YIBAO_API_KEY=${YIBAO_API_KEY:-}
+      - YIBAO_SESSION_SECRET=${YIBAO_SESSION_SECRET:-}
+      - CORS_ORIGINS=${CORS_ORIGINS:-*}
+      - CHROMA_PERSIST_DIR=/app/chroma_data
+      - DEMO_OFFLINE=${DEMO_OFFLINE:-true}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    volumes:
+      - ./backend:/app
+    profiles: ["dev"]
+
+  backend-prod:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: yibao-backend-prod
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-yibao}:${POSTGRES_PASSWORD:-yibao123}@postgres:5432/${POSTGRES_DB:-yibao}
+      - REDIS_URL=redis://redis:6379
+      - LLM_API_KEY=${LLM_API_KEY:-}
+      - LLM_BASE_URL=${LLM_BASE_URL:-https://aiping.cn/api/v1}
+      - LLM_MODEL=${LLM_MODEL:-Kimi-K3}
+      - DASHSCOPE_API_KEY=${DASHSCOPE_API_KEY:-}
+      - DASHSCOPE_BASE_URL=${DASHSCOPE_BASE_URL:-https://dashscope.aliyuncs.com/compatible-mode/v1}
+      - DASHSCOPE_MODEL=${DASHSCOPE_MODEL:-qwen-plus}
+      - VISION_API_KEY=${VISION_API_KEY:-}
+      - VISION_BASE_URL=${VISION_BASE_URL:-https://aiping.cn/api/v1}
+      - VISION_MODEL=${VISION_MODEL:-GLM-4.6V}
+      - OCR_API_KEY=${OCR_API_KEY:-}
+      - YIBAO_API_KEY=${YIBAO_API_KEY}
+      - YIBAO_SESSION_SECRET=${YIBAO_SESSION_SECRET}
+      - CORS_ORIGINS=${CORS_ORIGINS:-*}
+      - CHROMA_PERSIST_DIR=/app/chroma_data
+      - DEMO_OFFLINE=${DEMO_OFFLINE:-false}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    profiles: ["prod"]
+
+  # ============================================================
+  # 前端
+  # ============================================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: yibao-frontend
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+    depends_on:
+      - backend
+    restart: unless-stopped
+    profiles: ["dev"]
+
+  frontend-prod:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: yibao-frontend-prod
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+    depends_on:
+      - backend-prod
+    restart: unless-stopped
+    profiles: ["prod"]
+
+  # ============================================================
+  # PostgreSQL（生产数据库）
+  # ============================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: yibao-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-yibao}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-yibao123}
+      POSTGRES_DB: ${POSTGRES_DB:-yibao}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-yibao} -d ${POSTGRES_DB:-yibao}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ============================================================
+  # Redis（缓存/会话）
+  # ============================================================
+  redis:
+    image: redis:7-alpine
+    container_name: yibao-redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  # ============================================================
+  # ChromaDB（向量库，可选）
+  # ============================================================
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: yibao-chromadb
+    ports:
+      - "${CHROMA_PORT:-8001}:8000"
+    volumes:
+      - chroma_data:/chroma/chroma
+    restart: unless-stopped
+    profiles: ["dev", "prod"]
+
+volumes:
+  postgres_data:
+  redis_data:
+  chroma_data:

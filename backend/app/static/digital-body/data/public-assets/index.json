@@ -1,0 +1,51 @@
+{
+  "classification": "public_reference_assets_not_patient_data",
+  "warning": "公开教学参考素材，不属于任何测试患者，不得作为患者检查结果或诊断依据。",
+  "assets": [
+    {
+      "id": "public-ct-chest",
+      "title": "胸部低剂量 CT 冠状位重建",
+      "modality": "CT",
+      "body_part": "chest",
+      "filename": "public-ct-chest.jpg",
+      "mime_type": "image/jpeg",
+      "dimensions": "1173 × 895",
+      "source_page": "https://commons.wikimedia.org/wiki/File:COR-2-STND-CHEST-LUNGS.jpg",
+      "author": "Ptrump16",
+      "license": "CC BY-SA 4.0",
+      "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "patient_owned": false,
+      "clinical_use": false
+    },
+    {
+      "id": "public-pet-brain",
+      "title": "脑部 FDG-PET 横断面",
+      "modality": "PET",
+      "body_part": "brain",
+      "filename": "public-pet-brain.jpg",
+      "mime_type": "image/jpeg",
+      "dimensions": "1002 × 1132",
+      "source_page": "https://commons.wikimedia.org/wiki/File:PET-image.jpg",
+      "author": "Jens Maus",
+      "license": "Public Domain",
+      "license_url": "https://creativecommons.org/publicdomain/mark/1.0/",
+      "patient_owned": false,
+      "clinical_use": false
+    },
+    {
+      "id": "public-ct-scanner-svg",
+      "title": "CT 扫描场景高清矢量图",
+      "modality": "SVG illustration",
+      "body_part": "whole_body",
+      "filename": "public-ct-scanner.svg",
+      "mime_type": "image/svg+xml",
+      "dimensions": "810 × 442 vector",
+      "source_page": "https://commons.wikimedia.org/wiki/File:Patient_CT_scan.svg",
+      "author": "Juhele / Open Clip Art Library",
+      "license": "CC0 1.0",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "patient_owned": false,
+      "clinical_use": false
+    }
+  ]
+}

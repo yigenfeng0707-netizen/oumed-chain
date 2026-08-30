@@ -1,0 +1,13 @@
+# 构建上下文忽略清单，加速镜像构建
+node_modules
+.next
+.git
+.gitignore
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-store
+.DS_Store
+README.md
+*.tsbuildinfo
+.env*

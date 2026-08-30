@@ -1,0 +1,155 @@
+# ==================== 敏感文件 ====================
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# ==================== Python ====================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+/lib/
+/lib64/
+parts/
+sdist/
+/var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# 虚拟环境
+venv/
+env/
+ENV/
+.venv/
+env.bak/
+venv.bak/
+
+# 测试缓存
+.pytest_cache/
+.ruff_cache/
+.tox/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.hypothesis/
+
+# ==================== 数据库 ====================
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+
+# ==================== Node.js / 前端 ====================
+node_modules/
+.pnp
+.pnp.js
+.yarn/install-state.gz
+
+# Next.js 构建产物
+.next/
+.next-build/
+out/
+build/
+*.tsbuildinfo
+
+# 本地 UI 预览截图（不进入发布仓库）
+docs/ui-preview/
+next-env.d.ts
+
+# 前端测试/缓存
+.eslintcache
+.stylelintcache
+.turbo/
+
+# ==================== IDE / 编辑器 ====================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ==================== 日志 / 临时文件 ====================
+*.log
+logs/
+*.tmp
+*.bak
+
+# ==================== 向量库 / 模型缓存 ====================
+backend/data/chroma/
+backend/data/embeddings/
+*.faiss
+
+# ==================== 操作系统 ====================
+.DS_Store
+ehthumbs.db
+Desktop.ini
+
+# ==================== Docker ====================
+docker-compose.override.yml
+
+# ==================== 其他 ====================
+*.pid
+*.seed
+*.pid.lock
+
+# ==================== 真实影像数据集（原始下载不入库；标准化 PNG + manifest 入库随镜像部署） ====================
+data/real_imaging/raw/
+
+# ==================== 真实 EEG 数据集（原始 EDF 下载不入库；manifest 入库随镜像部署） ====================
+data/real_eeg/raw/
+
+# ==================== AI 助手 / IDE skills 配置（本地工具链，不入库） ====================
+# 例外：数字人体档案 Skill 随项目入库（含 taxonomy 契约与接入脚本）
+.agents/*
+!.agents/skills/
+.agents/skills/*
+!.agents/skills/digital-human-body-archive/
+!.agents/skills/digital-human-body-archive/**
+.agents/skills/digital-human-body-archive/**/__pycache__/
+.agents/skills/digital-human-body-archive/**/*.py[cod]
+.claude/
+.codeartsdoer/
+.codebuddy/
+.iflow/
+.qoder/
+.qwen/
+.trae/
+.zcode/
+skills-lock.json
+
+# ==================== 本地参考资料（比赛资料/含隐私信息，不入库） ====================
+/EEG数据.txt
+/影像数据.txt
+/团队信息.txt
+/魔搭技能.txt
+/比赛说明.txt
+/data-demand.docx
+/医学影像数据集汇总.docx
+docs/项目申报书_new.docx
+
+# ==================== AI 工具生成缓存（本地会话产物，不入库） ====================
+.dumate/
+
+# ==================== demo 视频管线可再生产物（脚本可重新生成） ====================
+video-demo/remake/audio/
+video-demo/remake/tts/
+video-demo/remake/segments/
+video-demo/remake/scenes/
+video-demo/remake/output/
+
+# ==================== ������ʱ���Ŀ¼ ====================
+.tmp/

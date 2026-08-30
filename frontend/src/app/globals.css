@@ -1,0 +1,85 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 205 62% 97%;
+    --foreground: 211 60% 18%;
+    --card: 0 0% 100%;
+    --card-foreground: 230 30% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 230 30% 10%;
+    --primary: 195 79% 47%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 201 46% 94%;
+    --secondary-foreground: 211 60% 24%;
+    --muted: 203 32% 94%;
+    --muted-foreground: 211 23% 48%;
+    --accent: 164 67% 42%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 84% 60%;
+    --border: 203 38% 89%;
+    --input: 203 38% 89%;
+    --ring: 195 79% 47%;
+    --chart-1: 195 79% 47%;
+    --chart-2: 164 67% 42%;
+    --chart-3: 32 96% 58%;
+    --chart-4: 222 82% 62%;
+    --chart-5: 12 91% 65%;
+    --radius: 0.875rem;
+    --sidebar: 198 75% 97%;
+    --sidebar-foreground: 211 48% 26%;
+    --sidebar-primary: 195 79% 47%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 195 79% 47%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 198 64% 89%;
+    --sidebar-ring: 195 79% 47%;
+  }
+  .dark {
+    --background: 230 30% 8%;
+    --foreground: 220 15% 95%;
+    --card: 230 30% 12%;
+    --card-foreground: 220 15% 95%;
+    --popover: 230 30% 12%;
+    --popover-foreground: 220 15% 95%;
+    --primary: 230 70% 55%;
+    --primary-foreground: 230 30% 8%;
+    --secondary: 230 25% 18%;
+    --secondary-foreground: 220 15% 90%;
+    --muted: 230 25% 18%;
+    --muted-foreground: 220 10% 60%;
+    --accent: 160 70% 45%;
+    --accent-foreground: 230 30% 8%;
+    --destructive: 0 62% 55%;
+    --border: 230 20% 18%;
+    --input: 230 20% 18%;
+    --ring: 230 70% 55%;
+    --chart-1: 230 70% 55%;
+    --chart-2: 160 70% 45%;
+    --chart-3: 200 60% 55%;
+    --chart-4: 270 50% 50%;
+    --chart-5: 30 60% 50%;
+    --sidebar: 230 30% 10%;
+    --sidebar-foreground: 220 15% 95%;
+    --sidebar-primary: 230 70% 55%;
+    --sidebar-primary-foreground: 230 30% 8%;
+    --sidebar-accent: 230 25% 18%;
+    --sidebar-accent-foreground: 220 15% 90%;
+    --sidebar-border: 230 20% 18%;
+    --sidebar-ring: 230 70% 55%;
+  }
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    background-image: radial-gradient(circle at 58% -20%, rgba(102, 212, 255, .22), transparent 38%);
+  }
+}
+
+@layer components {
+  .didayi-page { @apply min-h-full bg-gradient-to-br from-sky-50 via-white to-blue-50/70 p-6; }
+  .didayi-card { @apply rounded-2xl border border-sky-100/90 bg-white/90 shadow-[0_10px_30px_rgba(30,103,150,.08)]; }
+}
