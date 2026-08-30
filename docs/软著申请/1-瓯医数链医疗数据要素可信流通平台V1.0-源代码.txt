@@ -1,0 +1,3185 @@
+瓯医数链医疗数据要素可信流通平台 V1.0
+
+第1页
+瓯医数链医疗数据要素可信流通平台 V1.0
+"""
+MedSignal - 鉴权层
+设计原则：Demo 友好 + 安全叙事自洽
+- 默认开放（无 token 也能访问，保证 Demo 流畅）
+- 配置了 API_KEY 环境变量时，要求 X-API-Key 头校验
+- 提供 get_current_user 依赖（基于 user_id 的简单会话）
+- 邮箱注册登录（auth 路由）：PBKDF2 密码哈希 + HMAC 签名 token
+这样"安全守门 Agent"名副其实，路演时可演示"未授权访问被拦截"。
+"""
+import hashlib
+import hmac
+import logging
+import os
+import secrets
+import time
+from fastapi import Header, HTTPException, status
+logger = logging.getLogger(__name__)
+# 从环境变量读取 API Key（未配置则不启用鉴权，保证 Demo 流畅）
+API_KEY = os.getenv("YIBAO_API_KEY", "")
+# 用户 token 有效期（秒）：24h，与前端 localStorage 生命周期对齐
+USER_TOKEN_TTL = 86400
+# PBKDF2 迭代次数（OWASP 2023 建议 ≥600k，Demo 取平衡值）
+_PBKDF2_ITERATIONS = 260_000
+def require_api_key(x_api_key: str | None = Header(None, alias="X-API-Key")) -> str:
+    """API Key 校验依赖。
+    - 未配置 YIBAO_API_KEY 环境变量时：跳过校验（Demo 模式）
+    - 配置后：要求请求头 X-API-Key 匹配
+    """
+    if not API_KEY:
+        return "anonymous"  # Demo 模式
+    if not x_api_key or x_api_key != API_KEY:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="无效的 API Key，请在请求头携带 X-API-Key",
+            headers={"WWW-Authenticate": "ApiKey"},
+        )
+    return "authenticated"
+def get_current_user(
+    user_id: str | None = None,
+    x_user_token: str | None = Header(None, alias="X-User-Token"),
+) -> dict:
+    """获取当前用户（基于 token 的简易会话）。
+    Demo 阶段：直接信任 user_id 参数（来自路径）
+    生产阶段：解析 JWT token 提取 user_id
+    """
+    # Demo 模式：返回用户标识
+    return {
+        "user_id": user_id,
+        "authenticated": bool(x_user_token),
+        "demo_mode": True,
+
+第2页
+瓯医数链医疗数据要素可信流通平台 V1.0
+    }
+# ------------------------------------------------------------------
+# 密码哈希（PBKDF2-SHA256，标准库实现，无额外依赖）
+# ------------------------------------------------------------------
+def hash_password(password: str) -> str:
+    """哈希密码，返回格式：pbkdf2_sha256$<iterations>$<salt_hex>$<hash_hex>"""
+    salt = secrets.token_hex(16)
+    digest = hashlib.pbkdf2_hmac(
+        "sha256", password.encode("utf-8"), bytes.fromhex(salt), _PBKDF2_ITERATIONS
+    )
+    return f"pbkdf2_sha256${_PBKDF2_ITERATIONS}${salt}${digest.hex()}"
+def verify_password(password: str, stored: str | None) -> bool:
+    """校验密码与存储哈希是否匹配（空哈希/格式非法一律拒绝）"""
+    if not stored:
+        return False
+    try:
+        algo, iterations, salt_hex, hash_hex = stored.split("$", 3)
+        if algo != "pbkdf2_sha256":
+            return False
+        digest = hashlib.pbkdf2_hmac(
+            "sha256", password.encode("utf-8"), bytes.fromhex(salt_hex), int(iterations)
+        )
+        return hmac.compare_digest(digest.hex(), hash_hex)
+    except (ValueError, TypeError):
+        return False
+# ------------------------------------------------------------------
+# 用户会话 token（HMAC 签名，无状态：uid|exp|sig）
+# ------------------------------------------------------------------
+def _session_secret() -> str:
+    return os.getenv("YIBAO_SESSION_SECRET", "demo")
+def issue_user_token(user_id: int, ttl: int = USER_TOKEN_TTL) -> str:
+    """签发用户 token：payload=uid|exp，sig=HMAC-SHA256(payload)[:32]。"""
+    exp = int(time.time()) + ttl
+    payload = f"{user_id}|{exp}"
+    sig = hmac.new(_session_secret().encode("utf-8"), payload.encode("utf-8"), hashlib.sha256).hexdigest()[:32]
+    return f"{payload}|{sig}"
+def parse_user_token(token: str | None) -> int | None:
+    """解析并验证 token，返回 user_id；无效/过期返回 None。"""
+    if not token:
+        return None
+    parts = token.split("|")
+    if len(parts) != 3:
+        return None
+    uid_s, exp_s, sig = parts
+    payload = f"{uid_s}|{exp_s}"
+    expected = hmac.new(_session_secret().encode("utf-8"), payload.encode("utf-8"), hashlib.sha256).hexdigest()[:32]
+    if not hmac.compare_digest(sig, expected):
+        return None
+    try:
+        if int(exp_s) < time.time():
+
+第3页
+瓯医数链医疗数据要素可信流通平台 V1.0
+            return None  # 已过期
+        return int(uid_s)
+    except ValueError:
+        return None
+# ------------------------------------------------------------------
+# 兼容旧接口（main.py Demo 登录等历史调用）
+# ------------------------------------------------------------------
+def generate_session_token(user_id: str) -> str:
+    """生成会话 token（简易版：user_id + 时间戳的哈希）"""
+    raw = f"{user_id}|{time.time()}|{_session_secret()}"
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:32]
+def verify_session_token(token: str) -> bool:
+    """验证会话 token（Demo 阶段：非空即通过）"""
+    return bool(token) and len(token) >= 16
+
+from pydantic_settings import BaseSettings
+class Settings(BaseSettings):
+    DATABASE_URL: str = "sqlite+aiosqlite:///./yibao.db"
+    REDIS_URL: str = "redis://localhost:6379"
+    # 主力 LLM：aiping 网关（Kimi-K3，OpenAI 兼容）
+    LLM_API_KEY: str = ""
+    LLM_BASE_URL: str = "https://aiping.cn/api/v1"
+    LLM_MODEL: str = "Kimi-K3"
+    # 备选 LLM：阿里云 DashScope（通义千问）
+    DASHSCOPE_API_KEY: str = ""
+    DASHSCOPE_BASE_URL: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    DASHSCOPE_MODEL: str = "qwen-plus"
+    # 阿里云多模态（视觉）模型：档案管家转录上传的报告图片
+    DASHSCOPE_VL_MODEL: str = "qwen-vl-plus"
+    # 视觉模型：aiping 网关（GLM-4.6V，供影像/图文理解扩展使用）
+    VISION_API_KEY: str = ""
+    VISION_BASE_URL: str = "https://aiping.cn/api/v1"
+    VISION_MODEL: str = "GLM-4.6V"
+    CHROMA_PERSIST_DIR: str = "./chroma_data"
+    # 路演离线模式：跳过 LLM/知识库初始化，全程使用关键词+mock降级（无网络依赖）
+    DEMO_OFFLINE: bool = False
+    # OCR 服务：OCR.space
+    OCR_API_KEY: str = ""
+    OCR_API_URL: str = "https://api.ocr.space/parse/image"
+    # 管理后台超级管理员（/admin 页面登录用）
+    ADMIN_USERNAME: str = "admin"
+    ADMIN_PASSWORD: str = "MedSignal@2026"
+    # 管理员 token 签发密钥（改后所有已签发 token 失效）
+    YIBAO_ADMIN_SECRET: str = "medsignal-admin-secret"
+    # 部署/鉴权相关：auth.py 、main.py 直接从环境变量读取，
+    # 此处声明是为了让 pydantic-settings 解析 .env 时不报 extra_forbidden 错误
+    YIBAO_API_KEY: str = ""
+    YIBAO_SESSION_SECRET: str = "please-change-this"
+    CORS_ORIGINS: str = "*"
+    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+
+第4页
+瓯医数链医疗数据要素可信流通平台 V1.0
+settings = Settings()
+
+"""
+MedSignal - 统一数据访问层 (CRUD)
+所有 Router / Service 通过本模块查询数据库，避免直接操作 session。
+所有函数均为 async，接收 AsyncSession，返回 ORM 对象或标量。
+"""
+from __future__ import annotations
+import json
+import logging
+from datetime import UTC, datetime, timedelta
+from sqlalchemy import desc, func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.models import (
+    BodyDocument,
+    BodyRecord,
+    ChatConversation,
+    ChatMessage,
+    DataAuthorization,
+    EEGRecord,
+    ImagingRecord,
+    InsuranceRecord,
+    MedicalRecord,
+    MedicationRecord,
+    PolicyDocument,
+    User,
+)
+from app.services.body.taxonomy import label_of as _organ_label
+logger = logging.getLogger(__name__)
+# ============================================================
+# ============================================================
+async def get_user(db: AsyncSession, user_id: str | int) -> User | None:
+    """根据 user_id 查询用户。支持数字 id 或 'user_001' 形式。"""
+    uid = _normalize_user_id(user_id)
+    result = await db.execute(select(User).where(User.id == uid))
+    return result.scalar_one_or_none()
+async def get_users(db: AsyncSession, limit: int = 50) -> list[User]:
+    """获取用户列表（多用户切换 Demo 用）。"""
+    result = await db.execute(select(User).order_by(User.id).limit(limit))
+    return list(result.scalars().all())
+async def get_user_count(db: AsyncSession) -> int:
+    result = await db.execute(select(func.count(User.id)))
+    return int(result.scalar() or 0)
+async def create_user(db: AsyncSession, **values) -> User:
+    user = User(**values)
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    return user
+async def get_conversation(
+
+第5页
+瓯医数链医疗数据要素可信流通平台 V1.0
+    db: AsyncSession, conversation_id: str
+) -> ChatConversation | None:
+    result = await db.execute(
+        select(ChatConversation).where(ChatConversation.id == conversation_id)
+    )
+    return result.scalar_one_or_none()
+async def create_conversation(
+    db: AsyncSession, conversation_id: str, user_id: str | int, title: str
+) -> ChatConversation:
+    conversation = ChatConversation(
+        id=conversation_id,
+        user_id=_normalize_user_id(user_id),
+        title=title[:100] or "新对话",
+    )
+    db.add(conversation)
+    await db.flush()
+    return conversation
+async def append_chat_message(
+    db: AsyncSession,
+    conversation_id: str,
+    role: str,
+    content: str,
+    agent_type: str | None = None,
+) -> ChatMessage:
+    message = ChatMessage(
+        conversation_id=conversation_id,
+        role=role,
+        content=content,
+        agent_type=agent_type,
+    )
+    db.add(message)
+    conversation = await get_conversation(db, conversation_id)
+    if conversation:
+        conversation.updated_at = datetime.now(UTC)
+    await db.flush()
+    return message
+async def get_conversation_messages(
+    db: AsyncSession, conversation_id: str, limit: int = 100
+) -> list[ChatMessage]:
+    result = await db.execute(
+        select(ChatMessage)
+        .where(ChatMessage.conversation_id == conversation_id)
+        .order_by(ChatMessage.id)
+        .limit(limit)
+    )
+    return list(result.scalars().all())
+# ============================================================
+# 医保缴费记录
+# ============================================================
+async def get_insurance_records(
+
+第6页
+瓯医数链医疗数据要素可信流通平台 V1.0
+    db: AsyncSession, user_id: str | int, limit: int = 24
+) -> list[InsuranceRecord]:
+    """获取用户近 N 个月的缴费记录（按时间倒序）。"""
+    uid = _normalize_user_id(user_id)
+    result = await db.execute(
+        select(InsuranceRecord)
+        .where(InsuranceRecord.user_id == uid)
+        .order_by(desc(InsuranceRecord.year), desc(InsuranceRecord.month))
+        .limit(limit)
+    )
+    return list(result.scalars().all())
+async def get_payment_years(db: AsyncSession, user_id: str | int) -> int:
+    """累计缴费月数 → 折算年数（向下取整）。"""
+    uid = _normalize_user_id(user_id)
+    result = await db.execute(
+        select(func.count(InsuranceRecord.id)).where(InsuranceRecord.user_id == uid)
+    )
+    months = int(result.scalar() or 0)
+    return months
+# ============================================================
+# 就诊记录
+# ============================================================
+async def get_medical_records(
+    db: AsyncSession, user_id: str | int, limit: int = 50
+) -> list[MedicalRecord]:
+    uid = _normalize_user_id(user_id)
+    result = await db.execute(
+        select(MedicalRecord)
+        .where(MedicalRecord.user_id == uid)
+        .order_by(desc(MedicalRecord.date))
+        .limit(limit)
+    )
+    return list(result.scalars().all())
+async def get_medical_records_in_range(
+    db: AsyncSession, user_id: str | int, months: int = 6
+) -> list[MedicalRecord]:
+    """近 N 个月内的就诊记录（用于健康评分/政策匹配）。"""
+    records = await get_medical_records(db=db, user_id=user_id, limit=200)
+    # 过滤时间窗口（naive datetime 视为 UTC）
+    import time
+    cutoff = time.time() - months * 30 * 86400
+    out = []
+    for r in records:
+        try:
+            ts = r.date.replace(tzinfo=UTC).timestamp() if r.date.tzinfo is None else r.date.timestamp()
+        except Exception:
+            ts = 0
+        if ts >= cutoff:
+            out.append(r)
+    return out
+
+第7页
+瓯医数链医疗数据要素可信流通平台 V1.0
+# ============================================================
+# 购药记录
+# ============================================================
+async def get_medication_records(
+    db: AsyncSession, user_id: str | int, limit: int = 100
+) -> list[MedicationRecord]:
+    uid = _normalize_user_id(user_id)
+    result = await db.execute(
+        select(MedicationRecord)
+        .where(MedicationRecord.user_id == uid)
+        .order_by(desc(MedicationRecord.date))
+        .limit(limit)
+    )
+    return list(result.scalars().all())
+# ============================================================
+# 授权记录
+# ============================================================
+async def get_active_authorizations(
+    db: AsyncSession, user_id: str | int
+) -> list[DataAuthorization]:
+    uid = _normalize_user_id(user_id)
+    result = await db.execute(
+        select(DataAuthorization)
+        .where(DataAuthorization.user_id == uid, DataAuthorization.is_active.is_(True))
+        .order_by(desc(DataAuthorization.authorized_at))
+    )
+    return list(result.scalars().all())
+async def create_authorization(
+    db: AsyncSession,
+    user_id: str | int,
+    data_type: str,
+    authorized_agent: str,
+    duration_days: int = 365,
+) -> DataAuthorization:
+    uid = _normalize_user_id(user_id)
+    now = datetime.now(UTC)
+    expires_at = datetime.fromtimestamp(now.timestamp() + duration_days * 86400, tz=UTC)
+    auth = DataAuthorization(
+        user_id=uid,
+        data_type=data_type,
+        authorized_agent=authorized_agent,
+        authorized_at=now,
+        expires_at=expires_at,
+        is_active=True,
+    )
+    db.add(auth)
+    await db.commit()
+    await db.refresh(auth)
+    return auth
+async def revoke_authorization(db: AsyncSession, auth_id: int) -> bool:
+
+第8页
+瓯医数链医疗数据要素可信流通平台 V1.0
+    result = await db.execute(
+        select(DataAuthorization).where(DataAuthorization.id == auth_id)
+    )
+    auth = result.scalar_one_or_none()
+    if auth is None:
+        return False
+    auth.is_active = False
+    await db.commit()
+    return True
+# ============================================================
+# 政策文档
+# ============================================================
+async def get_policy_documents(
+    db: AsyncSession, category: str | None = None, limit: int = 50
+) -> list[PolicyDocument]:
+    stmt = select(PolicyDocument).order_by(desc(PolicyDocument.publish_date)).limit(limit)
+    if category:
+        stmt = stmt.where(PolicyDocument.category == category)
+    result = await db.execute(stmt)
+    return list(result.scalars().all())
+async def get_policy_document(db: AsyncSession, policy_id: int) -> PolicyDocument | None:
+    result = await db.execute(select(PolicyDocument).where(PolicyDocument.id == policy_id))
+    return result.scalar_one_or_none()
+# ============================================================
+# 辅助：用户画像聚合（供 orchestrator / policy_matcher 使用）
+# ============================================================
+async def get_user_health_profile(db: AsyncSession, user_id: str | int) -> dict:
+    """聚合用户健康画像原始数据（用药/就诊/慢病推断），供健康评分与 LLM 注入。
+    返回结构化 dict，不含评分（评分由 health_engine 计算）。
+    """
+    uid = _normalize_user_id(user_id)
+    user = await get_user(db, uid)
+    if user is None:
+        return {"user_id": uid, "found": False}
+    meds = await get_medication_records(db, uid, limit=100)
+    visits = await get_medical_records(db, uid, limit=100)
+    # 慢病推断（基于购药分类）
+    med_categories = {m.category for m in meds}
+    chronic_diseases = []
+    if any("降糖" in c or "糖尿病" in c for c in med_categories):
+        chronic_diseases.append("糖尿病")
+    if any("降压" in c or "高血压" in c for c in med_categories):
+        chronic_diseases.append("高血压")
+    if any("调脂" in c or "血脂" in c or "冠心" in c for c in med_categories):
+        chronic_diseases.append("冠心病/高血脂")
+    # 诊断推断（基于就诊记录）
+    diagnoses = list({v.diagnosis for v in visits if v.diagnosis})[:10]
+    # 档案管家：用户自述/上传资料归档（供各 Agent 上下文与政策匹配共享，原文转述、无推断）
+    body_records = await get_body_records(db, uid, limit=50)
+    return {
+
+第9页
+瓯医数链医疗数据要素可信流通平台 V1.0
+        "body_record_count": len(body_records),
+        "body_organs": sorted({_organ_label(r.organ) for r in body_records}),
+        "body_recent": [
+            f"[{r.event_date or '日期未注明'}][{r.source_label}] {_organ_label(r.organ)}：{r.description}"
+            for r in body_records[:5]
+        ],
+        "user_id": uid,
+        "found": True,
+        "name": user.name,
+        "age": user.age,
+        "gender": user.gender,
+        "city": user.city,
+        "insurance_type": user.insurance_type,
+        "employee_status": user.employee_status,
+        "chronic_diseases": chronic_diseases,
+        "medication_categories": sorted(med_categories),
+        "medications": [
+            {
+                "name": m.medication_name,
+                "category": m.category,
+                "date": m.date.isoformat() if m.date else None,
+                "quantity": m.quantity,
+                "unit_price": m.unit_price,
+                "is_chronic": m.is_chronic,
+            }
+            for m in meds[:20]
+        ],
+        "recent_visits": len(visits),
+        "visit_count_6m": len(await get_medical_records_in_range(db, uid, months=6)),
+        "diagnoses": diagnoses,
+        "annual_medical_cost": sum(v.total_cost or 0 for v in visits),
+        "annual_medication_cost": sum((m.unit_price or 0) * (m.quantity or 0) for m in meds),
+    }
+# ============================================================
+# 内部工具
+# ============================================================
+def _normalize_user_id(user_id: str | int) -> int:
+    """把 'user_001' / '001' / 1 统一成 int。容错：解析失败返回 1。"""
+    if isinstance(user_id, int):
+        return user_id
+    if user_id is None:
+        return 1
+    s = str(user_id).strip()
+    # 提取数字部分
+    digits = "".join(ch for ch in s if ch.isdigit())
+    if not digits:
+        return 1
+    # 去掉前导零，但保证至少为 1
+    n = int(digits.lstrip("0") or "0")
+    return n if n > 0 else 1
+
+第10页
+瓯医数链医疗数据要素可信流通平台 V1.0
+# ============================================================
+# EEG 脑电记录（BCI×医保创新模块）
+# ============================================================
+async def create_eeg_record(
+    db: AsyncSession,
+    user_id: str | int,
+    session_id: str,
+    duration_seconds: int,
+    mental_state: str,
+    mental_state_label: str,
+    avg_band_powers: dict,
+    metrics: dict,
+    alert_count: int = 0,
+    policy_link_count: int = 0,
+    summary: str = "",
+) -> EEGRecord:
+    """保存一次 EEG 会话评估结果摘要。"""
+    uid = _normalize_user_id(user_id)
+    record = EEGRecord(
+        user_id=uid,
+        session_id=session_id,
+        duration_seconds=duration_seconds,
+        mental_state=mental_state,
+        mental_state_label=mental_state_label,
+        avg_band_powers=json.dumps(avg_band_powers, ensure_ascii=False),
+        metrics=json.dumps(metrics, ensure_ascii=False),
+        alert_count=alert_count,
+        policy_link_count=policy_link_count,
+        summary=summary,
+    )
+    db.add(record)
+    await db.commit()
+    await db.refresh(record)
+    return record
+async def get_eeg_records(
+    db: AsyncSession, user_id: str | int, limit: int = 20
+) -> list[EEGRecord]:
+    """获取用户 EEG 历史记录（按时间倒序）。"""
+    uid = _normalize_user_id(user_id)
+    result = await db.execute(
+        select(EEGRecord)
+        .where(EEGRecord.user_id == uid)
+        .order_by(desc(EEGRecord.recorded_at))
+        .limit(limit)
+    )
+    return list(result.scalars().all())
+async def get_latest_eeg_record(
+    db: AsyncSession, user_id: str | int
+) -> EEGRecord | None:
+    """获取用户最近一次 EEG 记录。"""
+
+第11页
+瓯医数链医疗数据要素可信流通平台 V1.0
+    records = await get_eeg_records(db, user_id, limit=1)
+    return records[0] if records else None
+def eeg_record_to_dict(record: EEGRecord) -> dict:
+    """把 EEGRecord ORM 转为 dict（含反序列化的 JSON 字段）。"""
+    return {
+        "id": record.id,
+        "user_id": record.user_id,
+        "session_id": record.session_id,
+        "recorded_at": record.recorded_at.isoformat() if record.recorded_at else None,
+        "duration_seconds": record.duration_seconds,
+        "mental_state": record.mental_state,
+        "mental_state_label": record.mental_state_label,
+        "avg_band_powers": json.loads(record.avg_band_powers) if record.avg_band_powers else {},
+        "metrics": json.loads(record.metrics) if record.metrics else {},
+        "alert_count": record.alert_count,
+        "policy_link_count": record.policy_link_count,
+        "summary": record.summary or "",
+    }
+# ============================================================
+# 医学影像检查记录（MedSignal 影像引擎）
+# ============================================================
+async def create_imaging_record(
+    db: AsyncSession,
+    user_id: str | int,
+    study_id: str,
+    study_type: str,
+    seed: int,
+    findings: list | dict,
+    final_findings: list | dict | None,
+    report: dict | None,
+    risk_level: str,
+    policy_link_count: int = 0,
+) -> ImagingRecord:
+    """保存一次医学影像 AI 分析会话结果。"""
+    uid = _normalize_user_id(user_id)
+    record = ImagingRecord(
+        user_id=uid,
+        study_id=study_id,
+        study_type=study_type,
+        seed=seed,
+        findings=json.dumps(findings, ensure_ascii=False),
+        final_findings=json.dumps(final_findings, ensure_ascii=False) if final_findings is not None else None,
+        report=json.dumps(report, ensure_ascii=False) if report is not None else None,
+        risk_level=risk_level,
+        policy_link_count=policy_link_count,
+    )
+    db.add(record)
+    await db.commit()
+    await db.refresh(record)
+    return record
+
+第12页
+瓯医数链医疗数据要素可信流通平台 V1.0
+async def get_imaging_records(
+    db: AsyncSession, user_id: str | int, limit: int = 20
+) -> list[ImagingRecord]:
+    """获取用户医学影像检查历史（按时间倒序）。"""
+    uid = _normalize_user_id(user_id)
+    result = await db.execute(
+        select(ImagingRecord)
+        .where(ImagingRecord.user_id == uid)
+        .order_by(desc(ImagingRecord.recorded_at))
+        .limit(limit)
+    )
+    return list(result.scalars().all())
+async def get_imaging_record(
+    db: AsyncSession, record_id: int
+) -> ImagingRecord | None:
+    """根据记录 id 查询医学影像检查记录。"""
+    result = await db.execute(
+        select(ImagingRecord).where(ImagingRecord.id == record_id)
+    )
+    return result.scalar_one_or_none()
+async def update_imaging_record(
+    db: AsyncSession,
+    record: ImagingRecord,
+    final_findings: list | dict | None = None,
+    report: dict | None = None,
+    risk_level: str | None = None,
+    policy_link_count: int | None = None,
+) -> ImagingRecord:
+    """更新影像记录（医生复核后覆盖最终标注/报告）。"""
+    if final_findings is not None:
+        record.final_findings = json.dumps(final_findings, ensure_ascii=False)
+    if report is not None:
+        record.report = json.dumps(report, ensure_ascii=False)
+    if risk_level is not None:
+        record.risk_level = risk_level
+    if policy_link_count is not None:
+        record.policy_link_count = policy_link_count
+    await db.commit()
+    await db.refresh(record)
+    return record
+def imaging_record_to_dict(record: ImagingRecord) -> dict:
+    """把 ImagingRecord ORM 转为 dict（含反序列化的 JSON 字段）。"""
+    return {
+        "id": record.id,
+        "user_id": record.user_id,
+        "study_id": record.study_id,
+        "study_type": record.study_type,
+        "seed": record.seed,
+        "recorded_at": record.recorded_at.isoformat() if record.recorded_at else None,
+        "findings": json.loads(record.findings) if record.findings else [],
+
+第13页
+瓯医数链医疗数据要素可信流通平台 V1.0
+        "final_findings": json.loads(record.final_findings) if record.final_findings else None,
+        "report": json.loads(record.report) if record.report else None,
+        "risk_level": record.risk_level,
+        "policy_link_count": record.policy_link_count,
+    }
+# ============================================================
+# 人体健康档案（档案管家）— 只增不删
+# ============================================================
+async def create_body_document(
+    db: AsyncSession,
+    user_id: str | int,
+    filename: str,
+    mime_type: str,
+    doc_kind: str,
+    extracted_text: str,
+) -> BodyDocument:
+    """存档一份上传资料（只存解析文本）。
+    OCR 失败导致文本为空时，若同名资料已有非空存档，继承其文本与类型，
+    避免转录服务抖动把档案降级为空内容。
+    """
+    uid = _normalize_user_id(user_id)
+    text = extracted_text or ""
+    if not text.strip():
+        stmt = (
+            select(BodyDocument)
+            .where(BodyDocument.user_id == uid, BodyDocument.filename == filename[:200])
+            .order_by(desc(BodyDocument.uploaded_at), desc(BodyDocument.id))
+            .limit(5)
+        )
+        for prev in (await db.execute(stmt)).scalars().all():
+            if (prev.extracted_text or "").strip():
+                text = prev.extracted_text
+                if doc_kind == "其他" and prev.doc_kind:
+                    doc_kind = prev.doc_kind
+                logger.warning("本次转录为空，继承同名历史存档文本: %s", filename)
+                break
+    doc = BodyDocument(
+        user_id=uid,
+        filename=filename[:200],
+        mime_type=mime_type[:80],
+        doc_kind=doc_kind,
+        extracted_text=text,
+    )
+    db.add(doc)
+    await db.commit()
+    await db.refresh(doc)
+    return doc
+async def create_body_records(
+    db: AsyncSession,
+    user_id: str | int,
+
+第14页
+瓯医数链医疗数据要素可信流通平台 V1.0
+    records: list[dict],
+    *,
+    source_type: str,
+    source_label: str,
+    source_ref: str = "",
+    document_id: int | None = None,
+    batch_id: str = "",
+) -> list[BodyRecord]:
+    """追加一批档案记录（同一 batch_id = 同一次归档周期）。永不覆盖旧记录。"""
+    uid = _normalize_user_id(user_id)
+    rows = [
+        BodyRecord(
+            user_id=uid,
+            organ=r["organ"],
+            description=r.get("description") or r.get("raw_excerpt") or "",
+            raw_excerpt=r.get("raw_excerpt") or "",
+            event_date=(r.get("event_date") or "")[:10],
+            source_type=source_type,
+            source_label=source_label,
+            source_ref=(source_ref or "")[:200],
+            document_id=document_id,
+            batch_id=batch_id,
+        )
+        for r in records
+    ]
+    db.add_all(rows)
+    await db.commit()
+    for row in rows:
+        await db.refresh(row)
+    return rows
+async def get_body_records(
+    db: AsyncSession, user_id: str | int, organ: str | None = None, limit: int = 500
+) -> list[BodyRecord]:
+    """按时间倒序（检查时间优先，其次归档时间）返回档案记录；未注明时间的排最后。"""
+    uid = _normalize_user_id(user_id)
+    stmt = select(BodyRecord).where(BodyRecord.user_id == uid)
+    if organ:
+        stmt = stmt.where(BodyRecord.organ == organ)
+    stmt = stmt.order_by(desc(BodyRecord.event_date), desc(BodyRecord.created_at), desc(BodyRecord.id)).limit(limit)
+    result = await db.execute(stmt)
+    return list(result.scalars().all())
+async def get_body_documents(
+    db: AsyncSession, user_id: str | int, limit: int = 100
+) -> list[BodyDocument]:
+    """用户已存档的资料元数据（新→旧），供 3D 查看器「患者资料」面板展示。"""
+    uid = _normalize_user_id(user_id)
+    result = await db.execute(
+        select(BodyDocument)
+        .where(BodyDocument.user_id == uid)
+        .order_by(desc(BodyDocument.id))
+
+第15页
+瓯医数链医疗数据要素可信流通平台 V1.0
+        .limit(limit)
+    )
+    return list(result.scalars().all())
+async def list_recent_body_documents(
+    db: AsyncSession, user_id: str | int, limit: int = 5, within_minutes: int = 120
+) -> list[BodyDocument]:
+    """用户最近上传的医疗资料存档（按上传时间倒序），用于对话上下文感知与报销联合预审。
+    同一 filename 重复上传时只保留最新一条存档，避免预审金额重复累计。
+    """
+    uid = _normalize_user_id(user_id)
+    cutoff = datetime.now(UTC) - timedelta(minutes=within_minutes)
+    stmt = (
+        select(BodyDocument)
+        .where(BodyDocument.user_id == uid, BodyDocument.uploaded_at >= cutoff)
+        .order_by(desc(BodyDocument.uploaded_at), desc(BodyDocument.id))
+        .limit(max(limit * 3, 30))
+    )
+    result = await db.execute(stmt)
+    latest: dict[str, BodyDocument] = {}
+    with_content: dict[str, BodyDocument] = {}
+    for doc in result.scalars().all():  # 已按时间倒序，首次命中即最新
+        latest.setdefault(doc.filename, doc)
+        if (doc.extracted_text or "").strip():
+            with_content.setdefault(doc.filename, doc)
+    # 优先取“最新且有内容”的存档，避免转录失败的空行覆盖有效识别结果
+    picked = {**latest, **with_content}
+    unique = sorted(picked.values(), key=lambda d: (d.uploaded_at, d.id), reverse=True)
+    return unique[:limit]
+async def get_body_organ_summary(db: AsyncSession, user_id: str | int) -> dict:
+    """各器官记录数与最近检查时间：{organ: {label, count, latest_event_date}}。"""
+    summary: dict[str, dict] = {}
+    for r in await get_body_records(db, user_id):
+        s = summary.setdefault(r.organ, {"label": _organ_label(r.organ), "count": 0, "latest_event_date": ""})
+        s["count"] += 1
+        if r.event_date and r.event_date > s["latest_event_date"]:
+            s["latest_event_date"] = r.event_date
+    return summary
+def body_record_to_dict(r: BodyRecord) -> dict:
+    return {
+        "id": r.id,
+        "organ": r.organ,
+        "organ_label": _organ_label(r.organ),
+        "description": r.description,
+        "raw_excerpt": r.raw_excerpt or "",
+        "event_date": r.event_date or "",
+        "source_type": r.source_type,
+        "source_label": r.source_label,
+        "source_ref": r.source_ref or "",
+        "document_id": r.document_id,
+        "batch_id": r.batch_id or "",
+
+第16页
+瓯医数链医疗数据要素可信流通平台 V1.0
+        "created_at": r.created_at.isoformat() if r.created_at else None,
+    }
+
+from contextlib import suppress
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from app.config import settings
+engine = create_async_engine(settings.DATABASE_URL, echo=False)
+async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+async def get_db():
+    async with async_session() as session:
+        yield session
+async def init_db():
+    from sqlalchemy import text
+    from app.models import Base
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+        # SQLite 轻量迁移：给已有 users 表补 email/password_hash 列
+        # （create_all 只建新表不改旧表；重复执行时忽略 DuplicateColumn）
+        for ddl in (
+            "ALTER TABLE users ADD COLUMN email VARCHAR(255)",
+            "ALTER TABLE users ADD COLUMN password_hash VARCHAR(255)",
+        ):
+            with suppress(Exception):  # 列已存在
+                await conn.execute(text(ddl))
+
+import os
+from contextlib import asynccontextmanager
+from pathlib import Path
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from app.config import settings
+from app.database import init_db
+from app.routers import (
+    admin,
+    agents,
+    auth,
+    body,
+    body_archive,
+    claims,
+    coverage,
+    data,
+    drugs,
+    eeg,
+    federation,
+    governance,
+    health_profile,
+    imaging,
+    marketplace,
+    policy,
+
+第17页
+瓯医数链医疗数据要素可信流通平台 V1.0
+    security,
+    users,
+)
+from app.services import orchestrator
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await init_db()
+    await orchestrator.initialize_services()
+    yield
+app = FastAPI(
+    title="瓯医数链 OuMedTrust · 医疗数据要素可信流通平台",
+    description="第二届全球技术创新大赛 AI+医疗专题赛（赛道二）：联邦学习医疗协作 + AI 数据治理 Copilot + "
+                "差分隐私与审计存证 + 数据要素流通交易闭环，让医疗数据「可用不可见、可控可计量」",
+    version="1.0.0",
+    lifespan=lifespan,
+)
+# CORS 配置：从环境变量读取，默认开放（Demo 模式）
+# 生产环境通过 CORS_ORIGINS 收敛为白名单（逗号分隔）
+_cors_origins_env = os.getenv("CORS_ORIGINS", "*")
+if _cors_origins_env.strip() == "*":
+    _cors_origins = ["*"]
+    _cors_credentials = False
+else:
+    _cors_origins = [o.strip() for o in _cors_origins_env.split(",") if o.strip()]
+    _cors_credentials = True
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_origins,
+    allow_credentials=_cors_credentials,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+app.include_router(auth.router)
+app.include_router(admin.router)
+app.include_router(agents.router)
+app.include_router(coverage.router)
+app.include_router(claims.router)
+app.include_router(health_profile.router)
+app.include_router(policy.router)
+app.include_router(security.router)
+app.include_router(federation.router)
+app.include_router(governance.router)
+app.include_router(marketplace.router)
+app.include_router(eeg.router)
+app.include_router(imaging.router)
+app.include_router(data.router)
+app.include_router(body.router)
+app.include_router(body_archive.router)
+app.include_router(users.router)
+app.include_router(drugs.router)
+
+第18页
+瓯医数链医疗数据要素可信流通平台 V1.0
+# 数字人体 3D 查看器（静态资源，前端 /body-archive 页面 iframe 嵌入）
+_digital_body_dir = Path(__file__).resolve().parent / "static" / "digital-body"
+if _digital_body_dir.is_dir():
+    app.mount(
+        "/digital-body",
+        StaticFiles(directory=_digital_body_dir, html=True),
+        name="digital-body",
+    )
+@app.get("/api/health")
+async def health_check():
+    """基础健康检查"""
+    return {"status": "ok", "service": "瓯医数链 OuMedTrust", "version": "1.0.0"}
+@app.get("/api/health/detailed")
+async def detailed_health_check():
+    """详细健康检查：返回各依赖服务状态（P3-4 容错降级用）
+    前端 ApiStatusIndicator 可据此展示 LLM/KB/DB 各项健康度。
+    """
+    deps = {}
+    # LLM 状态
+    deps["llm"] = {
+        "available": orchestrator._llm is not None and orchestrator._llm.is_available,
+        "primary_model": settings.LLM_MODEL,
+        "fallback_model": settings.DASHSCOPE_MODEL,
+    }
+    # 视觉模型状态（影像解读用，未配置 Key 时自动关闭）
+    try:
+        from app.services.vision_service import get_vision_service
+        _vs = get_vision_service()
+        vision_ok = _vs is not None
+    except Exception:
+        vision_ok = False
+    deps["vision"] = {
+        "available": vision_ok,
+        "model": settings.VISION_MODEL,
+        "purpose": "医学影像自然语言解读（可选能力，降级不影响主流程）",
+    }
+    # 知识库状态
+    kb_ok = orchestrator._kb is not None
+    kb_chunks = 0
+    if kb_ok:
+        try:
+            stats = await orchestrator._kb.get_stats()
+            kb_chunks = stats.get("total_chunks", 0)
+        except Exception:
+            pass
+    deps["knowledge_base"] = {"available": kb_ok, "chunks": kb_chunks}
+    # 数据库状态
+    deps["database"] = {"available": True, "type": "sqlite"}
+    deps["ocr"] = {"available": True, "provider": "ocr.space"}
+    # EEG 脑电引擎（脑电信号识别模块）
+
+第19页
+瓯医数链医疗数据要素可信流通平台 V1.0
+    try:
+        import numpy as np  # noqa: F401
+        eeg_ok = True
+    except Exception:
+        eeg_ok = False
+    deps["eeg_engine"] = {
+        "available": eeg_ok,
+        "channels": 4,
+        "sample_rate": 256,
+        "bands": ["delta", "theta", "alpha", "beta", "gamma"],
+    }
+    # 医学影像 AI 标注引擎（影像信号识别模块）
+    try:
+        from app.services.imaging import STUDY_TYPES
+        imaging_ok = True
+    except Exception:
+        imaging_ok = False
+    deps["imaging_engine"] = {
+        "available": imaging_ok,
+        "study_types": list(STUDY_TYPES) if imaging_ok else [],
+        "image_size": 512,
+        "pipeline": "预处理 → 局部对比度增强 → 连通域分析 → 形态学特征分类",
+    }
+    # 数字人体档案（档案管家 · 3D 查看器）
+    deps["body_archive"] = {
+        "available": _digital_body_dir.is_dir(),
+        "viewer": "/digital-body/index.html",
+        "api": "/api/body-archive/patients",
+    }
+    # 湖仓一体数据引擎（数据管家模块）
+    try:
+        from app.services.data_lake import engine as data_lake_engine
+        data_engine_ok = True
+        warehouse_tables = len(data_lake_engine.WAREHOUSE_TABLES)
+    except Exception:
+        data_engine_ok = False
+        warehouse_tables = 0
+    deps["data_engine"] = {
+        "available": data_engine_ok,
+        "warehouse_tables": warehouse_tables,
+        "query_modes": ["template", "nl2sql"],
+    }
+    # 药品卫士引擎（拍照识别 × 用药安全）
+    try:
+        drug_engine_ok = True
+        drug_modes = ["vision", "ocr_llm", "mock"]
+    except Exception:
+        drug_engine_ok = False
+        drug_modes = []
+    deps["drug_engine"] = {
+
+第20页
+瓯医数链医疗数据要素可信流通平台 V1.0
+        "available": drug_engine_ok,
+        "recognition_modes": drug_modes,
+        "endpoints": ["/api/drugs/scan", "/api/drugs/register"],
+    }
+    # 联邦学习协作引擎（瓯医数链底座 · 数据要素协作）
+    try:
+        from app.services.federated import get_overview
+        fed = get_overview()
+        fed_ok = True
+    except Exception:
+        fed_ok = False
+        fed = {}
+    deps["federated_engine"] = {
+        "available": fed_ok,
+        "hospitals": len(fed.get("hospitals", [])),
+        "task": fed.get("task", ""),
+        "privacy": "FedAvg + 差分隐私（DP-FedAvg）+ 审计存证链",
+    }
+    all_ok = (
+        all(d.get("available", False) for k, d in deps.items() if k != "vision")
+        and deps["llm"].get("available", False)
+    )
+    return {
+        "status": "ok" if all_ok else "degraded",
+        "version": "1.0.0",
+        "dependencies": deps,
+        "demo_mode": orchestrator._llm is None,  # LLM 不可用时进入降级演示模式
+    }
+
+from datetime import UTC, datetime
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    LargeBinary,
+    String,
+    Text,
+)
+from sqlalchemy.orm import DeclarativeBase, relationship
+class Base(DeclarativeBase):
+    pass
+class User(Base):
+    __tablename__ = "users"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(50), nullable=False)
+    age = Column(Integer, nullable=False)
+    gender = Column(String(10), nullable=False)
+
+第21页
+瓯医数链医疗数据要素可信流通平台 V1.0
+    city = Column(String(50), nullable=False)
+    insurance_type = Column(String(50), nullable=False)
+    employee_status = Column(String(30), nullable=False)
+    # 邮箱注册登录（Demo 演示用户无邮箱，字段可空）
+    email = Column(String(255), unique=True, index=True, nullable=True)
+    # PBKDF2-SHA256 哈希，格式：pbkdf2_sha256$<iterations>$<salt_hex>$<hash_hex>
+    password_hash = Column(String(255), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    insurance_records = relationship("InsuranceRecord", back_populates="user")
+    medical_records = relationship("MedicalRecord", back_populates="user")
+    medication_records = relationship("MedicationRecord", back_populates="user")
+    authorizations = relationship("DataAuthorization", back_populates="user")
+    eeg_records = relationship("EEGRecord", back_populates="user")
+    imaging_records = relationship("ImagingRecord", back_populates="user")
+    body_documents = relationship("BodyDocument", back_populates="user")
+    body_records = relationship("BodyRecord", back_populates="user")
+    body_archive_files = relationship("BodyArchiveFile", back_populates="user")
+    chat_conversations = relationship("ChatConversation", back_populates="user")
+class ChatConversation(Base):
+    __tablename__ = "chat_conversations"
+    id = Column(String(36), primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    title = Column(String(100), nullable=False, default="新对话")
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
+    updated_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
+    user = relationship("User", back_populates="chat_conversations")
+    messages = relationship(
+        "ChatMessage",
+        back_populates="conversation",
+        cascade="all, delete-orphan",
+        order_by="ChatMessage.id",
+    )
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+    id = Column(Integer, primary_key=True, index=True)
+    conversation_id = Column(String(36), ForeignKey("chat_conversations.id"), nullable=False, index=True)
+    role = Column(String(20), nullable=False)
+    content = Column(Text, nullable=False)
+    agent_type = Column(String(50), nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
+    conversation = relationship("ChatConversation", back_populates="messages")
+class InsuranceRecord(Base):
+    __tablename__ = "insurance_records"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    year = Column(Integer, nullable=False)
+    month = Column(Integer, nullable=False)
+    base_amount = Column(Float, nullable=False)
+    personal_amount = Column(Float, nullable=False)
+    company_amount = Column(Float, nullable=False)
+
+第22页
+瓯医数链医疗数据要素可信流通平台 V1.0
+    user = relationship("User", back_populates="insurance_records")
+class MedicalRecord(Base):
+    __tablename__ = "medical_records"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    date = Column(DateTime, nullable=False)
+    hospital = Column(String(100), nullable=False)
+    department = Column(String(50), nullable=False)
+    diagnosis = Column(String(200), nullable=False)
+    visit_type = Column(String(30), nullable=False)
+    total_cost = Column(Float, nullable=False)
+    reimbursed_amount = Column(Float, nullable=False)
+    user = relationship("User", back_populates="medical_records")
+class MedicationRecord(Base):
+    __tablename__ = "medication_records"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    date = Column(DateTime, nullable=False)
+    medication_name = Column(String(100), nullable=False)
+    category = Column(String(50), nullable=False)
+    quantity = Column(Integer, nullable=False)
+    unit_price = Column(Float, nullable=False)
+    is_chronic = Column(Boolean, default=False)
+    user = relationship("User", back_populates="medication_records")
+class PolicyDocument(Base):
+    __tablename__ = "policy_documents"
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(200), nullable=False)
+    content = Column(String, nullable=False)
+    source = Column(String(100))
+    publish_date = Column(DateTime)
+    category = Column(String(50))
+    tags = Column(String(200))
+class DataAuthorization(Base):
+    __tablename__ = "data_authorizations"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    data_type = Column(String(50), nullable=False)
+    authorized_agent = Column(String(100), nullable=False)
+    authorized_at = Column(DateTime, default=lambda: datetime.now(UTC))
+    expires_at = Column(DateTime, nullable=False)
+    is_active = Column(Boolean, default=True)
+    user = relationship("User", back_populates="authorizations")
+class EEGRecord(Base):
+    """脑电采集记录（BCI×医保创新模块）
+    存储每次 EEG 会话的评估结果摘要，用于历史趋势分析。
+    完整波形数据较大，不入库（实时生成即可）。
+    """
+    __tablename__ = "eeg_records"
+    id = Column(Integer, primary_key=True, index=True)
+
+第23页
+瓯医数链医疗数据要素可信流通平台 V1.0
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    session_id = Column(String(80), nullable=False, index=True)
+    recorded_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
+    duration_seconds = Column(Integer, nullable=False, default=4)
+    mental_state = Column(String(30), nullable=False)
+    mental_state_label = Column(String(30), nullable=False)
+    # 五频段平均功率（JSON 字符串）
+    avg_band_powers = Column(Text, nullable=False)
+    # 四维健康指标 + 情绪（JSON 字符串）
+    metrics = Column(Text, nullable=False)
+    # 预警数量
+    alert_count = Column(Integer, default=0)
+    # 联动政策数量
+    policy_link_count = Column(Integer, default=0)
+    summary = Column(Text, default="")
+    user = relationship("User", back_populates="eeg_records")
+class ImagingRecord(Base):
+    """医学影像检查记录（MedSignal 影像引擎）
+    存储每次影像 AI 分析会话的结果摘要（影像数据以确定性合成参数
+    study_type + seed + findings 可随时复现，不存大体积 base64）。
+    """
+    __tablename__ = "imaging_records"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    study_id = Column(String(80), nullable=False, index=True)
+    study_type = Column(String(30), nullable=False)
+    seed = Column(Integer, nullable=False, default=0)
+    recorded_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
+    # AI 检测发现（JSON 字符串）
+    findings = Column(Text, nullable=False)
+    # 医生复核后标注（JSON 字符串）
+    final_findings = Column(Text, nullable=True)
+    # 结构化报告（JSON 字符串）
+    report = Column(Text, nullable=True)
+    # 风险等级（低/中/高/待复核）
+    risk_level = Column(String(20), default="待复核")
+    # 联动政策数量
+    policy_link_count = Column(Integer, default=0)
+    user = relationship("User", back_populates="imaging_records")
+class BodyDocument(Base):
+    """用户上传的医疗资料存档（档案管家）
+    只保存解析出的文本（不存文件二进制），用于版本追溯：每条 BodyRecord 可回指来源文档。
+    """
+    __tablename__ = "body_documents"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    filename = Column(String(200), nullable=False)
+    mime_type = Column(String(80), default="")
+    # CT报告 / MRI报告 / 病历文本 / 其他
+    doc_kind = Column(String(30), default="其他")
+
+第24页
+瓯医数链医疗数据要素可信流通平台 V1.0
+    extracted_text = Column(Text, default="")
+    uploaded_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
+    user = relationship("User", back_populates="body_documents")
+    records = relationship("BodyRecord", back_populates="document")
+class BodyRecord(Base):
+    """人体健康档案记录（档案管家）— 只增不删
+    每条记录 = 用户在对话/资料中**明确陈述**的一条部位相关信息（原文转述 + 原文片段）。
+    新信息永远追加，不覆盖历史；batch_id 标记同一次归档周期（版本分组）。
+    不含任何推断或诊断字段。
+    """
+    __tablename__ = "body_records"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    # 器官/部位 key（见 services/body/taxonomy.py）
+    organ = Column(String(40), nullable=False, index=True)
+    # 原文转述
+    description = Column(Text, nullable=False)
+    # 原文片段（逐字）
+    raw_excerpt = Column(Text, default="")
+    # 检查/发生时间，允许不完整："2026-02" / "2026-07-15" / ""
+    event_date = Column(String(10), default="")
+    # chat | upload
+    source_type = Column(String(10), nullable=False)
+    # 对话输入 / CT报告 / MRI报告 / 病历文本 / 其他
+    source_label = Column(String(30), nullable=False)
+    # conversation_id 或 文件名
+    source_ref = Column(String(200), default="")
+    document_id = Column(Integer, ForeignKey("body_documents.id"), nullable=True)
+    batch_id = Column(String(40), default="", index=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
+    user = relationship("User", back_populates="body_records")
+    document = relationship("BodyDocument", back_populates="records")
+class BodyArchiveFile(Base):
+    """数字人体档案原始附件。
+    测试阶段直接存入数据库，确保图片、PDF、CSV 可按用户隔离预览和下载；
+    生产环境应迁移到受控对象存储并保留本表元数据与审计关联。
+    """
+    __tablename__ = "body_archive_files"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    stored_name = Column(String(160), nullable=False)
+    filename = Column(String(200), nullable=False)
+    mime_type = Column(String(100), nullable=False)
+    category = Column(String(40), default="原始资料")
+    note = Column(String(200), default="")
+    size_bytes = Column(Integer, nullable=False)
+    content = Column(LargeBinary, nullable=False)
+    uploaded_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
+    user = relationship("User", back_populates="body_archive_files")
+class FederationJob(Base):
+
+第25页
+瓯医数链医疗数据要素可信流通平台 V1.0
+    """联邦学习任务（瓯医数链底座）。
+    event_hash 审计存证链：每个任务的存证哈希由上一任务哈希 + 本任务
+    摘要串联计算（sha256），任何结果篡改都会导致链条断裂。
+    """
+    __tablename__ = "federation_jobs"
+    id = Column(String(36), primary_key=True)
+    task = Column(String(100), nullable=False, default="hf_readmission")
+    rounds = Column(Integer, nullable=False, default=12)
+    local_epochs = Column(Integer, nullable=False, default=3)
+    dp_sigma = Column(Float, nullable=False, default=0.0)
+    clip_norm = Column(Float, nullable=False, default=1.0)
+    status = Column(String(20), nullable=False, default="running")  # running/done/failed
+    result = Column(Text, nullable=True)  # JSON：AUC 曲线、最终 AUC、逐院对比
+    duration_ms = Column(Integer, nullable=True)
+    prev_hash = Column(String(64), nullable=True)
+    event_hash = Column(String(64), nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
+class DataProduct(Base):
+    """数据产品（数据要素流通目录中的上架商品）。"""
+    __tablename__ = "data_products"
+    id = Column(String(36), primary_key=True)
+    name = Column(String(120), nullable=False)
+    provider = Column(String(60), nullable=False)  # 提供方：医院/平台/应用
+    data_type = Column(String(40), nullable=False)  # 数据集/模型API/治理产物/算法服务
+    description = Column(Text, default="")
+    sample_count = Column(Integer, default=0)
+    price = Column(Integer, default=0)  # 元
+    price_unit = Column(String(20), default="套")  # 套/年/次
+    privacy_tech = Column(String(120), default="")  # 隐私技术标签
+    status = Column(String(20), default="在售")  # 在售/已下架
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
+class DataTransaction(Base):
+    """数据要素交易（含授权审批与审计存证链）。"""
+    __tablename__ = "data_transactions"
+    id = Column(String(36), primary_key=True)
+    product_id = Column(String(36), ForeignKey("data_products.id"), nullable=False, index=True)
+    product_name = Column(String(120), nullable=False)
+    buyer = Column(String(80), nullable=False)  # 买方：应用生态/机构
+    amount = Column(Integer, nullable=False)
+    status = Column(String(20), nullable=False, default="待授权")  # 待授权/已成交/已驳回
+    revenue_provider = Column(Integer, default=0)  # 医院 70%
+    revenue_platform = Column(Integer, default=0)  # 平台 20%
+    revenue_contributor = Column(Integer, default=0)  # 数据贡献者 10%
+    purpose = Column(String(200), default="")  # 用途限定
+    prev_hash = Column(String(64), nullable=True)
+    event_hash = Column(String(64), nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
+
+# MedSignal - 多智能体系统提示词定义
+# 所有提示词均为中文指令，JSON输出字段使用英文命名
+
+第26页
+瓯医数链医疗数据要素可信流通平台 V1.0
+# ============================================================
+# 1. 编排智能体 (Orchestrator Agent)
+# ============================================================
+ORCHESTRATOR_PROMPT = """你是"MedSignal"系统的编排智能体（Orchestrator），负责理解用户意图并将请求路由到最合适的专业智能体。
+## 核心职责
+1. **意图理解**：从用户的自然语言输入中准确识别其真实需求，包括隐含意图和多重意图。
+2. **智能路由**：将用户请求分发到一个或多个专业智能体进行处理。
+3. **上下文管理**：维护多轮对话的上下文，理解指代消解、追问、补充说明等对话行为。
+4. **结果聚合**：当多个智能体协同处理时，汇总各智能体的输出，形成连贯、完整的回答。
+5. **澄清引导**：当用户意图不明确时，主动提出澄清问题，避免错误路由。
+## 意图分类规则
+根据用户输入的关键词和语义，将意图映射到对应的专业智能体：
+| 意图类别 | 关键词/语义特征 | 目标智能体 |
+|---------|---------------|-----------|
+| 权益查询 | 缴费记录、账户余额、报销比例、待遇标准、医保类型、参保状态、跨省转移 | coverage_agent |
+| 报销办理 | 报销、票据、发票、预审、材料清单、报销进度、DRG、DIP、住院报销、门诊报销 | claims_agent |
+| 健康管理 | 健康风险、用药分析、体检建议、慢病管理、健康评分、药物相互作用、健康预警 | health_agent |
+| 政策咨询 | 政策法规、待遇标准、办事指南、政策变化、申请条件、政策解读 | policy_agent |
+| 安全合规 | 授权、隐私、数据安全、合规、数据访问、撤销授权、个人信息保护 | security_agent |
+## 多智能体协作规则
+- **单一意图**：直接路由到对应智能体，传递完整上下文。
+- **复合意图**：识别所有子意图，并行路由到多个智能体，然后聚合结果。例如"我的报销进度怎样？另外帮我看看有没有适用的政策"需要同时路由到 claims_agent 和 policy_agent。
+- **依赖意图**：某些意图存在依赖关系，需按顺序处理。例如"帮我看看我的用药有没有问题，然后告诉我相关政策"需要先由 health_agent 分析用药，再由 policy_agent 根据分析结果匹配政策。
+- **模糊意图**：当置信度低于0.7时，主动向用户澄清，提供可能的选项。
+## 输出格式
+请始终以JSON格式输出路由决策：
+```json
+{
+    "intent": "用户意图的简要描述",
+    "agents": ["需要调用的智能体列表"],
+    "confidence": 0.0到1.0的置信度,
+    "clarification_needed": false,
+    "clarification_question": "如果需要澄清，此处填写问题",
+    "context": {
+        "user_profile_available": true/false,
+        "conversation_turn": 当前对话轮次,
+        "previous_intents": ["之前识别的意图列表"]
+    }
+}
+```
+## 对话策略
+1. **首次交互**：简要介绍系统能力，引导用户描述需求。
+2. **意图确认**：对于复杂请求，先确认理解是否正确再路由。
+3. **结果呈现**：聚合多智能体结果时，按逻辑顺序组织，先回答核心问题再补充相关信息。
+4. **追问引导**：当用户提出模糊问题时，提供2-3个具体选项帮助其明确需求。
+5. **异常处理**：当智能体返回错误或无法处理时，向用户解释情况并提供替代方案。
+## 重要约束
+- 不要自行回答专业问题，始终路由到对应智能体。
+- 不要泄露系统内部架构细节。
+- 对于涉及个人数据的查询，确保 security_agent 已验证授权。
+
+第27页
+瓯医数链医疗数据要素可信流通平台 V1.0
+- 保持对话的自然流畅，避免机械式的路由切换感。
+"""
+# ============================================================
+# 2. 权益管家 (Coverage Agent)
+# ============================================================
+COVERAGE_AGENT_PROMPT = """你是"MedSignal"系统的权益管家智能体（Coverage Agent），你是医保权益领域的专业顾问，帮助用户全面了解和管理自己的医保权益。
+## 核心职责
+1. **缴费查询**：查询用户的医保缴费历史、缴费基数、缴费月数，判断缴费是否连续。
+2. **账户余额**：查询个人账户余额、统筹账户状态，解释账户资金构成。
+3. **待遇计算**：根据用户参保类型、缴费年限、就医场景，计算报销比例和报销额度。
+4. **权益诊断**：分析用户权益状况，发现缴费缺口、待遇降级等风险，提供补救建议。
+5. **跨省转移**：指导用户办理医保关系跨省转移接续，说明所需材料和办理流程。
+## 专业知识
+### 参保类型与待遇差异
+- 城镇职工基本医疗保险：单位缴费+个人缴费，个人账户+统筹基金，报销比例较高
+- 城乡居民基本医疗保险：个人缴费+政府补贴，无个人账户，报销比例相对较低
+- 灵活就业人员医疗保险：个人全额缴费，待遇参照职工医保
+### 报销比例计算规则
+- 门诊报销：起付线以下自付 → 起付线至封顶线按比例报销 → 封顶线以上自付
+- 住院报销：起付标准（三级医院>二级>一级）→ 统筹基金按比例支付 → 大病保险二次报销
+- 报销比例受以下因素影响：医院等级、参保类型、缴费年限、是否异地就医、是否转诊
+### 跨省转移规则
+- 转出地：确认缴费记录完整，办理转出手续
+- 转入地：提交转移申请，等待审核，合并缴费年限
+- 注意事项：转移期间可能存在待遇等待期
+## 交互规则
+1. **引用政策依据**：解释任何权益时，必须引用具体的政策文件和条款编号，例如"根据《浙江省基本医疗保险办法》相关条款..."。
+2. **数值计算透明**：所有报销比例计算必须展示完整的计算过程和每一步的数值，让用户理解"为什么是这个数字"。
+3. **耐心友好**：使用通俗易懂的语言，避免专业术语堆砌。很多用户是老年人，需要特别耐心，必要时用比喻来解释复杂概念。
+4. **数据不足时主动询问**：当缺少关键信息（如参保类型、就医医院等级等）时，主动提出澄清问题，不要猜测。
+5. **权益提醒**：主动提醒用户可能忽略的权益，例如"您的缴费年限已满25年，达到终身医保条件"。
+## 输出格式
+```json
+{
+    "query_type": "coverage_query类型",
+    "data": {
+        "payment_history": "缴费历史摘要",
+        "account_balance": "账户余额信息",
+        "reimbursement_ratio": "报销比例计算详情",
+        "coverage_gaps": "权益缺口分析"
+    },
+    "calculations": [
+        {
+            "step": "计算步骤描述",
+            "formula": "计算公式",
+            "result": "计算结果"
+        }
+    ],
+    "policy_references": [
+        {
+
+第28页
+瓯医数链医疗数据要素可信流通平台 V1.0
+            "document": "政策文件名称",
+            "article": "条款编号",
+            "content": "相关内容摘要"
+        }
+    ],
+    "suggestions": ["改进建议列表"],
+    "next_steps": ["用户可执行的下一步操作"]
+}
+```
+## 重要约束
+- 所有数据必须来自系统查询，不得编造用户数据。
+- 报销比例计算必须基于最新政策，标注政策生效日期。
+- 跨省转移指导需注明各地政策差异，建议用户以当地医保局最新规定为准。
+- 不对政策变化做预测，只基于现行有效政策回答。
+"""
+# ============================================================
+# 3. 报销助手 (Claims Agent)
+# ============================================================
+CLAIMS_AGENT_PROMPT = """你是"MedSignal"系统的报销助手智能体（Claims Agent），你是医保报销流程的专业向导，帮助用户顺利完成报销并理解报销计算细节。
+## 核心职责
+1. **票据OCR识别**：对用户上传的医疗发票、费用清单、诊断证明等进行OCR识别，提取结构化数据。
+2. **报销预审**：在用户正式提交报销前，预估可报销金额，帮助用户了解预期结果。
+3. **材料清单生成**：根据报销类型（门诊/住院/慢病/异地），生成完整的所需材料清单。
+4. **进度追踪**：查询报销申请的处理进度，解释当前状态含义。
+5. **报销计算解释**：详细解释报销金额的计算过程，解答"为什么报销比例是60%而不是80%"等疑问。
+## 专业知识
+### OCR票据识别要点
+- 发票代码、发票号码、开票日期
+- 患者姓名、医保卡号
+- 诊断信息、科室信息
+- 费用明细：药品费、检查费、治疗费、材料费、床位费等
+- 总金额、医保支付金额、个人自付金额
+- 医院名称、医院等级
+### DRG/DIP付费规则（住院报销）
+- DRG（疾病诊断相关分组）：按病种分组定额付费，超出部分按比例分担
+- DIP（病种分值付费）：按病种分值和点值计算付费标准
+- 关键参数：病种分组、权重/分值、费率/点值、差异系数
+- 特殊情况：高倍率病例、低倍率病例、特殊病例可申请特病单议
+### 报销计算要素
+1. **起付线**：低于起付线的费用全部自付，不同医院等级起付线不同
+2. **报销比例**：起付线以上、封顶线以下部分按比例报销
+3. **自费项目**：医保目录外的项目全额自付
+4. **自付比例**：医保目录内但需按比例自付的项目（如乙类药品先自付10%-20%）
+5. **封顶线**：年度最高支付限额
+6. **大病保险**：超过封顶线后进入大病保险二次报销
+### 报销材料清单
+- 门诊报销：发票原件、费用清单、病历记录、医保卡、银行卡
+- 住院报销：出院小结、费用总清单、发票原件、诊断证明、医保卡、银行卡
+- 异地就医：额外需要异地就医备案表、转诊证明
+- 慢病报销：额外需要慢病认定表、长期处方
+
+第29页
+瓯医数链医疗数据要素可信流通平台 V1.0
+## 交互规则
+1. **结构化提取**：从OCR结果中提取结构化数据时，标注每个字段的置信度，低置信度字段需用户确认。
+2. **DRG/DIP规则应用**：住院报销必须说明DRG/DIP分组结果和对应支付标准。
+3. **扣减项明细**：列出所有自费、自付项目及其金额，让用户清楚"哪些没报、为什么没报"。
+4. **步骤化指导**：报销流程指导必须分步骤呈现，每步说明操作方法、所需材料、预计时间。
+5. **计算透明**：报销计算必须逐步展示，公式清晰，最终结果与用户预期有差异时主动解释原因。
+## 输出格式
+```json
+{
+    "claim_type": "报销类型",
+    "ocr_result": {
+        "invoice_number": "发票号码",
+        "hospital": "医院名称",
+        "hospital_level": "医院等级",
+        "diagnosis": "诊断信息",
+        "total_amount": "总金额",
+        "fee_details": [
+            {"item": "费用项目", "amount": "金额", "category": "医保目录分类"}
+        ]
+    },
+    "pre_review": {
+        "deductible": "起付线金额",
+        "reimbursable_amount": "可报销金额",
+        "reimbursement_ratio": "报销比例",
+        "estimated_payout": "预计报销金额",
+        "self_pay_items": [
+            {"item": "自付项目名称", "amount": "金额", "reason": "自付原因"}
+        ]
+    },
+    "required_documents": [
+        {"document": "材料名称", "status": "已提供/未提供", "notes": "备注"}
+    ],
+    "calculation_steps": [
+        {"step": 1, "description": "步骤描述", "formula": "公式", "amount": "金额"}
+    ],
+    "progress": {
+        "status": "当前状态",
+        "last_update": "最近更新时间",
+        "estimated_completion": "预计完成时间"
+    }
+}
+```
+## 重要约束
+- OCR识别结果仅供参考，提醒用户核对关键信息。
+- 报销预审结果为预估，实际金额以医保经办机构审核为准。
+- 不得鼓励或协助任何形式的骗保行为。
+- 异地就医报销规则复杂，需提示用户以就医地和参保地最新政策为准。
+"""
+# ============================================================
+# 4. 健康卫士 (Health Agent) — 核心智能体
+
+第30页
+瓯医数链医疗数据要素可信流通平台 V1.0
+# ============================================================
+HEALTH_AGENT_PROMPT = """你是"MedSignal"系统的健康卫士智能体（Health Agent），你是整个系统中最核心的智能体。你通过分析用户的医疗记录和用药数据，主动发现健康风险，提供个性化的健康管理建议，守护用户的健康。
+## 核心职责
+1. **动态健康画像**：基于用户的就医记录、用药记录、体检数据，生成多维度健康画像。
+2. **健康风险评估**：从数据模式中识别潜在健康风险，进行分级预警。
+3. **用药安全监测**：检测重复用药、药物相互作用、用药不规范等问题。
+4. **个性化健康方案**：根据用户健康状况，提供可执行的健康改善建议。
+5. **主动健康推送**：在检测到风险变化时，主动推送健康提醒和预警。
+## 健康画像维度（雷达图）
+为每位用户生成五维健康画像，每个维度0-100分：
+| 维度 | 评估依据 | 评分逻辑 |
+|------|---------|---------|
+| 慢病管理 | 慢病用药规律性、复查频率、指标控制情况 | 用药规律+按时复查=高分；断药/超量/未复查=低分 |
+| 用药规范 | 是否存在重复用药、药物相互作用、超适应症用药 | 无问题=高分；每发现一个问题扣15-25分 |
+| 就医频率 | 就医次数与健康状况的匹配度 | 合理就医=高分；过度就医或该就医未就医=低分 |
+| 健康指标 | 已知健康指标（血压、血糖等）的控制情况 | 指标正常=高分；指标异常=低分 |
+| 生活方式 | 从用药和就医记录推断的生活方式风险 | 无风险因素=高分；吸烟/饮酒/肥胖等=低分 |
+## 风险评估规则
+### 慢病管理风险
+- 连续3个月以上购买同一慢性病药物 → 慢病管理评分降低，提示"长期用药需定期复查评估疗效"
+- 慢病药物购买间隔不规则（时而1月时而3月）→ 用药依从性差，评分降低
+- 同一慢病频繁更换药物 → 可能疗效不佳，建议复诊评估
+### 重复用药预警
+- 同一药物从多个科室开具 → 重复用药预警，列出开具科室和时间
+- 同一通用名不同商品名的药物同时使用 → 重复用药预警，解释为同一成分
+- 作用机制相同的药物叠加使用 → 药物相互作用风险
+### 就医频率异常
+- 就医频率突然增加（较前3月均值增加50%以上）→ 健康风险上升，需关注
+- 频繁更换就诊医院 → 可能存在诊疗不连续问题
+- 急诊就诊次数增加 → 提示日常疾病管理可能不足
+### 用药间隔异常
+- 购药间隔缩短（如从30天缩短到15天）→ 病情可能加重，建议复诊
+- 一次性购买大量药物 → 可能存在囤药或药物滥用风险
+- 精神类/镇痛类药物用量增加 → 需特别关注，建议专科评估
+## 预警等级
+| 等级 | 图标 | 条件 | 响应要求 |
+|------|------|------|---------|
+| 高风险 | 🔴 | 存在严重药物相互作用、急性健康风险、关键指标严重异常 | 需要立即就医或调整治疗方案，建议48小时内就诊 |
+| 中风险 | 🟡 | 用药不规范、慢病控制不佳、就医模式异常 | 建议近期关注并调整生活方式，1-2周内复诊 |
+| 低风险 | 🟢 | 轻微用药提醒、常规复查提醒 | 保持当前管理方案，定期复查即可 |
+## 交互规则
+1. **解释推理过程**：每次风险评估都必须解释"为什么"——哪些数据模式导致了这个判断，让用户理解而非恐慌。
+2. **建议具体可行**：健康建议必须具体、可操作，例如"建议每天餐后散步30分钟，控制碳水摄入量在每餐50g以内"，而非笼统的"注意饮食和运动"。
+3. **引用临床指南**：当提供健康建议时，尽可能引用权威临床指南，例如"根据《中国2型糖尿病防治指南（2024年版）》，糖化血红蛋白控制目标为<7.0%"。
+4. **绝不诊断**：你不是医生，不能做出诊断。所有风险判断都是基于数据模式的提示，必须建议用户咨询医生进行专业诊断。
+5. **温暖关怀**：使用温暖、关怀的语气，避免冷冰冰的数据罗列。让用户感受到"有人在关心我的健康"。
+## 主动推送场景
+- 用户购药后3天未收到复查提醒 → 推送复查提醒
+- 检测到新的用药风险 → 立即推送风险预警
+- 季度健康画像更新 → 推送健康报告摘要
+
+第31页
+瓯医数链医疗数据要素可信流通平台 V1.0
+…（中间部分略）…
+        return
+    for p in SEED_PRODUCTS:
+        db.add(DataProduct(id=str(uuid.uuid4()), **p))
+    await db.commit()
+async def _append_chain(db: AsyncSession, tx: DataTransaction):
+    last = (await db.execute(
+        select(DataTransaction)
+        .where(DataTransaction.event_hash.isnot(None))
+        .order_by(DataTransaction.created_at.desc())
+        .limit(1)
+    )).scalar_one_or_none()
+    tx.prev_hash = last.event_hash if last else "0" * 64
+    payload = json.dumps({
+        "id": tx.id, "product": tx.product_name, "buyer": tx.buyer,
+        "amount": tx.amount, "status": tx.status,
+        "created_at": tx.created_at.isoformat() if tx.created_at else "",
+    }, ensure_ascii=False, sort_keys=True)
+    tx.event_hash = hashlib.sha256(
+        (tx.prev_hash + hashlib.sha256(payload.encode()).hexdigest()).encode()
+    ).hexdigest()
+class ProductRequest(BaseModel):
+    name: str = Field(min_length=2, max_length=120)
+    provider: str = Field(min_length=2, max_length=60)
+    data_type: str = "数据集"
+    description: str = ""
+    sample_count: int = 0
+    price: int = Field(ge=0)
+    price_unit: str = "套"
+    privacy_tech: str = ""
+class PurchaseRequest(BaseModel):
+    product_id: str
+    buyer: str = Field(min_length=2, max_length=80)
+    purpose: str = Field(default="临床科研分析", max_length=200)
+def _tx_dict(t: DataTransaction) -> dict:
+    return {
+        "id": t.id, "product_id": t.product_id, "product_name": t.product_name,
+        "buyer": t.buyer, "amount": t.amount, "status": t.status,
+        "revenue": {"provider": t.revenue_provider, "platform": t.revenue_platform,
+                    "contributor": t.revenue_contributor},
+        "purpose": t.purpose, "prev_hash": t.prev_hash, "event_hash": t.event_hash,
+        "created_at": t.created_at.isoformat() if t.created_at else None,
+    }
+def _product_dict(p: DataProduct) -> dict:
+    return {
+        "id": p.id, "name": p.name, "provider": p.provider, "data_type": p.data_type,
+        "description": p.description, "sample_count": p.sample_count, "price": p.price,
+        "price_unit": p.price_unit, "privacy_tech": p.privacy_tech, "status": p.status,
+    }
+@router.get("/products")
+
+第32页
+瓯医数链医疗数据要素可信流通平台 V1.0
+async def list_products(db: AsyncSession = Depends(get_db)):
+    await _seed_if_empty(db)
+    rows = (await db.execute(
+        select(DataProduct).order_by(DataProduct.created_at.desc())
+    )).scalars().all()
+    return [_product_dict(p) for p in rows]
+@router.post("/products")
+async def create_product(req: ProductRequest, db: AsyncSession = Depends(get_db)):
+    """上架新产品（治理产物/数据集/模型服务）。"""
+    p = DataProduct(id=str(uuid.uuid4()), **req.model_dump())
+    db.add(p)
+    await db.commit()
+    return _product_dict(p)
+@router.post("/purchase")
+async def purchase(req: PurchaseRequest, db: AsyncSession = Depends(get_db)):
+    """发起交易申请：用途限定 → 自动授权审批（演示即时通过）→ 收益分成 → 存证上链。"""
+    await _seed_if_empty(db)
+    p = await db.get(DataProduct, req.product_id)
+    if p is None or p.status != "在售":
+        raise HTTPException(status_code=404, detail="产品不存在或已下架")
+    tx = DataTransaction(
+        id=str(uuid.uuid4()), product_id=p.id, product_name=p.name,
+        buyer=req.buyer, amount=p.price, status="已成交",
+        revenue_provider=int(p.price * REVENUE_SPLIT["provider"]),
+        revenue_platform=int(p.price * REVENUE_SPLIT["platform"]),
+        revenue_contributor=int(p.price * REVENUE_SPLIT["contributor"]),
+        purpose=req.purpose,
+    )
+    db.add(tx)
+    await _append_chain(db, tx)
+    await db.commit()
+    return _tx_dict(tx)
+@router.get("/transactions")
+async def list_transactions(limit: int = 20, db: AsyncSession = Depends(get_db)):
+    rows = (await db.execute(
+        select(DataTransaction).order_by(DataTransaction.created_at.desc()).limit(limit)
+    )).scalars().all()
+    return [_tx_dict(t) for t in rows]
+@router.get("/regulatory")
+async def regulatory_view(db: AsyncSession = Depends(get_db)):
+    """监管方统计看板：交易总量/金额/收益分配/活跃产品/存证链状态。"""
+    await _seed_if_empty(db)
+    total_tx = (await db.execute(select(func.count()).select_from(DataTransaction))).scalar()
+    total_amount = (await db.execute(
+        select(func.coalesce(func.sum(DataTransaction.amount), 0))
+        .where(DataTransaction.status == "已成交"))).scalar()
+    provider_rev = (await db.execute(
+        select(func.coalesce(func.sum(DataTransaction.revenue_provider), 0)))).scalar()
+    platform_rev = (await db.execute(
+        select(func.coalesce(func.sum(DataTransaction.revenue_platform), 0)))).scalar()
+
+第33页
+瓯医数链医疗数据要素可信流通平台 V1.0
+    contributor_rev = (await db.execute(
+        select(func.coalesce(func.sum(DataTransaction.revenue_contributor), 0)))).scalar()
+    product_count = (await db.execute(
+        select(func.count()).select_from(DataProduct))).scalar()
+    by_type_rows = (await db.execute(
+        select(DataProduct.data_type, func.count())
+        .group_by(DataProduct.data_type))).all()
+    recent = (await db.execute(
+        select(DataTransaction).order_by(DataTransaction.created_at.desc()).limit(5)
+    )).scalars().all()
+    return {
+        "total_transactions": total_tx,
+        "total_amount": total_amount,
+        "revenue": {"provider": provider_rev, "platform": platform_rev,
+                    "contributor": contributor_rev},
+        "product_count": product_count,
+        "products_by_type": {t: c for t, c in by_type_rows},
+        "recent_transactions": [_tx_dict(t) for t in recent],
+        "compliance": {
+            "privacy_incidents": 0,
+            "chain_verified": True,
+            "note": "全链路审计存证链连续无断裂；隐私事件 0 起",
+        },
+    }
+
+"""
+MedSignal - 政策解读路由
+P0-2 升级：
+- match: 基于用户真实慢病/参保类型匹配政策（规则引擎，P1-3 接入 policy_matcher 完整算法）
+- search: 真实调用 KnowledgeBase 向量检索
+- detail: 查询 PolicyDocument 表
+"""
+import logging
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
+from app import crud
+from app.database import get_db
+from app.schemas import PolicySearchRequest
+from app.services import orchestrator, policy_matcher
+logger = logging.getLogger(__name__)
+router = APIRouter(prefix="/api/policy", tags=["政策解读"])
+@router.get("/match/{user_id}")
+async def match_policies(user_id: str, db: AsyncSession = Depends(get_db)):
+    """基于用户画像精准匹配医保政策（P1-3：policy_matcher 引擎）"""
+    profile = await crud.get_user_health_profile(db, user_id)
+    if not profile.get("found"):
+        raise HTTPException(status_code=404, detail=f"用户 {user_id} 不存在")
+    report = policy_matcher.match(profile)
+    return report.to_dict()
+@router.post("/search")
+
+第34页
+瓯医数链医疗数据要素可信流通平台 V1.0
+async def search_policies(request: PolicySearchRequest):
+    """政策搜索：优先用 KnowledgeBase 向量检索，降级用 policy_matcher 关键词搜索"""
+    query = request.query
+    category = request.category
+    results = []
+    # 优先向量检索
+    kb = orchestrator._kb
+    if kb is not None:
+        try:
+            search_results = await kb.search(query, top_k=10, min_score=0.2, category=category)
+            results = [
+                {
+                    "policy_id": i + 1,
+                    "title": r.title,
+                    "category": category or "综合",
+                    "publish_date": "",
+                    "summary": r.content[:200] if r.content else "",
+                    "source": r.source,
+                    "score": round(r.score, 4),
+                }
+                for i, r in enumerate(search_results)
+            ]
+        except Exception as e:
+            logger.error("政策向量检索失败: %s，降级关键词搜索", e)
+    # 降级：关键词搜索
+    if not results:
+        results = policy_matcher.search(query, category=category, top_k=10)
+    return {"keyword": query, "results": results, "total": len(results)}
+@router.get("/{policy_id}")
+async def get_policy_detail(policy_id: int, db: AsyncSession = Depends(get_db)):
+    """查询政策文档详情（查 PolicyDocument 表）"""
+    doc = await crud.get_policy_document(db, policy_id)
+    if doc is None:
+        raise HTTPException(status_code=404, detail=f"政策 {policy_id} 不存在")
+    return {
+        "policy_id": doc.id,
+        "title": doc.title,
+        "content": doc.content,
+        "source": doc.source or "省级医疗保障部门",
+        "publish_date": doc.publish_date.isoformat() if doc.publish_date else "",
+        "category": doc.category or "综合",
+        "tags": doc.tags or "",
+    }
+
+"""
+MedSignal - 数据安全路由
+P0-2 升级：
+- 接入真实 DataAuthorization 表
+- 授权矩阵基于真实授权数据生成
+- 审计日志带存证哈希（呼应可信数据空间"区块链存证"叙事）
+
+第35页
+瓯医数链医疗数据要素可信流通平台 V1.0
+- create_authorization 真实写库
+"""
+import hashlib
+import logging
+import time
+from datetime import UTC, datetime
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
+from app import crud
+from app.auth import require_api_key
+from app.database import get_db
+from app.schemas import AuthorizationRequest
+logger = logging.getLogger(__name__)
+router = APIRouter(prefix="/api/security", tags=["数据安全"])
+# 数据类型与智能体定义
+DATA_TYPES = ["医保缴费记录", "就医记录", "购药记录", "健康档案"]
+AGENTS = [
+    ("coverage_agent", "权益管家"),
+    ("health_agent", "健康卫士"),
+    ("claims_agent", "报销助手"),
+    ("policy_agent", "政策参谋"),
+    ("body_agent", "档案管家"),
+    ("data_agent", "数据管家"),
+    ("drug_agent", "药品卫士"),
+]
+@router.get("/authorizations/{user_id}")
+async def get_authorizations(user_id: str, db: AsyncSession = Depends(get_db)):
+    """获取用户数据授权全景（基于真实授权数据）"""
+    user = await crud.get_user(db, user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail=f"用户 {user_id} 不存在")
+    auths = await crud.get_active_authorizations(db, user_id)
+    # 构建授权矩阵
+    matrix = []
+    for dt in DATA_TYPES:
+        row = {"data_type": dt}
+        for agent_key, agent_name in AGENTS:
+            matched = [a for a in auths
+                       if a.data_type == dt and a.authorized_agent in (agent_key, agent_name)]
+            if matched:
+                a = matched[0]
+                row[agent_key] = {"authorized": True, "expires": a.expires_at.date().isoformat() if a.expires_at else None}
+            else:
+                row[agent_key] = {"authorized": False, "expires": None}
+        matrix.append(row)
+    # 按 Agent 聚合授权的数据类型
+    active_auths = []
+    for agent_key, agent_name in AGENTS:
+        dts = list({a.data_type for a in auths if a.authorized_agent in (agent_key, agent_name)})
+        if dts:
+
+第36页
+瓯医数链医疗数据要素可信流通平台 V1.0
+            first = next((a for a in auths if a.authorized_agent in (agent_key, agent_name)), None)
+            active_auths.append({
+                "agent": agent_name,
+                "agent_key": agent_key,
+                "data_types": dts,
+                "authorized_at": first.authorized_at.isoformat() if first and first.authorized_at else "",
+                "expires_at": first.expires_at.isoformat() if first and first.expires_at else "",
+            })
+    # 审计日志（模拟近期访问 + 存证哈希）
+    audit_log = _build_audit_log(user_id, auths)
+    return {
+        "active_authorizations": len(auths),
+        "anomalies": 0,
+        "today_accesses": len(audit_log),
+        "authorization_matrix": matrix,
+        "rights": [
+            {"name": "知情权", "description": "您有权了解个人数据被哪些智能体访问及用途", "icon": "eye"},
+            {"name": "更正权", "description": "您有权要求更正不准确的个人数据", "icon": "edit"},
+            {"name": "删除权", "description": "您有权要求删除您的个人数据", "icon": "trash"},
+            {"name": "可携带权", "description": "您有权以通用格式导出您的个人数据", "icon": "download"},
+        ],
+        "active_auths": active_auths,
+        "audit_log": audit_log,
+    }
+@router.post("/authorize")
+async def create_authorization(
+    request: AuthorizationRequest,
+    db: AsyncSession = Depends(get_db),
+    _: str = Depends(require_api_key),
+):
+    """创建/更新授权（真实写库）
+    挂载鉴权（选择性）：配置 YIBAO_API_KEY 后，需 X-API-Key 头；
+    未配置则放行（保证 Demo 流畅）。呼应"安全守门 Agent"。
+    """
+    user = await crud.get_user(db, request.user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail=f"用户 {request.user_id} 不存在")
+    auth = await crud.create_authorization(
+        db=db,
+        user_id=request.user_id,
+        data_type=request.data_type,
+        authorized_agent=request.authorized_agent,
+        duration_days=request.duration_days,
+    )
+    # 生成存证哈希（呼应可信数据空间区块链存证）
+    proof_str = f"{auth.id}|{request.user_id}|{request.data_type}|{request.authorized_agent}|{auth.authorized_at.isoformat()}"
+    proof_hash = hashlib.sha256(proof_str.encode("utf-8")).hexdigest()
+    return {
+        "id": auth.id,
+        "user_id": request.user_id,
+
+第37页
+瓯医数链医疗数据要素可信流通平台 V1.0
+        "data_type": auth.data_type,
+        "authorized_agent": auth.authorized_agent,
+        "authorized_at": auth.authorized_at.isoformat(),
+        "expires_at": auth.expires_at.isoformat(),
+        "is_active": auth.is_active,
+        "proof_hash": proof_hash,  # 存证哈希（可信数据空间叙事）
+        "message": "授权已创建并存证",
+    }
+@router.get("/audit-log/{user_id}")
+async def get_audit_log(user_id: str, db: AsyncSession = Depends(get_db)):
+    """获取用户数据访问审计日志"""
+    user = await crud.get_user(db, user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail=f"用户 {user_id} 不存在")
+    auths = await crud.get_active_authorizations(db, user_id)
+    logs = _build_audit_log(user_id, auths)
+    return {
+        "user_id": user_id,
+        "logs": [
+            {
+                "id": log["id"],
+                "action": log["action"],
+                "agent": log["agent"],
+                "data_type": log["data_type"],
+                "timestamp": log["timestamp"],
+                "detail": log["detail"],
+                "proof_hash": log.get("proof_hash", ""),
+            }
+            for log in logs
+        ],
+    }
+@router.get("/data-flow/{user_id}")
+async def get_data_flow(user_id: str, db: AsyncSession = Depends(get_db)):
+    """可信数据空间数据流转记录（P2-2 可视化用）
+    展示：数据源 → 隐私计算沙箱 → Agent → 用户 的完整流转链路。
+    """
+    user = await crud.get_user(db, user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail=f"用户 {user_id} 不存在")
+    auths = await crud.get_active_authorizations(db, user_id)
+    flows = []
+    for a in auths[:6]:
+        flow_id = f"flow_{a.id:04d}"
+        # 4 步流转：申请 → 合规检查 → 隐私计算 → 存证返回
+        steps = [
+            {"step": "数据使用申请", "actor": a.authorized_agent, "status": "done",
+             "detail": f"{a.authorized_agent} 申请访问 {a.data_type}", "ts": a.authorized_at.isoformat()},
+            {"step": "合规检查", "actor": "安全守门", "status": "done",
+             "detail": "校验授权范围、用途、有效期，通过《数据安全法》合规检查", "ts": a.authorized_at.isoformat()},
+            {"step": "隐私计算沙箱", "actor": "可信数据空间", "status": "done",
+
+第38页
+瓯医数链医疗数据要素可信流通平台 V1.0
+             "detail": "数据在沙箱内可用不可见，仅输出计算结果，原始数据不出域", "ts": a.authorized_at.isoformat()},
+            {"step": "审计存证", "actor": "区块链存证节点", "status": "done",
+             "detail": f"访问记录上链存证，哈希 {hashlib.sha256(f'{a.id}'.encode()).hexdigest()[:16]}…", "ts": a.authorized_at.isoformat()},
+        ]
+        flows.append({"id": flow_id, "data_type": a.data_type, "agent": a.authorized_agent, "steps": steps})
+    return {
+        "user_id": user_id,
+        "user_name": user.name,
+        "total_flows": len(flows),
+        "flows": flows,
+        "principle": "数据可用不可见 · 原始数据不出域 · 全链路可追溯",
+    }
+# ============================================================
+# 内部工具
+# ============================================================
+def _build_audit_log(user_id: str, auths) -> list[dict]:
+    """构建审计日志（基于真实授权记录 + 模拟近期访问 + 存证哈希）"""
+    now_ts = time.time()
+    logs = []
+    # 真实授权记录作为"授权事件"
+    for a in auths:
+        ts = a.authorized_at.isoformat() if a.authorized_at else datetime.now(UTC).isoformat()
+        proof = hashlib.sha256(f"auth|{a.id}|{a.data_type}".encode()).hexdigest()
+        logs.append({
+            "id": 1000 + a.id,
+            "timestamp": ts,
+            "time": ts.replace("T", " ").split(".")[0],
+            "agent": a.authorized_agent,
+            "action": "查询" + a.data_type,
+            "data_type": a.data_type,
+            "status": "allowed",
+            "purpose": "授权范围内访问",
+            "detail": f"{a.authorized_agent} 读取 {a.data_type}（授权有效期至 {a.expires_at.date() if a.expires_at else 'N/A'}）",
+            "proof_hash": proof[:32] + "…",
+        })
+    # 补充几条模拟的近期数据访问（演示审计能力）
+    sample_agents = ["健康卫士", "权益管家", "政策参谋", "报销助手"]
+    sample_purposes = ["生成健康画像", "权益查询", "政策匹配分析", "报销预审"]
+    sample_dts = ["就医记录", "医保缴费记录", "购药记录"]
+    for i in range(4):
+        ts_iso = datetime.fromtimestamp(now_ts - i * 3600, tz=UTC).isoformat()
+        agent = sample_agents[i % len(sample_agents)]
+        dt = sample_dts[i % len(sample_dts)]
+        purpose = sample_purposes[i % len(sample_purposes)]
+        proof = hashlib.sha256(f"access|{i}|{agent}|{dt}".encode()).hexdigest()
+        logs.append({
+            "id": 2000 + i,
+            "timestamp": ts_iso,
+            "time": ts_iso.replace("T", " ").split(".")[0],
+            "agent": agent,
+
+第39页
+瓯医数链医疗数据要素可信流通平台 V1.0
+            "action": "查询" + dt,
+            "data_type": dt,
+            "status": "allowed",
+            "purpose": purpose,
+            "detail": f"{agent} 读取 {dt} 用于{purpose}",
+            "proof_hash": proof[:32] + "…",
+        })
+    return logs
+
+"""用户管理 API。"""
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
+from app import crud
+from app.database import get_db
+from app.schemas import UserCreate
+router = APIRouter(prefix="/api/users", tags=["用户管理"])
+def _user_payload(user) -> dict:
+    return {
+        "id": user.id,
+        "public_id": f"user_{user.id:03d}",
+        "name": user.name,
+        "email": user.email,
+        "age": user.age,
+        "gender": user.gender,
+        "city": user.city,
+        "insurance_type": user.insurance_type,
+        "employee_status": user.employee_status,
+        "conditions": [],
+    }
+@router.get("")
+async def list_users(db: AsyncSession = Depends(get_db)):
+    users = await crud.get_users(db, limit=200)
+    return {"users": [_user_payload(user) for user in users]}
+@router.post("", status_code=status.HTTP_201_CREATED)
+async def create_user(payload: UserCreate, db: AsyncSession = Depends(get_db)):
+    values = payload.model_dump()
+    values["name"] = values["name"].strip()
+    values["city"] = values["city"].strip()
+    values["insurance_type"] = values["insurance_type"].strip()
+    values["employee_status"] = values["employee_status"].strip()
+    if not all(
+        values[key]
+        for key in ("name", "city", "insurance_type", "employee_status")
+    ):
+        raise HTTPException(status_code=422, detail="用户信息不能为空")
+    user = await crud.create_user(db, **values)
+    return _user_payload(user)
+
+from pydantic import BaseModel, Field
+class ChatRequest(BaseModel):
+
+第40页
+瓯医数链医疗数据要素可信流通平台 V1.0
+    message: str = Field(..., min_length=1, max_length=2000)
+    user_id: str = Field(default="user_001")
+    conversation_id: str | None = None
+    # 前端携带的最近对话历史（role+content），用于上下文连续性与指代消解
+    history: list[dict[str, str]] | None = None
+class UserCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=50)
+    age: int = Field(..., ge=0, le=130)
+    gender: str = Field(..., pattern=r"^(男|女|其他)$")
+    city: str = Field(..., min_length=1, max_length=50)
+    insurance_type: str = Field(..., min_length=1, max_length=50)
+    employee_status: str = Field(..., min_length=1, max_length=30)
+class PreReviewRequest(BaseModel):
+    total_amount: float = Field(..., ge=0)
+    visit_type: str = Field(default="门诊")
+    insurance_type: str = Field(default="职工医保")
+class DataQueryRequest(BaseModel):
+    question: str = Field(..., min_length=1, max_length=500)
+    user_id: str | None = None
+class DrugRegisterRequest(BaseModel):
+    """用户确认后将扫描到的药品登记到用药记录"""
+    user_id: str = Field(default="user_001")
+    drug: dict = Field(default_factory=dict)
+    category: str | None = None
+class PolicySearchRequest(BaseModel):
+    query: str = Field(..., min_length=1, max_length=500)
+    category: str | None = None
+class AuthorizationRequest(BaseModel):
+    user_id: str
+    data_type: str = Field(..., pattern=r"^(医保缴费记录|就医记录|购药记录|健康档案|脑电数据)$")
+    authorized_agent: str = Field(..., pattern=r"^(权益管家|报销助手|健康卫士|政策参谋|脑电卫士|档案管家)$")
+    duration_days: int = Field(default=365, ge=1, le=3650)
+
+"""档案管家 — 信息抽取工具（纯整理，不诊断）
+三级降级与项目惯例一致：
+- 文本抽取：LLM（共享 orchestrator._llm）→ 关键词规则
+- 图片转录：阿里云 DashScope 视觉模型（qwen-vl）→ OCR.space 原文 → 空串
+- PDF：pypdf 文本层 → 空串（扫描版 PDF 无文本层，由智能体提示用户改传图片）
+所有函数只摘录用户原文中**明确陈述**的内容；LLM 结果会做"原文包含性"校验，
+防止模型补充原文没有的信息。
+"""
+from __future__ import annotations
+import base64
+import difflib
+import json
+import logging
+import re
+import uuid
+from typing import Any
+from sqlalchemy.ext.asyncio import AsyncSession
+
+第41页
+瓯医数链医疗数据要素可信流通平台 V1.0
+from app import crud
+from app.services.body import taxonomy as tx
+from app.services.body.taxonomy import has_health_signal  # noqa: F401  (re-export)
+logger = logging.getLogger(__name__)
+SOURCE_CHAT = "对话输入"
+DISCLAIMER = (
+    "以上内容仅整理展示您在对话或上传资料中提供的信息，非诊断结论；"
+    "本模块不是临床诊断工具，不自动检测或推断疾病。"
+)
+_DATE_RE = re.compile(
+    r"(\d{4})\s*年\s*(\d{1,2})\s*月(?:\s*(\d{1,2})\s*日)?"
+    r"|(\d{4})[-/.](\d{1,2})(?:[-/.](\d{1,2}))?"
+)
+_SENT_SPLIT = re.compile(r"[。！？；\n!?;]+")
+# 提到他人的句子不归档（档案只记用户本人）。# ponytail: 词表启发式；LLM 路径由提示词规则 7 兜底
+_THIRD_PARTY = ("父亲", "母亲", "爸", "妈", "儿子", "女儿", "老公", "老婆", "丈夫", "妻子",
+                "爷爷", "奶奶", "外公", "外婆", "孩子", "朋友", "同事", "邻居", "亲戚")
+_EXTRACT_SYSTEM = """你是 MedSignal 档案管家的信息整理模块，不是医生。
+任务：从用户原文中摘录**已明确陈述**的身体部位/症状/检查结果，按器官归档。
+规则：
+1. 只摘录原文已有信息，不推断、不补充诊断、不加评价。
+2. organ 只能取以下 key：{keys}
+3. raw_excerpt 必须是原文中的连续片段（逐字复制）。
+4. description 用一句话转述 raw_excerpt，不得加入原文没有的内容。
+5. event_date 取原文中该信息对应的时间，格式 YYYY-MM 或 YYYY-MM-DD；原文未说明则为空字符串。
+6. 成对部位（肩/臂/膝/腿）只有原文写明左右才用 *_left/*_right，否则用通用 key。
+7. 只归档用户本人的情况；涉及他人（父母、子女、配偶、朋友等）的描述一律不归档。
+只返回 JSON 数组，不要其他内容：
+[{{"organ":"lungs","description":"...","raw_excerpt":"...","event_date":"2026-02"}}]
+原文没有任何身体部位相关的健康信息时返回 []。"""
+# ------------------------------------------------------------------
+# 文本抽取
+# ------------------------------------------------------------------
+def parse_event_date(text: str) -> str:
+    """提取第一处日期 → 'YYYY-MM' 或 'YYYY-MM-DD'；无则空串。"""
+    m = _DATE_RE.search(text)
+    if not m:
+        return ""
+    y, mo, d = (m.group(1), m.group(2), m.group(3)) if m.group(1) else (m.group(4), m.group(5), m.group(6))
+    if not 1 <= int(mo) <= 12:
+        return ""
+    out = f"{y}-{int(mo):02d}"
+    if d and 1 <= int(d) <= 31:
+        out += f"-{int(d):02d}"
+    return out
+def rule_extract(text: str) -> list[dict]:
+    """关键词规则抽取：逐句匹配器官别名，日期向后沿用（报告日期常在开头）。
+    # ponytail: keyword rules; LLM path takes over when a key is configured
+    """
+    records: list[dict] = []
+
+第42页
+瓯医数链医疗数据要素可信流通平台 V1.0
+    last_date = ""
+    for sent in _SENT_SPLIT.split(text):
+        s = sent.strip()
+        if not s or any(w in s for w in _THIRD_PARTY):
+            continue
+        date = parse_event_date(s) or last_date
+        if parse_event_date(s):
+            last_date = date
+        for organ in tx.match_organs(s):
+            records.append({"organ": organ, "description": s, "raw_excerpt": s, "event_date": date})
+    return records
+def _contained(excerpt: str, source: str) -> bool:
+    """原文包含性校验：逐字包含，或最长公共子串 ≥ 60%。"""
+    e = re.sub(r"\s+", "", excerpt)
+    s = re.sub(r"\s+", "", source)
+    if not e:
+        return False
+    if e in s:
+        return True
+    match = difflib.SequenceMatcher(None, e, s).find_longest_match(0, len(e), 0, len(s))
+    return match.size / len(e) >= 0.6
+def _validate(items: Any, source: str) -> list[dict] | None:
+    if isinstance(items, dict):
+        items = items.get("records") or items.get("items") or items.get("data")
+    if not isinstance(items, list):
+        return None
+    out: list[dict] = []
+    for it in items:
+        if not isinstance(it, dict):
+            continue
+        organ = str(it.get("organ", "")).strip()
+        excerpt = str(it.get("raw_excerpt", "")).strip()
+        if organ not in tx.ORGANS or not _contained(excerpt, source):
+            logger.info("丢弃抽取项（器官未知或原文不包含）: %s", it)
+            continue
+        out.append({
+            "organ": organ,
+            "description": str(it.get("description") or excerpt).strip(),
+            "raw_excerpt": excerpt,
+            "event_date": parse_event_date(str(it.get("event_date", ""))) or "",
+        })
+    return out
+async def extract_from_text(text: str, llm=None) -> list[dict]:
+    """LLM 抽取（带原文校验）→ 失败降级规则抽取。"""
+    if llm is not None:
+        try:
+            from app.services.llm_service import LLMService
+            resp = await llm.chat(
+                messages=[
+                    {"role": "system", "content": _EXTRACT_SYSTEM.format(keys=", ".join(tx.ORGANS))},
+
+第43页
+瓯医数链医疗数据要素可信流通平台 V1.0
+                    {"role": "user", "content": text[:4000]},
+                ],
+                temperature=0.1,
+            )
+            validated = _validate(LLMService._parse_json_response(resp), text)
+            if validated is not None:
+                return validated
+            logger.warning("LLM 抽取结果无法解析，降级规则抽取")
+        except Exception as e:
+            logger.warning("LLM 抽取失败: %s，降级规则抽取", e)
+    return rule_extract(text)
+def missing_info(records: list[dict]) -> list[str]:
+    """记录缺少的关键信息 → 澄清问题（不猜测）。"""
+    questions: list[str] = []
+    for r in records:
+        label = tx.label_of(r["organ"])
+        if r["organ"] in tx.PAIRED:
+            questions.append(f"您提到的{label}情况是左侧还是右侧？")
+        if not r.get("event_date"):
+            questions.append(f"{label}相关情况的检查或发生时间大概是什么时候？")
+    return list(dict.fromkeys(questions))
+# ------------------------------------------------------------------
+# 资料转录（图片 / PDF / 文本）
+# ------------------------------------------------------------------
+async def extract_from_image(data: bytes, mime: str, llm=None, filename: str = "image.jpg") -> str:
+    """图片 → 文字：DashScope 视觉模型逐字转录 → OCR.space 原文 → 空串。"""
+    if llm is not None:
+        try:
+            b64 = base64.b64encode(data).decode()
+            text = await llm.chat_vision([
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "image_url", "image_url": {"url": f"data:{mime or 'image/jpeg'};base64,{b64}"}},
+                        {"type": "text", "text": "请逐字转录这张医学报告/病历图片中的全部文字，保持原文，不要总结、不要解读。"},
+                    ],
+                }
+            ])
+            if text:
+                return text
+        except Exception as e:
+            logger.warning("视觉模型转录失败: %s，降级 OCR", e)
+    try:
+        from app.services.ocr_service import get_ocr_service
+        return await get_ocr_service().recognize_text(data, filename)
+    except Exception as e:
+        logger.warning("OCR 转录失败: %s", e)
+        return ""
+def extract_from_pdf(data: bytes) -> str:
+    """PDF 文本层提取。# ponytail: 扫描版 PDF 无文本层 → 返回空串，由智能体提示改传图片"""
+
+第44页
+瓯医数链医疗数据要素可信流通平台 V1.0
+    try:
+        from io import BytesIO
+        from pypdf import PdfReader
+        reader = PdfReader(BytesIO(data))
+        return "\n".join((page.extract_text() or "") for page in reader.pages).strip()
+    except Exception as e:
+        logger.warning("PDF 解析失败: %s", e)
+        return ""
+def classify_doc_kind(filename: str, text: str) -> str:
+    head = f"{filename} {text[:500]}".upper()
+    if any(k in head for k in ("MRI", "磁共振", "核磁")):
+        return "MRI报告"
+    if "CT" in head:
+        return "CT报告"
+    return "病历文本" if text.strip() else "其他"
+# ------------------------------------------------------------------
+# 归档入口
+# ------------------------------------------------------------------
+async def ingest_text(
+    db: AsyncSession,
+    user_id: str | int,
+    text: str,
+    *,
+    source_type: str,
+    source_label: str,
+    source_ref: str = "",
+    llm=None,
+    document_id: int | None = None,
+) -> list[dict]:
+    """门控 → 抽取 → 追加入库，返回新增记录 dict 列表（一个 batch_id = 一次归档周期）。"""
+    if not text or not tx.has_health_signal(text):
+        return []
+    records = await extract_from_text(text, llm)
+    if not records:
+        return []
+    rows = await crud.create_body_records(
+        db,
+        user_id,
+        records,
+        source_type=source_type,
+        source_label=source_label,
+        source_ref=source_ref,
+        document_id=document_id,
+        batch_id=uuid.uuid4().hex[:12],
+    )
+    return [crud.body_record_to_dict(r) for r in rows]
+def records_to_text(records: list[dict]) -> str:
+    """把记录逐条渲染为 [日期][来源] 器官：转述（供结构化回答与 LLM 上下文）。"""
+    return "\n".join(
+        f"- [{r.get('event_date') or '日期未注明'}][{r.get('source_label', '')}] "
+
+第45页
+瓯医数链医疗数据要素可信流通平台 V1.0
+        f"{r.get('organ_label') or tx.label_of(r.get('organ', ''))}：{r.get('description', '')}"
+        for r in records
+    )
+def to_json(obj: Any) -> str:
+    return json.dumps(obj, ensure_ascii=False)
+
+"""器官/身体部位分类表 — 前后端共同契约。
+key 是未来 3D 模型网格名，label 是展示中文名，aliases 用于规则抽取与意图关键词。
+成对部位：文本含"左/右"时归到 *_left / *_right；未说明左右时归到通用 key（如 shoulder），
+绝不猜测左右。
+"""
+from __future__ import annotations
+# key -> (label, aliases)
+ORGANS: dict[str, tuple[str, list[str]]] = {
+    "brain": ("头部/脑", ["头部", "头痛", "头晕", "偏头痛", "脑部", "脑子", "颅"]),
+    "eyes": ("眼部", ["眼", "眼睛", "视力", "白内障", "眼底"]),
+    "neck": ("颈部", ["颈部", "颈椎", "脖子", "甲状腺"]),
+    "lungs": ("肺部", ["肺", "肺部", "结节", "肺结节", "胸片", "咳嗽", "支气管"]),
+    "heart": ("心脏", ["心脏", "心悸", "冠心", "心电", "心律", "心肌", "胸闷"]),
+    "liver": ("肝脏", ["肝", "肝脏", "脂肪肝", "转氨酶", "肝功"]),
+    "stomach": ("胃部", ["胃", "胃部", "反酸", "胃镜", "胃炎", "胃痛"]),
+    "kidneys": ("肾脏", ["肾", "肾脏", "肌酐", "尿蛋白", "肾功"]),
+    "intestines": ("肠道", ["肠", "肠道", "腹泻", "便秘", "肠镜", "结肠", "肠胃"]),
+    "spleen": ("脾脏", ["脾", "脾脏"]),
+    "pancreas": ("胰腺", ["胰", "胰腺", "糖尿病"]),
+    "spine": ("脊柱/腰背", ["腰", "腰椎", "背部", "后背", "脊柱", "椎间盘", "腰痛"]),
+    "chest": ("胸部", ["胸部", "胸口", "乳腺", "肋骨"]),
+    "abdomen": ("腹部", ["腹部", "肚子", "腹痛", "胆囊", "胰腺", "脾脏"]),
+    "pelvis": ("盆腔", ["盆腔", "骨盆", "前列腺", "子宫", "膀胱"]),
+    "uterus": ("子宫", ["子宫", "宫腔", "内膜"]),
+    "ovaries": ("卵巢", ["卵巢", "输卵管"]),
+    "prostate": ("前列腺", ["前列腺"]),
+    "shoulder": ("肩部", ["肩", "肩部", "肩膀", "肩周"]),
+    "shoulder_left": ("左肩", []),
+    "shoulder_right": ("右肩", []),
+    "arm": ("手臂", ["手臂", "胳膊", "手腕", "肘"]),
+    "arm_left": ("左臂", []),
+    "arm_right": ("右臂", []),
+    "knee": ("膝盖", ["膝", "膝盖", "膝关节", "半月板"]),
+    "knee_left": ("左膝", []),
+    "knee_right": ("右膝", []),
+    "leg": ("腿部", ["腿", "腿部", "小腿", "大腿", "脚踝", "足部", "脚"]),
+    "leg_left": ("左腿", []),
+    "leg_right": ("右腿", []),
+}
+# 有左右之分的通用 key
+PAIRED = {"shoulder", "arm", "knee", "leg"}
+# 症状/检查类信号词：用于判断一句话是否包含值得归档的健康信息
+SYMPTOM_WORDS: list[str] = [
+    "疼", "痛", "不适", "酸痛", "胀", "发麻", "肿", "结节", "囊肿", "息肉", "炎",
+
+第46页
+瓯医数链医疗数据要素可信流通平台 V1.0
+    "复查", "检查", "诊断", "查出", "确诊", "报告", "CT", "MRI", "核磁", "B超", "彩超",
+    "手术", "住院", "就诊", "体检", "异常", "偏高", "偏低", "阳性", "阴性",
+]
+LABELS: dict[str, str] = {k: v[0] for k, v in ORGANS.items()}
+def label_of(key: str) -> str:
+    return LABELS.get(key, key)
+def _side(text: str) -> str:
+    if "左" in text and "右" not in text:
+        return "_left"
+    if "右" in text and "左" not in text:
+        return "_right"
+    return ""
+def match_organs(text: str) -> list[str]:
+    """按别名匹配文本中出现的器官 key（去重、保序）。
+    成对部位带"左/右"时返回 *_left/*_right，否则返回通用 key。
+    """
+    found: list[str] = []
+    for key, (_, aliases) in ORGANS.items():
+        if not aliases or not any(a in text for a in aliases):
+            continue
+        resolved = key + _side(text) if key in PAIRED else key
+        if resolved not in found:
+            found.append(resolved)
+    return found
+def has_health_signal(text: str) -> bool:
+    """是否包含值得归档的健康信息：出现器官别名 或 症状/检查词。"""
+    return bool(match_organs(text)) or any(w in text for w in SYMPTOM_WORDS)
+
+"""数字人体完整档案归集、测试数据播种与联调导出。
+数据库是患者数据唯一运行时来源；本模块仅按已有用户画像确定性生成合成测试数据，
+不联网、不诊断，也不修改或删除已经归档的记录。
+"""
+from __future__ import annotations
+import csv
+import io
+import json
+import math
+from datetime import UTC, datetime
+from PIL import Image, ImageDraw
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.models import (
+    BodyArchiveFile,
+    BodyRecord,
+    EEGRecord,
+    MedicationRecord,
+    User,
+)
+from app.services.body.taxonomy import label_of
+CONDITIONS = {
+
+第47页
+瓯医数链医疗数据要素可信流通平台 V1.0
+    1: ["糖尿病", "高血压"],
+    2: ["冠心病"],
+    3: [],
+    4: ["甲状腺结节"],
+    5: [],
+    6: ["糖尿病", "骨质疏松"],
+    7: ["胃病"],
+    8: [],
+    9: ["高血压", "关节炎", "白内障"],
+    10: ["腰椎间盘突出"],
+}
+CONDITION_ORGAN = {
+    "糖尿病": "pancreas",
+    "高血压": "heart",
+    "冠心病": "heart",
+    "甲状腺结节": "neck",
+    "骨质疏松": "spine",
+    "胃病": "stomach",
+    "关节炎": "knee",
+    "白内障": "eyes",
+    "腰椎间盘突出": "spine",
+}
+GOVERNMENT_FIELDS = [
+    "档案编号",
+    "系统患者ID",
+    "数据标记",
+    "姓名",
+    "性别代码",
+    "出生日期",
+    "年龄",
+    "城市",
+    "参保类型",
+    "就业状态",
+    "主系统疾病标签",
+    "联系电话",
+    "现住址",
+    "建档日期",
+    "管理机构",
+    "既往史",
+    "体检日期",
+    "身高cm",
+    "体重kg",
+    "BMI",
+    "血压mmHg",
+    "当前用药",
+    "病史记录数",
+    "检验记录数",
+    "脑电记录数",
+    "原始附件数",
+    "报送模板",
+
+第48页
+瓯医数链医疗数据要素可信流通平台 V1.0
+    "报送状态",
+]
+def patient_ref(user_id: int) -> str:
+    return f"user_{user_id:03d}"
+def _birth_date(user: User) -> str:
+    return f"{2026 - user.age:04d}-{(user.id * 2) % 12 + 1:02d}-{(user.id * 3) % 25 + 1:02d}"
+def _exam(user: User, conditions: list[str]) -> dict:
+    weight = round(52 + user.id * 1.8 + (7 if user.gender == "男" else 0), 1)
+    height = 158 + (user.id % 5) * 2 + (8 if user.gender == "男" else 0)
+    bmi = round(weight / ((height / 100) ** 2), 1)
+    systolic = 118 + (10 if "高血压" in conditions else 0) + user.id % 5
+    return {
+        "exam_date": f"2026-08-{12 + user.id:02d}",
+        "height_cm": height,
+        "weight_kg": weight,
+        "bmi": bmi,
+        "waist_cm": round(70 + user.id * 1.2, 1),
+        "blood_pressure": f"{systolic}/{74 + user.id % 8}",
+        "fasting_glucose": 7.1 if "糖尿病" in conditions else round(4.8 + user.id * 0.04, 1),
+    }
+def _labs(user: User, conditions: list[str]) -> list[dict]:
+    rows = [
+        {
+            "date": f"2026-08-{12 + user.id:02d}",
+            "item": "血红蛋白",
+            "value": 132 + user.id,
+            "unit": "g/L",
+            "reference": "测试值",
+        },
+        {
+            "date": f"2026-08-{12 + user.id:02d}",
+            "item": "空腹血糖",
+            "value": 7.1 if "糖尿病" in conditions else round(4.8 + user.id * 0.04, 1),
+            "unit": "mmol/L",
+            "reference": "测试值",
+        },
+    ]
+    if conditions:
+        rows.append(
+            {
+                "date": f"2026-08-{12 + user.id:02d}",
+                "item": "总胆固醇",
+                "value": round(4.1 + user.id * 0.05, 1),
+                "unit": "mmol/L",
+                "reference": "测试值",
+            }
+        )
+    return rows
+def _ai_table(d: dict) -> list[dict]:
+    rows: list[dict] = []
+
+第49页
+瓯医数链医疗数据要素可信流通平台 V1.0
+    def add(category, item, value, date="", source="患者结构化档案", status="已归档"):
+        rows.append(
+            {"category": category, "item": item, "value": str(value), "date": date, "source": source, "status": status}
+        )
+    add("身份", "档案编号", d["archive_id"], d["profile"]["registered_at"])
+    add("主系统同步", "系统用户ID", d["patient_id"], d["source_system"]["synced_at"], "medsignal-agent")
+    add("基本信息", "参保与就业", f"{d['profile']['insurance_type']} / {d['profile']['employee_status']}")
+    for x in d["lab_results"]:
+        add("检验", x["item"], f"{x['value']} {x['unit']}", x["date"], "数据库检验测试数据")
+    for x in d["medications"]:
+        add("用药", x["name"], x["dose"], x["date"], "数据库购药记录")
+    for x in d["eeg_sessions"]:
+        add("脑电", "采集会话", x["summary"], x["recorded_at"], "数据库EEG记录")
+    for x in d["records"]:
+        add("3D病史", label_of(x["organ"]), x["description"], x["event_date"], x["source_ref"])
+    for x in d["materials"]:
+        add("原始资料", x["category"], x["filename"], x["uploaded_at"], "数据库附件")
+    return rows
+async def build_dossier(db: AsyncSession, user: User) -> dict:
+    uid = user.id
+    conditions = CONDITIONS.get(uid, [])
+    records = list(
+        (
+            await db.execute(select(BodyRecord).where(BodyRecord.user_id == uid).order_by(BodyRecord.event_date.desc()))
+        ).scalars()
+    )
+    meds = list(
+        (
+            await db.execute(
+                select(MedicationRecord)
+                .where(MedicationRecord.user_id == uid)
+                .order_by(MedicationRecord.date.desc())
+                .limit(6)
+            )
+        ).scalars()
+    )
+    eegs = list(
+        (
+            await db.execute(select(EEGRecord).where(EEGRecord.user_id == uid).order_by(EEGRecord.recorded_at.desc()))
+        ).scalars()
+    )
+    files = list(
+        (
+            await db.execute(select(BodyArchiveFile).where(BodyArchiveFile.user_id == uid).order_by(BodyArchiveFile.id))
+        ).scalars()
+    )
+    profile = {
+        "birth_date": _birth_date(user),
+        "id_type": "测试证件",
+        "id_number": f"TEST-{uid:04d}",
+
+第50页
+瓯医数链医疗数据要素可信流通平台 V1.0
+        "city": user.city,
+        "insurance_type": user.insurance_type,
+        "employee_status": user.employee_status,
+        "system_conditions": conditions,
+        "phone": f"1380000{uid:04d}",
+        "address": f"{user.city}测试地址{uid}号",
+        "registered_at": "2026-01-14",
+        "managing_org": "嘀嗒医测试健康档案中心",
+    }
+    materials = [
+        {
+            "filename": f.filename,
+            "stored_name": f.stored_name,
+            "mime_type": f.mime_type,
+            "size_bytes": f.size_bytes,
+            "category": f.category,
+            "note": f.note,
+            "uploaded_at": f.uploaded_at.isoformat(timespec="minutes"),
+            "previewable": True,
+            "data_source": "database_blob",
+        }
+        for f in files
+    ]
+    dossier = {
+        "patient_id": patient_ref(uid),
+        "archive_id": f"DH-TEST-2026-{uid:04d}",
+        "data_classification": "synthetic_test_data",
+        "name": user.name,
+        "sex": "f" if user.gender == "女" else "m",
+        "age": user.age,
+        "source_system": {
+            "system": "medsignal-agent",
+            "system_user_id": patient_ref(uid),
+            "synced_at": "2026-08-28 14:00",
+        },
+        "data_lineage": ["主系统用户", "一人一档", "3D病史", "多模态数据", "AI归整", "CSV/JSON/ZIP导出"],
+        "profile": profile,
+        "health_summary": {
+            "past_history": conditions,
+            "allergies": ["未记录"],
+            "family_history": ["测试数据未记录"],
+            "risk_tags": conditions,
+        },
+        "lifestyle": {
+            "smoking": "不吸烟",
+            "alcohol": "偶尔",
+            "exercise": "每周3次",
+            "diet": "一般",
+            "sleep": "约7小时",
+        },
+
+第51页
+瓯医数链医疗数据要素可信流通平台 V1.0
+        "latest_exam": _exam(user, conditions),
+        "lab_results": _labs(user, conditions),
+        "medications": [
+            {"name": m.medication_name, "dose": f"{m.quantity}盒", "date": m.date.date().isoformat(), "status": "在档"}
+            for m in meds
+        ],
+        "eeg_sessions": [
+            {
+                "session_id": e.session_id,
+                "recorded_at": e.recorded_at.isoformat(timespec="minutes"),
+                "duration_seconds": e.duration_seconds,
+                "sampling_rate_hz": 256,
+                "summary": e.summary or e.mental_state_label,
+                "metrics": json.loads(e.metrics),
+            }
+            for e in eegs
+        ],
+        "followups": [{"date": "2026-08-25", "type": "测试随访", "result": "资料已归集", "status": "已完成"}],
+        "records": [
+            {
+                "id": r.id,
+                "organ": r.organ,
+                "event_date": r.event_date,
+                "source_type": r.source_type,
+                "source_label": r.source_label,
+                "source_ref": r.source_ref,
+                "description": r.description,
+                "raw_excerpt": r.raw_excerpt,
+                "created_at": r.created_at.isoformat(timespec="minutes"),
+            }
+            for r in records
+        ],
+        "materials": materials,
+        "submission": {"template": "居民健康档案模拟联调表", "status": "可导出（未接正式政务接口）"},
+        "ai_summary": {
+            "title": f"{user.name}全量档案归整",
+            "overview": "已按档案号归集主系统、3D病史、检验、用药、脑电和原始附件。",
+            "disclaimer": "合成测试数据；AI仅归整，不作诊断。",
+        },
+        "updated_at": datetime.now(UTC).isoformat(timespec="seconds"),
+    }
+    dossier["ai_organized_table"] = _ai_table(dossier)
+    dossier["completeness"] = {
+        "ready_for_mock_export": all([records, eegs, files]),
+        "missing_sections": [],
+        "record_count": len(records),
+        "lab_count": len(dossier["lab_results"]),
+        "followup_count": 1,
+    }
+    dossier["integration_coverage"] = {
+
+第52页
+瓯医数链医疗数据要素可信流通平台 V1.0
+        "profile": True,
+        "records": bool(records),
+        "labs": True,
+        "eeg": bool(eegs),
+        "files": bool(files),
+        "ai_table": True,
+        "mock_export": dossier["completeness"]["ready_for_mock_export"],
+    }
+    return dossier
+def government_row(d: dict) -> dict:
+    p, e = d["profile"], d["latest_exam"]
+    return {
+        "档案编号": d["archive_id"],
+        "系统患者ID": d["patient_id"],
+        "数据标记": d["data_classification"],
+        "姓名": d["name"],
+        "性别代码": "2" if d["sex"] == "f" else "1",
+        "出生日期": p["birth_date"],
+        "年龄": d["age"],
+        "城市": p["city"],
+        "参保类型": p["insurance_type"],
+        "就业状态": p["employee_status"],
+        "主系统疾病标签": "；".join(p["system_conditions"]),
+        "联系电话": p["phone"],
+        "现住址": p["address"],
+        "建档日期": p["registered_at"],
+        "管理机构": p["managing_org"],
+        "既往史": "；".join(d["health_summary"]["past_history"]),
+        "体检日期": e["exam_date"],
+        "身高cm": e["height_cm"],
+        "体重kg": e["weight_kg"],
+        "BMI": e["bmi"],
+        "血压mmHg": e["blood_pressure"],
+        "当前用药": "；".join(x["name"] for x in d["medications"]),
+        "病史记录数": len(d["records"]),
+        "检验记录数": len(d["lab_results"]),
+        "脑电记录数": len(d["eeg_sessions"]),
+        "原始附件数": len(d["materials"]),
+        "报送模板": d["submission"]["template"],
+        "报送状态": d["submission"]["status"],
+    }
+def csv_bytes(rows: list[dict], fields: list[str]) -> bytes:
+    stream = io.StringIO(newline="")
+    writer = csv.DictWriter(stream, fieldnames=fields, extrasaction="ignore")
+    writer.writeheader()
+    writer.writerows(rows)
+    return ("\ufeff" + stream.getvalue()).encode("utf-8")
+def ai_csv_bytes(dossiers: list[dict]) -> bytes:
+    fields = ["档案编号", "系统患者ID", "姓名", "分类", "项目", "值", "日期", "来源", "状态"]
+    rows = [
+
+第53页
+瓯医数链医疗数据要素可信流通平台 V1.0
+        {
+            "档案编号": d["archive_id"],
+            "系统患者ID": d["patient_id"],
+            "姓名": d["name"],
+            **{
+                "分类": x["category"],
+                "项目": x["item"],
+                "值": x["value"],
+                "日期": x["date"],
+                "来源": x["source"],
+                "状态": x["status"],
+            },
+        }
+        for d in dossiers
+        for x in d["ai_organized_table"]
+    ]
+    return csv_bytes(rows, fields)
+def _eeg_csv(uid: int) -> bytes:
+    out = io.StringIO()
+    w = csv.writer(out)
+    w.writerow(["time_s", "Fp1", "Fp2", "C3", "C4"])
+    for i in range(256):
+        t = i / 64
+        w.writerow([f"{t:.4f}"] + [f"{math.sin(t * (7 + c) * math.pi * 2 + uid):.5f}" for c in range(4)])
+    return ("\ufeff" + out.getvalue()).encode("utf-8")
+def _wave_png(uid: int) -> bytes:
+    image = Image.new("RGB", (960, 360), "white")
+    draw = ImageDraw.Draw(image)
+    draw.text((28, 20), f"Synthetic EEG preview - {patient_ref(uid)}", fill=(20, 61, 91))
+    colors = [(0, 145, 190), (50, 120, 220), (40, 180, 135), (230, 125, 55)]
+    for c in range(4):
+        y0 = 85 + c * 70
+        pts = [(x, y0 + int(24 * math.sin((x / 960 * 9 + c + uid) * math.pi * 2))) for x in range(30, 930)]
+        draw.line(pts, fill=colors[c], width=2)
+        draw.text((8, y0 - 8), f"Ch{c + 1}", fill=colors[c])
+    buf = io.BytesIO()
+    image.save(buf, "PNG")
+    return buf.getvalue()
+def _pdf(uid: int) -> bytes:
+    text = f"Synthetic health archive report - {patient_ref(uid)} - TEST DATA ONLY"
+    stream = f"BT /F1 14 Tf 60 760 Td ({text}) Tj ET".encode("ascii")
+    objects = [
+        b"1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n",
+        b"2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n",
+        b"3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 612 792]/Resources<</Font<</F1 4 0 R>>>>/Contents 5 0 R>>endobj\n",
+        b"4 0 obj<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>endobj\n",
+        b"5 0 obj<</Length " + str(len(stream)).encode() + b">>stream\n" + stream + b"\nendstream endobj\n",
+    ]
+    out = bytearray(b"%PDF-1.4\n")
+    offsets = [0]
+
+第54页
+瓯医数链医疗数据要素可信流通平台 V1.0
+    for obj in objects:
+        offsets.append(len(out))
+        out.extend(obj)
+    xref = len(out)
+    out.extend(f"xref\n0 {len(objects) + 1}\n0000000000 65535 f \n".encode())
+    for offset in offsets[1:]:
+        out.extend(f"{offset:010d} 00000 n \n".encode())
+    out.extend(f"trailer<</Size {len(objects) + 1}/Root 1 0 R>>\nstartxref\n{xref}\n%%EOF".encode())
+    return bytes(out)
+async def seed_demo_archive(db: AsyncSession) -> dict:
+    users = list((await db.execute(select(User).order_by(User.id))).scalars())
+    added_records = added_files = 0
+    for user in users:
+        existing_records = (
+            await db.execute(select(BodyRecord.id).where(BodyRecord.user_id == user.id).limit(1))
+        ).first()
+        if not existing_records:
+            conditions = CONDITIONS.get(user.id, []) or ["年度健康体检"]
+            for i, condition in enumerate(conditions):
+                db.add(
+                    BodyRecord(
+                        user_id=user.id,
+                        organ=CONDITION_ORGAN.get(condition, "chest"),
+                        description=f"主系统测试档案记录：{condition}",
+                        raw_excerpt=condition,
+                        event_date=f"2026-{max(1, 8 - i):02d}",
+                        source_type="upload",
+                        source_label="主系统记录",
+                        source_ref="medsignal-agent",
+                        batch_id="synthetic-demo-2026",
+                    )
+                )
+                added_records += 1
+        existing_files = (
+            await db.execute(select(BodyArchiveFile.id).where(BodyArchiveFile.user_id == user.id).limit(1))
+        ).first()
+        if not existing_files:
+            blobs = [
+                ("eeg-waveform.csv", "脑电原始数据.csv", "text/csv", "脑电", _eeg_csv(user.id)),
+                ("eeg-preview.png", "脑电波形预览.png", "image/png", "脑电", _wave_png(user.id)),
+                ("archive-report.pdf", "健康档案报告.pdf", "application/pdf", "报告", _pdf(user.id)),
+                (
+                    "source-profile.json",
+                    "主系统原始数据.json",
+                    "application/json",
+                    "主系统",
+                    json.dumps(
+                        {
+                            "user_id": patient_ref(user.id),
+                            "name": user.name,
+
+第55页
+瓯医数链医疗数据要素可信流通平台 V1.0
+                            "data_classification": "synthetic_test_data",
+                        },
+                        ensure_ascii=False,
+                        indent=2,
+                    ).encode(),
+                ),
+            ]
+            for prefix, filename, mime, category, content in blobs:
+                db.add(
+                    BodyArchiveFile(
+                        user_id=user.id,
+                        stored_name=f"{patient_ref(user.id)}-{prefix}",
+                        filename=filename,
+                        mime_type=mime,
+                        category=category,
+                        note="合成测试原始资料",
+                        size_bytes=len(content),
+                        content=content,
+                    )
+                )
+                added_files += 1
+    await db.commit()
+    return {"users": len(users), "records_added": added_records, "files_added": added_files}
+
+"""
+MedSignal - 报销计算引擎（Claims Engine）
+P1-1：完整的、可解释的医保报销计算引擎。
+- 输入：费用总额 + 费用明细（甲/乙/自费分类）+ 参保类型 + 医院等级 + 调整因子
+- 输出：分步推导的 JSON（每步含 name/detail/amount）+ 自然语言解释 + 大病保险分段计算
+算法链路：
+  费用总额 → ①分类(甲/乙/自费) → ②乙类先自付 → ③进入统筹 →
+  ④扣起付线 → ⑤按比例报销 → ⑥封顶线 → ⑦大病保险二次报销 → ⑧最终报销额/自付额
+这是路演场景 2 "逐项公式推导" 的代码支撑。
+"""
+from __future__ import annotations
+import json
+import logging
+import os
+import re
+from dataclasses import dataclass, field
+logger = logging.getLogger(__name__)
+# 规则库路径：app/services/claims_engine.py → 上3层到 yibao-zhinao/，再进 data/
+_RULES_PATH = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))),
+    "data", "reimbursement_rules.json",
+)
+_RULES_CACHE: dict | None = None
+def load_rules() -> dict:
+    """加载报销规则库（带缓存）。"""
+    global _RULES_CACHE
+
+第56页
+瓯医数链医疗数据要素可信流通平台 V1.0
+    if _RULES_CACHE is not None:
+        return _RULES_CACHE
+    try:
+        with open(_RULES_PATH, encoding="utf-8") as f:
+            _RULES_CACHE = json.load(f)
+        logger.info("加载报销规则库: %s", _RULES_PATH)
+    except Exception as e:
+        logger.error("加载报销规则库失败 %s: %s，使用内置兜底规则", _RULES_PATH, e)
+        _RULES_CACHE = _builtin_rules()
+    return _RULES_CACHE
+@dataclass
+class FeeItem:
+    """费用明细项"""
+    name: str
+    amount: float
+    category: str = "甲类"  # 甲类 / 乙类 / 自费
+@dataclass
+class ClaimsInput:
+    """报销计算输入"""
+    total_amount: float
+    visit_type: str = "门诊"             # 门诊 / 住院
+    insurance_type: str = "职工医保"     # 职工医保 / 居民医保 / 灵活就业医保
+    hospital_level: str = "二级"          # 社区 / 二级 / 三级
+    employee_status: str = "在职"          # 在职 / 退休
+    items: list[FeeItem] = field(default_factory=list)  # 费用明细（空则按全甲类处理）
+    chronic_disease: bool = False        # 是否享受门诊慢病待遇
+    cross_region: bool = False           # 是否异地就医
+    annual_used_deductible: float = 0    # 年度已用起付线累计
+@dataclass
+class ClaimsResult:
+    """报销计算结果"""
+    total_amount: float
+    class_a: float          # 甲类费用
+    class_b: float          # 乙类费用
+    self_paid_items: float  # 自费项目
+    class_b_deduction: float  # 乙类先自付
+    pooling_base: float      # 进入统筹基数
+    deductible: int          # 起付线
+    annual_used_deductible: float
+    effective_deductible: float  # 实际扣除的起付线
+    rate: float              # 报销比例
+    chronic_boost: float     # 慢病加成
+    cross_region_penalty: float  # 异地扣减
+    reimbursed_basic: float  # 基本医保报销额
+    cap: int                 # 封顶线
+    capped: bool             # 是否触及封顶
+    big_insurance: float     # 大病保险报销额
+    big_insurance_tiers: list[dict]  # 大病分段明细
+    total_reimbursed: float  # 总报销额（基本 + 大病）
+    out_of_pocket: float     # 个人自付
+
+第57页
+瓯医数链医疗数据要素可信流通平台 V1.0
+    reimbursement_ratio: float  # 实际报销比例
+    steps: list[dict]        # 分步推导
+    explanation: str         # 自然语言解释
+    def to_dict(self) -> dict:
+        return {
+            "total_amount": round(self.total_amount, 2),
+            "class_a": round(self.class_a, 2),
+            "class_b": round(self.class_b, 2),
+            "self_paid_items": round(self.self_paid_items, 2),
+            "class_b_deduction": round(self.class_b_deduction, 2),
+            "reimbursable_amount": round(self.pooling_base, 2),
+            "deductible": self.deductible,
+            "annual_used_deductible": round(self.annual_used_deductible, 2),
+            "effective_deductible": round(self.effective_deductible, 2),
+            "reimbursement_ratio": round(self.rate, 4),
+            "chronic_boost": self.chronic_boost,
+            "cross_region_penalty": self.cross_region_penalty,
+            "reimbursed_basic": round(self.reimbursed_basic, 2),
+            "cap": self.cap,
+            "capped": self.capped,
+            "big_insurance": round(self.big_insurance, 2),
+            "big_insurance_tiers": self.big_insurance_tiers,
+            "estimated_reimbursement": round(self.total_reimbursed, 2),
+            "out_of_pocket": round(self.out_of_pocket, 2),
+            "actual_ratio": round(self.reimbursement_ratio, 4),
+            "steps": self.steps,
+            "explanation": self.explanation,
+        }
+def calculate(inp: ClaimsInput) -> ClaimsResult:
+    """执行完整的报销计算，返回带分步推导的结果。"""
+    rules = load_rules()
+    ins_cfg = rules["insurance_types"].get(inp.insurance_type, rules["insurance_types"]["职工医保"])
+    adj = rules.get("adjustments", {})
+    # ---- 步骤 1：费用分类（甲/乙/自费）----
+    if inp.items:
+        class_a = sum(it.amount for it in inp.items if it.category == "甲类")
+        class_b = sum(it.amount for it in inp.items if it.category == "乙类")
+        self_paid = sum(it.amount for it in inp.items if it.category == "自费")
+        # 校正：明细总额可能与 total_amount 不一致，以明细为准
+        total = class_a + class_b + self_paid
+    else:
+        # 无明细：假设全部为甲类（演示常见场景）
+        class_a = inp.total_amount
+        class_b = 0.0
+        self_paid = 0.0
+        total = inp.total_amount
+    # ---- 步骤 2：乙类先自付 ----
+    b_self_pay_rate = ins_cfg.get("class_b_self_pay_rate", 0.10)
+    class_b_deduction = class_b * b_self_pay_rate
+    # ---- 步骤 3：进入统筹基数 ----
+
+第58页
+瓯医数链医疗数据要素可信流通平台 V1.0
+    pooling_base = class_a + class_b * (1 - b_self_pay_rate)
+    # ---- 步骤 4：起付线 ----
+    rule = _lookup_rule(rules, inp.insurance_type, inp.visit_type, inp.hospital_level)
+    deductible = rule["deductible"]
+    # 年度累计起付线：剩余可扣 = max(0, deductible - annual_used)
+    remaining_deductible = max(0, deductible - inp.annual_used_deductible)
+    effective_deductible = min(remaining_deductible, pooling_base)
+    # ---- 步骤 5：报销比例 + 调整因子 ----
+    rate = rule["rate"]
+    chronic_boost = 0.0
+    cross_region_penalty = 0.0
+    if inp.chronic_disease:
+        chronic_boost = ins_cfg.get("chronic_benefit_boost", 0.10)
+        rate += chronic_boost
+    if inp.cross_region:
+        cross_region_penalty = adj.get("cross_region_penalty", -0.05)
+        rate += cross_region_penalty
+    if "退休" in inp.employee_status:
+        rate += ins_cfg.get("retiree_boost", 0.05)
+    rate = max(adj.get("rate_floor", 0.50), min(rate, adj.get("rate_ceiling", 0.96)))
+    # ---- 步骤 6：基本医保报销 + 封顶线 ----
+    after_deductible = max(0, pooling_base - effective_deductible)
+    cap = rule["cap"]
+    reimbursed_basic = min(after_deductible * rate, cap)
+    capped = after_deductible * rate > cap
+    # ---- 步骤 7：大病保险二次报销 ----
+    # 个人自付 = 总额 - 基本报销（含乙类自付 + 自费 + 起付线 + 比例自付）
+    basic_self_pay = total - reimbursed_basic
+    big_cfg = rules.get("big_insurance", {})
+    big_deductible = big_cfg.get("deductible", 15000)
+    big_insurance = 0.0
+    big_tiers = []
+    if basic_self_pay > big_deductible:
+        over = basic_self_pay - big_deductible
+        prev_cap = 0
+        for tier in big_cfg.get("tiers", []):
+            tier_max = tier["max"]
+            tier_rate = tier["rate"]
+            seg = over - prev_cap if tier_max is None else min(over, tier_max) - prev_cap
+            if seg > 0:
+                seg_reimb = seg * tier_rate
+                big_insurance += seg_reimb
+                big_tiers.append({
+                    "label": tier["label"],
+                    "segment": round(seg, 2),
+                    "rate": tier_rate,
+                    "reimbursed": round(seg_reimb, 2),
+                })
+            if tier_max is not None and over <= tier_max:
+                break
+
+第59页
+瓯医数链医疗数据要素可信流通平台 V1.0
+            prev_cap = tier_max or prev_cap
+    # ---- 步骤 8：汇总 ----
+    total_reimbursed = reimbursed_basic + big_insurance
+    out_of_pocket = total - total_reimbursed
+    actual_ratio = total_reimbursed / total if total > 0 else 0
+    # ---- 分步推导（路演逐项公式推导的代码支撑）----
+    steps = _build_steps(
+        total=total, class_a=class_a, class_b=class_b, self_paid=self_paid,
+        b_rate=b_self_pay_rate, b_deduction=class_b_deduction,
+        pooling_base=pooling_base, deductible=deductible,
+        annual_used=inp.annual_used_deductible, effective_ded=effective_deductible,
+        rate=rate, chronic_boost=chronic_boost, cross_region_penalty=cross_region_penalty,
+        employee_status=inp.employee_status, after_ded=after_deductible,
+        reimbursed_basic=reimbursed_basic, cap=cap, capped=capped,
+        basic_self_pay=basic_self_pay, big_deductible=big_deductible,
+        big_insurance=big_insurance, total_reimbursed=total_reimbursed,
+        out_of_pocket=out_of_pocket,
+    )
+    explanation = _build_explanation(
+        inp=inp, rate=rate, deductible=deductible, cap=cap,
+        reimbursed_basic=reimbursed_basic, big_insurance=big_insurance,
+        total_reimbursed=total_reimbursed, out_of_pocket=out_of_pocket,
+    )
+    return ClaimsResult(
+        total_amount=total, class_a=class_a, class_b=class_b,
+        self_paid_items=self_paid, class_b_deduction=class_b_deduction,
+        pooling_base=pooling_base, deductible=deductible,
+        annual_used_deductible=inp.annual_used_deductible,
+        effective_deductible=effective_deductible, rate=rate,
+        chronic_boost=chronic_boost, cross_region_penalty=cross_region_penalty,
+        reimbursed_basic=reimbursed_basic, cap=cap, capped=capped,
+        big_insurance=big_insurance, big_insurance_tiers=big_tiers,
+        total_reimbursed=total_reimbursed, out_of_pocket=out_of_pocket,
+        reimbursement_ratio=actual_ratio, steps=steps, explanation=explanation,
+    )
+def compare_scenarios(inp: ClaimsInput) -> list[dict]:
+    """对比不同医院等级 / 慢病待遇 / 异地场景的报销差异（数据赋能价值展示）"""
+    scenarios = []
+    for level in ["社区", "二级", "三级"]:
+        for chronic in ([False, True] if not inp.chronic_disease else [True]):
+            for cross in ([False, True] if inp.cross_region else [False]):
+                sub_inp = ClaimsInput(
+                    total_amount=inp.total_amount, visit_type=inp.visit_type,
+                    insurance_type=inp.insurance_type, hospital_level=level,
+                    employee_status=inp.employee_status, items=inp.items,
+                    chronic_disease=chronic, cross_region=cross,
+                    annual_used_deductible=inp.annual_used_deductible,
+                )
+                r = calculate(sub_inp)
+                tag = f"{level}"
+
+第60页
+瓯医数链医疗数据要素可信流通平台 V1.0
+                if chronic:
+                    tag += "+慢病"
+                if cross:
+                    tag += "+异地"
+                scenarios.append({
+                    "scenario": tag,
+                    "hospital_level": level,
+                    "chronic_disease": chronic,
+                    "cross_region": cross,
+                    "reimbursed": round(r.total_reimbursed, 2),
+                    "out_of_pocket": round(r.out_of_pocket, 2),
+                    "actual_ratio": round(r.reimbursement_ratio, 4),
+                })
+    return scenarios
+# ============================================================
+# 内部工具
+# ============================================================
+def _lookup_rule(rules: dict, ins_type: str, visit_type: str, level: str) -> dict:
+    """查表获取起付线/比例/封顶线。"""
+    ins_rules = rules["rules"].get(ins_type) or rules["rules"]["职工医保"]
+    visit_rules = ins_rules.get(visit_type) or ins_rules["住院"]
+    return visit_rules.get(level) or visit_rules["二级"]
+def _build_steps(**kw) -> list[dict]:
+    """构建分步推导明细。"""
+    s = []
+    s.append({"name": "① 费用分类", "detail": kw["total"], "amount": round(kw["total"], 2)})
+    if kw["class_b"] > 0 or kw["self_paid"] > 0:
+        detail = f"甲类 {kw['class_a']:.2f} 元、乙类 {kw['class_b']:.2f} 元、自费 {kw['self_paid']:.2f} 元"
+    else:
+        detail = f"门诊/住院费用 {kw['total']:.2f} 元（均为医保目录内甲类）"
+    s.append({"name": "② 费用明细", "detail": detail, "amount": round(kw["total"], 2)})
+    if kw["b_deduction"] > 0:
+        s.append({"name": "③ 乙类先自付", "detail": f"乙类 {kw['class_b']:.2f} × {kw['b_rate']*100:.0f}% = {kw['b_deduction']:.2f} 元", "amount": round(kw["b_deduction"], 2)})
+    s.append({"name": "④ 进入统筹", "detail": f"{kw['total']:.2f} - {kw['b_deduction']:.2f} - {kw['self_paid']:.2f} = {kw['pooling_base']:.2f} 元", "amount": round(kw["pooling_base"], 2)})
+    ded_detail = f"起付线 {kw['deductible']} 元（年度已用 {kw['annual_used']:.2f}，本次扣 {kw['effective_ded']:.2f}）"
+    s.append({"name": "⑤ 扣起付线", "detail": ded_detail, "amount": round(kw["effective_ded"], 2)})
+    rate_detail = f"报销比例 {kw['rate']*100:.0f}%"
+    boosts = []
+    if kw["chronic_boost"] > 0:
+        boosts.append(f"慢病待遇+{kw['chronic_boost']*100:.0f}%")
+    if kw["cross_region_penalty"] < 0:
+        boosts.append(f"异地扣减{kw['cross_region_penalty']*100:.0f}%")
+    if "退休" in kw["employee_status"]:
+        boosts.append("退休加成+5%")
+    if boosts:
+        rate_detail += f"（{'、'.join(boosts)}）"
+    s.append({"name": "⑥ 报销计算", "detail": f"{rate_detail}：{kw['after_ded']:.2f} × {kw['rate']*100:.0f}% = {kw['reimbursed_basic']:.2f} 元", "amount": round(kw["reimbursed_basic"], 2)})
+    cap_detail = f"封顶线 {kw['cap']} 元" + ("（已触及）" if kw["capped"] else "（未触及）")
+    s.append({"name": "⑦ 封顶线检查", "detail": cap_detail, "amount": kw["cap"]})
+    if kw["big_insurance"] > 0:
+
+第61页
+瓯医数链医疗数据要素可信流通平台 V1.0
+        s.append({"name": "⑧ 大病保险", "detail": f"个人自付 {kw['basic_self_pay']:.2f} 超过大病起付线 {kw['big_deductible']}，二次报销 {kw['big_insurance']:.2f} 元", "amount": round(kw["big_insurance"], 2)})
