@@ -1,0 +1,22 @@
+{
+  "sdk_type": "docker",
+  "port": 7860,
+  "env": {
+    "DEMO_OFFLINE": "false",
+    "LLM_API_KEY": "__LLM_API_KEY__",
+    "LLM_BASE_URL": "https://llm-uarugoa0rqgduef5.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
+    "LLM_MODEL": "qwen-max",
+    "VISION_API_KEY": "__VISION_API_KEY__",
+    "VISION_BASE_URL": "https://llm-uarugoa0rqgduef5.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
+    "VISION_MODEL": "qwen3-vl-plus",
+    "DASHSCOPE_API_KEY": "__DASHSCOPE_API_KEY__",
+    "DASHSCOPE_BASE_URL": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "DASHSCOPE_MODEL": "qwen-plus",
+    "DATABASE_URL": "sqlite+aiosqlite:////mnt/workspace/data/yibao.db",
+    "REDIS_URL": "",
+    "CORS_ORIGINS": "*",
+    "YIBAO_SESSION_SECRET": "oumedchain-modelscope-demo-secret-change-me",
+    "CHROMA_PERSIST_DIR": "/mnt/workspace/chroma_data",
+    "ENABLE_API_PROXY": "1"
+  }
+}

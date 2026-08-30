@@ -1,0 +1,258 @@
+# ============================================================
+# 自动部署 MedSignal Demo 到魔搭创空间（ModelScope Studio）
+#
+# 触发方式：
+#   1. push 到 main 且涉及 后端/前端/部署文件 变更
+#   2. 手动 workflow_dispatch（推荐首次部署用）
+#
+# 需要的仓库 Secrets：
+#   MODELSCOPE_USERNAME  — 魔搭用户名（如手机号或自定义名）
+#   MODELSCOPE_TOKEN     — 魔搭个人访问令牌（设置 → 访问令牌）
+# 需要的仓库 Variables：
+#   MODELSCOPE_SPACE_NAME— 创空间名（如 medsignal-demo）
+#
+# 原理：创空间本质是 Git 仓库，推送代码后魔搭平台自动 Docker 构建。
+# ============================================================
+name: Deploy to ModelScope
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - "deploy/modelscope/**"
+      - "data/**"
+      - ".github/workflows/deploy-modelscope.yml"
+
+jobs:
+  deploy:
+    name: Build & push demo to ModelScope Space
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Assemble deploy package
+        shell: bash
+        env:
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          VISION_API_KEY: ${{ secrets.VISION_API_KEY }}
+          DASHSCOPE_API_KEY: ${{ secrets.DASHSCOPE_API_KEY }}
+        run: |
+          set -euo pipefail
+          PKG=/tmp/mscope
+          rm -rf "$PKG" && mkdir -p "$PKG"
+
+          # 后端：剔除开发/本地产物与密钥文件（保留 scripts/：init_db.py 容器启动时初始化 DB）
+          rsync -a \
+            --exclude 'venv' --exclude '.venv' --exclude '__pycache__' \
+            --exclude '*.db' --exclude '*.db-journal' \
+            --exclude 'chroma_data' --exclude '.pytest_cache' \
+            --exclude '*.pyc' --exclude 'tests' \
+            --exclude '.env' --exclude '.env.*' \
+            backend/ "$PKG/backend/"
+
+          # 前端：剔除构建产物与密钥文件（pnpm-lock.yaml 必须保留：Dockerfile 用 frozen-lockfile）
+          rsync -a \
+            --exclude 'node_modules' --exclude '.next' --exclude '.pytest_cache' \
+            --exclude '.env' --exclude '.env.*' \
+            frontend/ "$PKG/frontend/"
+
+          # 数据文件：init_db.py + claims/health/policy/eeg/imaging 引擎需要
+          # 排除 receipts/（OCR 图片 10+MB，离线模式不用）和 .gitkeep
+          rsync -a \
+            --exclude 'receipts' --exclude '.gitkeep' \
+            data/ "$PKG/data/"
+
+          # 魔搭部署文件 → 包根目录
+          cp deploy/modelscope/Dockerfile "$PKG/Dockerfile"
+          cp deploy/modelscope/ms_deploy.json "$PKG/ms_deploy.json"
+          cp deploy/modelscope/entrypoint.sh "$PKG/entrypoint.sh"
+          cp deploy/modelscope/requirements-modelscope.txt "$PKG/requirements-modelscope.txt"
+          cp README.md "$PKG/README.md"
+
+          # 注入 LLM/Vision Token：从 GitHub Secret 替换占位符，密钥永不进入 git 历史
+          # bash 单引号包裹整个 python -c，python 内部全用双引号，避开 YAML/bash/python 三层引号嵌套
+          python3 -c '
+          import json, os, pathlib
+          p = pathlib.Path("/tmp/mscope/ms_deploy.json")
+          d = json.loads(p.read_text(encoding="utf-8"))
+          secrets_to_inject = [
+              ("LLM_API_KEY", os.environ.get("LLM_API_KEY", "")),
+              ("VISION_API_KEY", os.environ.get("VISION_API_KEY", "")),
+              ("DASHSCOPE_API_KEY", os.environ.get("DASHSCOPE_API_KEY", "")),
+          ]
+          injected = []
+          for key, val in secrets_to_inject:
+              if val:
+                  d["env"][key] = val
+                  injected.append(key)
+          p.write_text(json.dumps(d, ensure_ascii=False, indent=2) + chr(10), encoding="utf-8")
+          if injected:
+              print("::notice::已从 GitHub Secret 注入:", ", ".join(injected))
+          else:
+              print("::warning::未配置任何 LLM/Vision Secret，部署包保留占位符；请在魔搭创空间页面手工设置环境变量后才能调用真实 AI")
+          '
+
+          echo "--- 部署包内容 ---"
+          find "$PKG" -maxdepth 2 -type f | sort | head -40
+
+      - name: Push to ModelScope Space
+        shell: bash
+        env:
+          MSCORE_TOKEN: ${{ secrets.MODELSCOPE_TOKEN }}
+          SPACE_OWNER: ${{ secrets.MODELSCOPE_USERNAME }}
+          SPACE_NAME: ${{ vars.MODELSCOPE_SPACE_NAME }}
+        run: |
+          set -euo pipefail
+          if [ -z "${MSCORE_TOKEN:-}" ] || [ -z "${SPACE_OWNER:-}" ] || [ -z "${SPACE_NAME:-}" ]; then
+            echo "::error::缺少配置：请设置 secrets.MODELSCOPE_USERNAME / MODELSCOPE_TOKEN 和 variables.MODELSCOPE_SPACE_NAME"
+            exit 1
+          fi
+          cd /tmp/mscope
+          git init -q
+          git config user.name "oumedchain-deploy-bot"
+          git config user.email "oumedchain-deploy-bot@users.noreply.github.com"
+          git add -A
+          git -c i18n.commitEncoding=UTF-8 commit -q -m "deploy: 瓯医数链 demo @ $(date -u +%Y-%m-%dT%H:%M:%SZ) (${GITHUB_SHA::8})" || {
+            echo "::notice::没有内容变更，跳过推送"
+            exit 0
+          }
+          # 魔搭创空间 git push 认证格式：username 必须为 oauth2（不是用户名），token 作为 password
+          # 参考：https://modelscope.cn/skills/modelscope/modelscope-studio
+          git remote add origin "https://oauth2:${MSCORE_TOKEN}@www.modelscope.cn/studios/${SPACE_OWNER}/${SPACE_NAME}.git"
+          # 魔搭创空间默认分支为 master，且禁止 force push：
+          # 若远程已有初始化文件（README/.gitattributes），先合并再推送，避免 [rejected]
+          # （2026-08-28 教训：fetch 网络抖动被静默吞掉 → 合并被跳过 → push 被 reject）
+          fetch_tries=3
+          fetched=1
+          for i in $(seq 1 ${fetch_tries}); do
+            if git fetch origin master; then fetched=0; break; fi
+            echo "::warning::fetch origin/master 第 ${i} 次失败，重试..."
+            sleep 5
+          done
+          if [ "${fetched}" -ne 0 ]; then
+            echo "::error::无法拉取魔搭远程 master，放弃推送以避免 [rejected]"
+            exit 1
+          fi
+          if git rev-parse --verify origin/master >/dev/null 2>&1; then
+            git merge origin/master --allow-unrelated-histories -X ours --no-edit -q
+          fi
+          push_tries=3
+          pushed=1
+          for i in $(seq 1 ${push_tries}); do
+            if git push origin HEAD:master 2>&1 | sed "s/${MSCORE_TOKEN}/***/g"; then pushed=0; break; fi
+            echo "::warning::push 第 ${i} 次失败，重试..."
+            sleep 5
+            git fetch origin master || true
+            git merge origin/master --allow-unrelated-histories -X ours --no-edit -q || true
+          done
+          if [ "${pushed}" -ne 0 ]; then
+            echo "::error::推送魔搭创空间失败（重试 ${push_tries} 次后仍失败）"
+            exit 1
+          fi
+          echo "::notice::已推送至 https://www.modelscope.cn/studios/${SPACE_OWNER}/${SPACE_NAME}"
+
+      # 魔搭平台对 git push 不一定自动触发构建（曾出现推送后镜像长时间不更新的情况），
+      # 因此推送后必须显式调用 deploy API 强制触发构建（skill: ms-studio-deploy）
+      #
+      # ⚠️ 重要教训（2026-08-27 排查）：git 仓库中 ms_deploy.json 的 env 更新【不会】
+      # 同步到运行容器。容器环境变量的真实来源是平台侧保存的 secrets/variables，
+      # 只能通过 OpenAPI 写入（曾出现：推送新 ms_deploy.json 后容器内 LLM_API_KEY
+      # 仍为失效旧值导致 chat 504，新增 VISION_API_KEY 缺失）。因此部署前先同步。
+      - name: Sync secrets/variables to ModelScope platform
+        shell: bash
+        env:
+          MSCORE_TOKEN: ${{ secrets.MODELSCOPE_TOKEN }}
+          SPACE_OWNER: ${{ secrets.MODELSCOPE_USERNAME }}
+          SPACE_NAME: ${{ vars.MODELSCOPE_SPACE_NAME }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          VISION_API_KEY: ${{ secrets.VISION_API_KEY }}
+          DASHSCOPE_API_KEY: ${{ secrets.DASHSCOPE_API_KEY }}
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+          YIBAO_ADMIN_SECRET: ${{ secrets.YIBAO_ADMIN_SECRET }}
+        run: |
+          set -euo pipefail
+          EP="https://modelscope.cn/openapi/v1"
+          AUTH="Authorization: Bearer ${MSCORE_TOKEN}"
+
+          # 查询指定 kind（secrets/variables）下 key 是否已存在
+          key_exists() {
+            curl -sf -H "${AUTH}" \
+              "${EP}/studios/${SPACE_OWNER}/${SPACE_NAME}/$1" \
+              | grep -q "\"$2\""
+          }
+
+          # upsert：存在则 PUT 更新，不存在则 POST 新增
+          sync_kv() {
+            local kind="$1" key="$2" val="$3" method="POST" code
+            if key_exists "${kind}" "${key}"; then
+              method="PUT"
+            fi
+            code=$(curl -s -o /tmp/sync_resp.json -w "%{http_code}" -X "${method}" \
+              "${EP}/studios/${SPACE_OWNER}/${SPACE_NAME}/${kind}" \
+              -H "${AUTH}" -H "Content-Type: application/json" \
+              -d "{\"key\":\"${key}\",\"value\":\"${val}\"}")
+            echo "${kind%/s} ${key}: ${method} -> HTTP ${code}"
+            if [ "${code}" != "200" ] && [ "${code}" != "201" ]; then
+              echo "::warning::${kind%/s} ${key} 同步失败: $(head -c 300 /tmp/sync_resp.json)"
+            fi
+          }
+
+          delete_kv() {
+            local kind="$1" key="$2" code
+            if ! key_exists "${kind}" "${key}"; then
+              return 0
+            fi
+            code=$(curl -s -o /tmp/sync_resp.json -w "%{http_code}" -X "DELETE" \
+              "${EP}/studios/${SPACE_OWNER}/${SPACE_NAME}/${kind}" \
+              -H "${AUTH}" -H "Content-Type: application/json" \
+              -d "{\"key\":\"${key}\"}")
+            echo "${kind%/s} ${key}: DELETE -> HTTP ${code}"
+          }
+
+          # 敏感密钥 → secrets
+          if [ -n "${LLM_API_KEY:-}" ]; then sync_kv secrets LLM_API_KEY "${LLM_API_KEY}"; fi
+          if [ -n "${VISION_API_KEY:-}" ]; then sync_kv secrets VISION_API_KEY "${VISION_API_KEY}"; fi
+          if [ -n "${DASHSCOPE_API_KEY:-}" ]; then sync_kv secrets DASHSCOPE_API_KEY "${DASHSCOPE_API_KEY}"; fi
+          # 管理后台超级管理员：密码与 token 签发密钥走 secrets（公开创空间不能用默认密码）
+          if [ -n "${ADMIN_PASSWORD:-}" ]; then sync_kv secrets ADMIN_PASSWORD "${ADMIN_PASSWORD}"; fi
+          if [ -n "${YIBAO_ADMIN_SECRET:-}" ]; then sync_kv secrets YIBAO_ADMIN_SECRET "${YIBAO_ADMIN_SECRET}"; fi
+
+          # 非敏感配置 → 明文 variables（config.py 默认值已正确，此处同步防止平台残留旧值覆盖）
+          sync_kv variables DEMO_OFFLINE "false"
+          sync_kv variables ADMIN_USERNAME "admin"
+          sync_kv variables LLM_BASE_URL "https://llm-uarugoa0rqgduef5.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"
+          sync_kv variables LLM_MODEL "qwen-max"
+          sync_kv variables VISION_BASE_URL "https://llm-uarugoa0rqgduef5.cn-beijing.maas.aliyuncs.com/compatible-mode/v1"
+          sync_kv variables VISION_MODEL "qwen3-vl-plus"
+          sync_kv variables DASHSCOPE_BASE_URL "https://dashscope.aliyuncs.com/compatible-mode/v1"
+          sync_kv variables DASHSCOPE_MODEL "qwen-plus"
+          # Chroma 索引持久化到魔搭挂载点（容器内路径重启即丢，曾致重启后 KB 重建+模型重下）
+          sync_kv variables CHROMA_PERSIST_DIR "/mnt/workspace/chroma_data"
+
+          # 清理历史遗留的旧网关密钥（SenseNova/STEP，已弃用）
+          delete_kv secrets STEP_API_KEY || true
+          delete_kv secrets SENSENOVA_VISION_API_KEY || true
+
+      - name: Trigger Studio build (deploy API)
+        shell: bash
+        env:
+          MSCORE_TOKEN: ${{ secrets.MODELSCOPE_TOKEN }}
+          SPACE_OWNER: ${{ secrets.MODELSCOPE_USERNAME }}
+          SPACE_NAME: ${{ vars.MODELSCOPE_SPACE_NAME }}
+        run: |
+          set -euo pipefail
+          echo "触发创空间构建..."
+          HTTP_CODE=$(curl -s -o /tmp/deploy_resp.json -w "%{http_code}" -X POST \
+            "https://modelscope.cn/openapi/v1/studios/${SPACE_OWNER}/${SPACE_NAME}/deploy" \
+            -H "Authorization: Bearer ${MSCORE_TOKEN}")
+          echo "deploy API 响应 (${HTTP_CODE}): $(cat /tmp/deploy_resp.json)"
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "::error::deploy API 调用失败（HTTP ${HTTP_CODE}），请检查 MODELSCOPE_TOKEN 有效性"
+            exit 1
+          fi
+          echo "::notice::已触发构建，可在创空间控制台查看构建日志（Docker 构建约 3-5 分钟）"

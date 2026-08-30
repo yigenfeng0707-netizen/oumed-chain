@@ -1,0 +1,53 @@
+# ============================================================
+# 魔搭创空间构建/运行日志诊断（手动触发）
+#
+# 用途：本地无 MODELSCOPE_TOKEN，通过 CI 安全拉取创空间
+#       build/run 日志，排查镜像构建与容器启动问题。
+# 需要：secrets.MODELSCOPE_TOKEN / MODELSCOPE_USERNAME
+#       vars.MODELSCOPE_SPACE_NAME
+# ============================================================
+name: ModelScope Logs
+
+on:
+  workflow_dispatch:
+    inputs:
+      lines:
+        description: "每个日志截取的行数（从尾部）"
+        required: false
+        default: "150"
+
+jobs:
+  logs:
+    name: Fetch studio build/run logs
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Fetch logs via OpenAPI
+        shell: bash
+        env:
+          MSCORE_TOKEN: ${{ secrets.MODELSCOPE_TOKEN }}
+          SPACE_OWNER: ${{ secrets.MODELSCOPE_USERNAME }}
+          SPACE_NAME: ${{ vars.MODELSCOPE_SPACE_NAME }}
+          TAIL_LINES: ${{ inputs.lines }}
+        run: |
+          set -euo pipefail
+          EP="https://modelscope.cn/openapi/v1"
+          AUTH="Authorization: Bearer ${MSCORE_TOKEN}"
+          BASE="${EP}/studios/${SPACE_OWNER}/${SPACE_NAME}"
+
+          echo "========== Studio 详情 =========="
+          curl -sf -H "${AUTH}" "${BASE}" | python3 -c "import json,sys; data = (json.load(sys.stdin).get('Data') or {}); [print(f'{k}: {data[k]}') for k in ('Status','RunStatus','BuildStatus','SdkType','Visibility') if k in data]" || echo "(详情获取失败)"
+
+          fetch_log() {
+            local kind="$1"
+            echo ""
+            echo "========== ${kind} 日志（尾部 ${TAIL_LINES} 行） =========="
+            if curl -sf -H "${AUTH}" "${BASE}/logs/${kind}" -o "/tmp/${kind}.json"; then
+              python3 -c "import json; d = json.load(open('/tmp/${kind}.json')); data = d.get('Data') or {}; text = (data.get('logs') or data.get('Logs') or data.get('content') or '') if isinstance(data, dict) else (data if isinstance(data, str) else ''); text = text or json.dumps(d, ensure_ascii=False); print('\n'.join(text.splitlines()[-${TAIL_LINES}:]))"
+            else
+              echo "(${kind} 日志获取失败)"
+            fi
+          }
+
+          fetch_log build
+          fetch_log run

@@ -1,0 +1,54 @@
+# ============================================================
+# 瓯医数链魔搭 Demo 保活（5 分钟一次）
+#
+# 背景：魔搭公开创空间会自动休眠，官方暂不支持自主配置。
+#       通过定时访问 /api/health 保持实例活跃，避免首次访问冷启动。
+#
+# 需要的仓库 Secret：
+#   MODELSCOPE_DEMO_URL  — 创空间公网地址
+#     - 浏览器/同域代理用 .ms.show 域名（推荐）：https://gsym236998-medsignal-demo.ms.show
+#     - API 直连用 .api-inference.modelscope.net 域名：需魔搭 SDK Token，不建议保活用
+#     - 实际值见 GitHub Secrets（每次部署后可在创空间页面查看最新地址）
+#
+# 说明：public 仓库的 GitHub Actions 免费且额度无上限，可放心常驻。
+# ============================================================
+name: Keepalive ModelScope Demo
+
+on:
+  schedule:
+    # 每 5 分钟一次（GitHub 最小间隔）
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    name: Ping demo health endpoint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ping demo URL
+        shell: bash
+        env:
+          DEMO_URL: ${{ secrets.MODELSCOPE_DEMO_URL }}
+        run: |
+          if [ -z "${DEMO_URL:-}" ]; then
+            echo "::warning::未配置 secrets.MODELSCOPE_DEMO_URL，跳过保活"
+            exit 0
+          fi
+          echo "Ping -> ${DEMO_URL}/api/health"
+          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 60 "${DEMO_URL}/api/health" || echo 000)
+          echo "HTTP ${code}"
+          if [ "$code" = "200" ]; then
+            exit 0
+          fi
+          # 冷启动可能超时：等待后重试一次
+          echo "未就绪，等待 20s 后重试..."
+          sleep 20
+          code2=$(curl -s -o /dev/null -w '%{http_code}' --max-time 90 "${DEMO_URL}/api/health" || echo 000)
+          echo "Retry HTTP ${code2}"
+          if [ "$code2" = "200" ]; then
+            exit 0
+          fi
+          # 连续失败不阻断（可能是计划维护），仅告警
+          echo "::warning::demo 未响应（HTTP ${code}/${code2}），可能仍在构建或休眠"
+          exit 0
