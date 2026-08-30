@@ -70,9 +70,9 @@ export interface HealthSuggestion {
   icon: string;
   title: string;
   desc: string;
+  description?: string;
   color: string;
 }
-  // description 由后端补充
 
 export interface HealthProfile {
   health_score: number;
