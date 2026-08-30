@@ -24,7 +24,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { useUser } from "@/lib/user-context";
-import { getDataFlow } from "@/lib/api";
+import { getDataFlow, listFederationJobs, listDataTransactions } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { BrandedPageHeader } from "@/components/branded-page-header";
 
@@ -274,11 +274,11 @@ export default function DataSpacePage() {
         <div className="didayi-card p-6">
           <div className="mb-4 flex items-center gap-2">
             <Fingerprint className="h-5 w-5 text-purple-600" />
-            <h2 className="text-lg font-bold text-slate-900">区块链存证模拟</h2>
+            <h2 className="text-lg font-bold text-slate-900">审计存证链（用户授权事件）</h2>
           </div>
           <p className="mb-4 text-xs text-slate-500">
             每次数据访问生成 SHA-256 哈希，串联成不可篡改的证据链。
-            （路演时强调：这是可信数据空间「可追溯」特性的技术体现）
+            用户侧数据访问事件哈希串联；下方「平台真实事件流」展示联邦任务与数据交易的正式存证。
           </p>
           <div className="flex items-center gap-2 overflow-x-auto pb-2">
             {flows.slice(0, 6).map((flow, i) => (
@@ -299,6 +299,9 @@ export default function DataSpacePage() {
           </div>
         </div>
 
+        {/* 平台真实事件流（联邦任务 + 数据交易存证） */}
+        <RealAuditChain />
+
         {/* 政策契合说明 */}
         <div className="rounded-2xl border border-cyan-200 bg-gradient-to-r from-cyan-50 to-blue-50 p-5">
           <div className="flex items-start gap-3">
@@ -314,6 +317,79 @@ export default function DataSpacePage() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+
+/** 平台真实事件流：联邦任务 + 数据交易的审计存证链（非模拟，直连数据库） */
+function RealAuditChain() {
+  const [events, setEvents] = useState<
+    Array<{ kind: string; label: string; status: string; event_hash: string | null; prev_hash: string | null; ts: string | null }>
+  >([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      const [jobs, txs] = await Promise.all([listFederationJobs(8), listDataTransactions(8)]);
+      const merged = [
+        ...(jobs ?? []).map((j) => ({
+          kind: "联邦任务",
+          label: `${j.rounds}轮${j.dp_sigma > 0 ? ` · DP σ=${j.dp_sigma}` : ""}`,
+          status: j.status,
+          event_hash: j.event_hash,
+          prev_hash: j.prev_hash,
+          ts: j.created_at,
+        })),
+        ...(txs ?? []).map((t) => ({
+          kind: "数据交易",
+          label: `${t.product_name} · ¥${t.amount.toLocaleString()}`,
+          status: t.status,
+          event_hash: t.event_hash,
+          prev_hash: t.prev_hash,
+          ts: t.created_at,
+        })),
+      ].sort((a, b) => (a.ts ?? "").localeCompare(b.ts ?? ""));
+      setEvents(merged);
+      setLoading(false);
+    })();
+  }, []);
+
+  return (
+    <div className="didayi-card p-6">
+      <div className="mb-4 flex items-center gap-2">
+        <Fingerprint className="h-5 w-5 text-cyan-600" />
+        <h2 className="text-lg font-bold text-slate-900">平台真实事件流（联邦任务 × 数据交易）</h2>
+        <span className="rounded-full bg-cyan-50 px-2 py-0.5 text-xs font-medium text-cyan-600">
+          直连平台数据库 · 非模拟
+        </span>
+      </div>
+      <p className="mb-4 text-xs text-slate-500">
+        每个联邦任务与数据交易的摘要经 SHA-256 与前一事件哈希串联成链——任何篡改都会导致链条断裂，监管方可一键校验。
+      </p>
+      {loading ? (
+        <div className="py-6 text-center text-xs text-slate-400">加载真实事件中…</div>
+      ) : events.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-sky-200 p-5 text-center text-xs text-slate-400">
+          暂无事件：请先在「联邦协作网络」发起训练任务，或在「数据要素市场」完成一笔授权交易
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {events.map((e, i) => (
+            <div key={`${e.event_hash}-${i}`} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-sky-50 bg-sky-50/40 px-3 py-2 text-xs">
+              <span className="rounded-md bg-white px-1.5 py-0.5 font-medium text-slate-600 shadow-sm">{e.kind}</span>
+              <span className="font-semibold text-slate-700">{e.label}</span>
+              <span className="rounded-md bg-emerald-50 px-1.5 py-0.5 text-emerald-600">{e.status}</span>
+              <span className="ml-auto font-mono text-[10px] text-slate-400">
+                {(e.prev_hash ?? "").slice(0, 10)}… → {(e.event_hash ?? "").slice(0, 12)}…
+              </span>
+              <span className="w-full text-right font-mono text-[9px] text-slate-300">
+                {e.ts ? new Date(e.ts).toLocaleString("zh-CN") : ""}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
