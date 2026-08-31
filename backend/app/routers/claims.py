@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import crud
 from app.database import get_db
+from app.deps import SessionDep
 from app.schemas import PreReviewRequest
 from app.services import claims_engine
 from app.services.ocr_service import get_ocr_service
@@ -21,7 +22,7 @@ router = APIRouter(prefix="/api/claims", tags=["理赔助手"])
 
 
 @router.post("/ocr")
-async def ocr_process(file: UploadFile = File(...)):
+async def ocr_process(file: UploadFile = File(...), _session: str = SessionDep):
     """OCR 识别医疗发票图片（真实调用 OCR.space，失败降级 mock）"""
     contents = await file.read()
     if len(contents) > 10 * 1024 * 1024:
@@ -32,7 +33,7 @@ async def ocr_process(file: UploadFile = File(...)):
 
 
 @router.post("/pre-review")
-async def pre_review(request: PreReviewRequest, db: AsyncSession = Depends(get_db)):
+async def pre_review(request: PreReviewRequest, db: AsyncSession = Depends(get_db), _session: str = SessionDep):
     """报销预审：基于完整报销计算引擎，分步推导 + 大病保险 + 自然语言解释
 
     P1-1 升级：从过渡实现接入 claims_engine 完整算法。
@@ -67,7 +68,7 @@ async def pre_review(request: PreReviewRequest, db: AsyncSession = Depends(get_d
 
 
 @router.post("/prereview-uploaded")
-async def prereview_uploaded(user_id: str = "user_001", db: AsyncSession = Depends(get_db)):
+async def prereview_uploaded(user_id: str = "user_001", db: AsyncSession = Depends(get_db), _session: str = SessionDep):
     """多文件上传后的编排预审：档案管家（存档汇总）× 报销助手（解读+完整性+测算）协同。
 
     读取用户最近存档的上传资料（BodyDocument.extracted_text），不重复 OCR。

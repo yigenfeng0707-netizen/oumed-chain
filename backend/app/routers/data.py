@@ -16,6 +16,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.deps import SessionDep
 from app.schemas import DataQueryRequest
 from app.services import orchestrator
 from app.services.data_lake import engine
@@ -25,7 +26,7 @@ router = APIRouter(prefix="/api/data", tags=["数据管家"])
 
 
 @router.post("/query")
-async def data_query(request: DataQueryRequest, db: AsyncSession = Depends(get_db)):
+async def data_query(request: DataQueryRequest, db: AsyncSession = Depends(get_db), _session: str = SessionDep):
     """智能数据查询：自然语言问题 → 模板/LLM 生成只读 SQL → 执行并返回结构化结果。
 
     复用编排器的 LLM 实例（可用时走 NL2SQL，否则模板降级），

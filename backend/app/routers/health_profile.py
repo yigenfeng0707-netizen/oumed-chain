@@ -15,11 +15,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import crud
 from app.database import get_db
+from app.deps import ScopeDep
 from app.services import health_engine
 from app.services.eeg import engine as eeg_engine
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api/health", tags=["健康画像"])
+# P0 作用域鉴权：本路由全部为 {user_id} 端点，路由级统一挂 ScopeDep（生产模式强制 token 匹配）
+router = APIRouter(prefix="/api/health", tags=["健康画像"], dependencies=[ScopeDep])
 
 
 @router.get("/{user_id}/profile")

@@ -13,10 +13,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import crud
 from app.database import get_db
+from app.deps import ScopeDep
 from app.services import claims_engine
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api/coverage", tags=["医保待遇"])
+# P0 作用域鉴权：本路由全部为 {user_id} 端点，路由级统一挂 ScopeDep（生产模式强制 token 匹配）
+router = APIRouter(prefix="/api/coverage", tags=["医保待遇"], dependencies=[ScopeDep])
 
 
 @router.get("/{user_id}")

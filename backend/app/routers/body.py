@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import crud
 from app.database import get_db
+from app.deps import ScopeDep
 from app.services import orchestrator
 from app.services.body import extractor
 from app.services.body.taxonomy import LABELS
@@ -31,7 +32,7 @@ async def list_organs():
 
 
 @router.get("/{user_id}/records")
-async def get_records(user_id: str, organ: str | None = None, db: AsyncSession = Depends(get_db)):
+async def get_records(user_id: str, _scope: str = ScopeDep, organ: str | None = None, db: AsyncSession = Depends(get_db)):
     """用户健康档案记录：按检查时间倒序（未注明时间的排最后），每条带来源标签。"""
     if organ and organ not in LABELS:
         raise HTTPException(status_code=400, detail=f"未知部位: {organ}，可选 {list(LABELS)}")
@@ -46,7 +47,7 @@ async def get_records(user_id: str, organ: str | None = None, db: AsyncSession =
 
 
 @router.post("/{user_id}/upload")
-async def upload_document(user_id: str, file: UploadFile = File(...), db: AsyncSession = Depends(get_db)):
+async def upload_document(user_id: str, _scope: str = ScopeDep, file: UploadFile = File(...), db: AsyncSession = Depends(get_db)):
     """上传医疗资料 → 转录文字 → 档案管家归档（追加）并给出回复。
 
     图片：阿里云视觉模型逐字转录（降级 OCR）；PDF：文本层；其他：按 UTF-8 文本读取。

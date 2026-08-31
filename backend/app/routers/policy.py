@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import crud
 from app.database import get_db
+from app.deps import ScopeDep
 from app.schemas import PolicySearchRequest
 from app.services import orchestrator, policy_matcher
 
@@ -22,7 +23,7 @@ router = APIRouter(prefix="/api/policy", tags=["政策解读"])
 
 
 @router.get("/match/{user_id}")
-async def match_policies(user_id: str, db: AsyncSession = Depends(get_db)):
+async def match_policies(user_id: str, db: AsyncSession = Depends(get_db), _scope: str = ScopeDep):
     """基于用户画像精准匹配医保政策（P1-3：policy_matcher 引擎）"""
     profile = await crud.get_user_health_profile(db, user_id)
     if not profile.get("found"):

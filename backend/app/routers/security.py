@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app import crud
 from app.auth import require_api_key
 from app.database import get_db
+from app.deps import ScopeDep, SessionDep
 from app.schemas import AuthorizationRequest
 
 logger = logging.getLogger(__name__)
@@ -38,7 +39,7 @@ AGENTS = [
 
 
 @router.get("/authorizations/{user_id}")
-async def get_authorizations(user_id: str, db: AsyncSession = Depends(get_db)):
+async def get_authorizations(user_id: str, db: AsyncSession = Depends(get_db), _scope: str = ScopeDep):
     """获取用户数据授权全景（基于真实授权数据）"""
     user = await crud.get_user(db, user_id)
     if user is None:
@@ -98,6 +99,7 @@ async def create_authorization(
     request: AuthorizationRequest,
     db: AsyncSession = Depends(get_db),
     _: str = Depends(require_api_key),
+    _session: str = SessionDep,
 ):
     """创建/更新授权（真实写库）
 
@@ -134,7 +136,7 @@ async def create_authorization(
 
 
 @router.get("/audit-log/{user_id}")
-async def get_audit_log(user_id: str, db: AsyncSession = Depends(get_db)):
+async def get_audit_log(user_id: str, db: AsyncSession = Depends(get_db), _scope: str = ScopeDep):
     """获取用户数据访问审计日志"""
     user = await crud.get_user(db, user_id)
     if user is None:
@@ -142,6 +144,7 @@ async def get_audit_log(user_id: str, db: AsyncSession = Depends(get_db)):
 
     auths = await crud.get_active_authorizations(db, user_id)
     logs = _build_audit_log(user_id, auths)
+    logs.extend(await _denial_entries(db, user_id))
 
     return {
         "user_id": user_id,
@@ -161,7 +164,7 @@ async def get_audit_log(user_id: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/data-flow/{user_id}")
-async def get_data_flow(user_id: str, db: AsyncSession = Depends(get_db)):
+async def get_data_flow(user_id: str, db: AsyncSession = Depends(get_db), _scope: str = ScopeDep):
     """可信数据空间数据流转记录（P2-2 可视化用）
 
     展示：数据源 → 隐私计算沙箱 → Agent → 用户 的完整流转链路。
@@ -200,6 +203,27 @@ async def get_data_flow(user_id: str, db: AsyncSession = Depends(get_db)):
 # ============================================================
 # 内部工具
 # ============================================================
+
+async def _denial_entries(db: AsyncSession, user_id: str) -> list[dict]:
+    """针对该用户的越权拒绝记录（严格模式产生；演示模式为空）。"""
+    entries = []
+    for log in await crud.get_access_denials(db, target_user_id=user_id, limit=20):
+        ts = log.ts.isoformat() if log.ts else datetime.now(UTC).isoformat()
+        proof = hashlib.sha256(f"denial|{log.id}|{log.path}".encode("utf-8")).hexdigest()
+        entries.append({
+            "id": 3000 + log.id,
+            "timestamp": ts,
+            "time": ts.replace("T", " ").split(".")[0],
+            "agent": "安全守门",
+            "action": "拒绝访问",
+            "data_type": "",
+            "status": "denied",
+            "purpose": "越权拦截",
+            "detail": f"拦截 {log.method} {log.path}（HTTP {log.status_code}）",
+            "proof_hash": proof[:32] + "…",
+        })
+    return entries
+
 
 def _build_audit_log(user_id: str, auths) -> list[dict]:
     """构建审计日志（基于真实授权记录 + 模拟近期访问 + 存证哈希）"""

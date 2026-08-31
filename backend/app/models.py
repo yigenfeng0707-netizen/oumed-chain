@@ -369,3 +369,19 @@ class DataTransaction(Base):
     prev_hash = Column(String(64), nullable=True)
     event_hash = Column(String(64), nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
+
+
+class AccessDenialLog(Base):
+    """越权访问审计（P0 生产鉴权：严格模式下 401/403 拒绝记录落库）。"""
+
+    __tablename__ = "access_denial_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    ts = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
+    method = Column(String(10), nullable=False)
+    path = Column(String(255), nullable=False)
+    target_user_id = Column(String(50), default="")  # 被尝试访问的用户（列表型端点为空）
+    status_code = Column(Integer, nullable=False)  # 401 / 403
+    reason = Column(String(60), nullable=False)  # missing_session/cross_user_access/…
+    client_ip = Column(String(64), default="")
+    token_present = Column(Boolean, default=False)

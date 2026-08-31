@@ -17,6 +17,7 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from app.database import async_session
+from app.deps import ScopeDep
 from app.services.imaging import (
     FINDINGS_META,
     STUDY_TYPES,
@@ -134,7 +135,7 @@ async def list_study_types():
 
 
 @router.post("/{user_id}/analyze")
-async def analyze_image(user_id: str, req: AnalyzeRequest):
+async def analyze_image(user_id: str, req: AnalyzeRequest, _scope: str = ScopeDep):
     """AI 影像分析：生成合成影像 → 病灶检测 → AI 预标注 → 结构化报告。
 
     现场路演演示：选择检查类型 → 一键生成影像 → AI 自动框出病灶并给出
@@ -196,7 +197,7 @@ async def analyze_image(user_id: str, req: AnalyzeRequest):
 
 
 @router.post("/{user_id}/records/{record_id}/review")
-async def doctor_review(user_id: str, record_id: int, req: DoctorReviewRequest):
+async def doctor_review(user_id: str, record_id: int, req: DoctorReviewRequest, _scope: str = ScopeDep):
     """医生复核：确认/驳回/修正 AI 标注，生成最终报告。
 
     前端工作台演示：AI 预标注 → 医生逐框确认/驳回/修正 → 提交 →
@@ -250,7 +251,7 @@ async def doctor_review(user_id: str, record_id: int, req: DoctorReviewRequest):
 
 
 @router.get("/{user_id}/records")
-async def list_records(user_id: str, limit: int = Query(10, ge=1, le=50)):
+async def list_records(user_id: str, limit: int = Query(10, ge=1, le=50), _scope: str = ScopeDep):
     """用户医学影像检查历史。"""
     async with async_session() as db:
         from app import crud
@@ -267,7 +268,7 @@ async def list_records(user_id: str, limit: int = Query(10, ge=1, le=50)):
 
 
 @router.get("/{user_id}/records/{record_id}")
-async def get_record(user_id: str, record_id: int):
+async def get_record(user_id: str, record_id: int, _scope: str = ScopeDep):
     """单条影像记录详情（含可复现影像）。"""
     async with async_session() as db:
         from app import crud
@@ -300,7 +301,7 @@ async def get_record(user_id: str, record_id: int):
 
 
 @router.get("/{user_id}/policy-links/{record_id}")
-async def get_policy_links(user_id: str, record_id: int):
+async def get_policy_links(user_id: str, record_id: int, _scope: str = ScopeDep):
     """影像-医保联动推荐（基于最终标注）。"""
     async with async_session() as db:
         from app import crud

@@ -32,6 +32,11 @@ class Settings(BaseSettings):
     # 路演离线模式：跳过 LLM/知识库初始化，全程使用关键词+mock降级（无网络依赖）
     DEMO_OFFLINE: bool = False
 
+    # 身份作用域开关（P0 鉴权强制）：
+    # true（默认）= 演示模式，业务端点信任 user_id 路径参数（user-switcher 零摩擦）；
+    # false = 生产模式，业务端点强制 X-User-Token 与 user_id 匹配（管理员可代查）。
+    DEMO_MODE: bool = True
+
     # OCR 服务：OCR.space
     OCR_API_KEY: str = ""
     OCR_API_URL: str = "https://api.ocr.space/parse/image"

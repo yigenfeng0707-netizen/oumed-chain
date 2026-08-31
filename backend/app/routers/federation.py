@@ -19,6 +19,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.deps import SessionDep
 from app.models import FederationJob
 from app.services.federated import get_benchmark, get_overview, run_job
 
@@ -84,7 +85,7 @@ def federation_overview():
 
 
 @router.post("/jobs")
-async def create_job(req: JobRequest, db: AsyncSession = Depends(get_db)):
+async def create_job(req: JobRequest, db: AsyncSession = Depends(get_db), _session: str = SessionDep):
     """发起联邦训练任务（同步执行，秒级返回）。"""
     job = FederationJob(
         id=str(uuid.uuid4()),
@@ -120,7 +121,7 @@ async def create_job(req: JobRequest, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/jobs")
-async def list_jobs(limit: int = 20, db: AsyncSession = Depends(get_db)):
+async def list_jobs(limit: int = 20, db: AsyncSession = Depends(get_db), _session: str = SessionDep):
     """最近联邦任务列表（含存证哈希）。"""
     jobs = (await db.execute(
         select(FederationJob).order_by(FederationJob.created_at.desc()).limit(limit)
@@ -135,7 +136,7 @@ def benchmark(force: bool = False):
 
 
 @router.get("/jobs/{job_id}")
-async def get_job(job_id: str, db: AsyncSession = Depends(get_db)):
+async def get_job(job_id: str, db: AsyncSession = Depends(get_db), _session: str = SessionDep):
     job = await db.get(FederationJob, job_id)
     if job is None:
         raise HTTPException(status_code=404, detail=f"任务 {job_id} 不存在")

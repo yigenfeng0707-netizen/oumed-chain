@@ -72,6 +72,16 @@ export function getCachedApiStatus(): boolean | null {
 
 // ==================== 通用请求封装 ====================
 
+/** P0 生产鉴权：登录会话存在时统一携带 X-User-Token。
+ * 后端 DEMO_MODE=true（默认）时不校验，演示零摩擦；
+ * 生产模式（DEMO_MODE=false）强制校验作用域。
+ * 注：不直接引 auth.ts（其依赖本文件 API_BASE，避免循环依赖），同键读 localStorage。 */
+function authHeaders(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  const token = window.localStorage.getItem("oumed_user_token");
+  return token ? { "X-User-Token": token } : {};
+}
+
 async function apiFetch<T>(
   path: string,
   options?: RequestInit,
@@ -81,6 +91,7 @@ async function apiFetch<T>(
       ...options,
       headers: {
         "Content-Type": "application/json",
+        ...authHeaders(),
         ...options?.headers,
       },
       signal: options?.signal ?? AbortSignal.timeout(90000),
@@ -104,6 +115,7 @@ async function apiUpload<T>(
     form.append("file", file);
     const res = await fetch(`${API_BASE}${path}`, {
       method: "POST",
+      headers: authHeaders(),
       body: form,
       signal: AbortSignal.timeout(120000),
     });
@@ -285,6 +297,7 @@ export async function uploadBodyDocument(
     form.append("file", file);
     const res = await fetch(`${API_BASE}/api/body/${userId}/upload`, {
       method: "POST",
+      headers: authHeaders(),
       body: form,
       // 后端 45s 处理超时 + OCR/视觉转录耗时，预留 120s
       signal: AbortSignal.timeout(120000),
@@ -345,6 +358,7 @@ export async function scanDrug(userId: string, file: File): Promise<DrugScanResu
       `${API_BASE}/api/drugs/scan?user_id=${encodeURIComponent(userId)}`,
       {
         method: "POST",
+        headers: authHeaders(),
         body: form,
         // 后端 45s 识别超时 + 视觉模型耗时，预留 120s
         signal: AbortSignal.timeout(120000),
@@ -660,6 +674,7 @@ export async function importEEGFile(
       `${API_BASE}/api/eeg/${userId}/import?sample_rate=${sampleRate}&mental_state=${encodeURIComponent(mentalState)}`,
       {
         method: "POST",
+        headers: authHeaders(),
         body: form,
         signal: AbortSignal.timeout(120000),
       },

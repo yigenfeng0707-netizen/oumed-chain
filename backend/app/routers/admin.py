@@ -4,6 +4,7 @@
 - POST /api/admin/login        管理员登录（账号密码 → token）
 - GET  /api/admin/overview     全用户使用概况 + 全局统计（推送/营销分群用）
 - GET  /api/admin/users/{id}/profile  单用户画像详情
+- GET  /api/admin/security/denials    越权访问审计日志（严格模式 401/403）
 
 鉴权：登录后签发 X-Admin-Token，后续请求携带该校验。
 账号密码通过环境变量 ADMIN_USERNAME / ADMIN_PASSWORD 配置。
@@ -322,4 +323,48 @@ async def admin_user_profile(
         "eeg_history": eeg_rows,
         "imaging_history": imaging_rows,
         "body_organ_summary": organ_summary,
+    }
+
+
+_DENIAL_REASON_LABELS = {
+    "missing_session": "未携带有效会话",
+    "missing_or_invalid_user_token": "用户 token 缺失或无效",
+    "cross_user_access": "跨用户越权访问",
+}
+
+
+@router.get("/security/denials")
+async def admin_security_denials(
+    admin: str = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+    user_id: str | None = None,
+    status_code: int | None = None,
+    limit: int = 100,
+):
+    """越权访问审计：严格模式（DEMO_MODE=false）下的 401/403 拒绝记录。
+
+    演示模式不产生拒绝（全部放行），列表为空属正常。
+    """
+    logs = await crud.get_access_denials(
+        db, target_user_id=user_id, status_code=status_code, limit=min(limit, 500)
+    )
+    rows = [
+        {
+            "id": log.id,
+            "ts": _fmt_dt(log.ts),
+            "method": log.method,
+            "path": log.path,
+            "target_user_id": log.target_user_id,
+            "status_code": log.status_code,
+            "reason": log.reason,
+            "reason_label": _DENIAL_REASON_LABELS.get(log.reason, log.reason),
+            "client_ip": log.client_ip,
+            "token_present": log.token_present,
+        }
+        for log in logs
+    ]
+    return {
+        "total": len(rows),
+        "demo_mode": settings.DEMO_MODE,
+        "logs": rows,
     }

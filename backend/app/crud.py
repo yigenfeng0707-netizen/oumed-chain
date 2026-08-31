@@ -741,3 +741,26 @@ def body_record_to_dict(r: BodyRecord) -> dict:
         "batch_id": r.batch_id or "",
         "created_at": r.created_at.isoformat() if r.created_at else None,
     }
+
+
+# ---------------------------------------------------------------------------
+# 越权访问审计（P0 生产鉴权）
+# ---------------------------------------------------------------------------
+
+async def get_access_denials(
+    db: AsyncSession,
+    target_user_id: str | None = None,
+    status_code: int | None = None,
+    limit: int = 100,
+) -> list:
+    """查询越权拒绝记录（按时间倒序）；可按目标用户/状态码过滤。"""
+    from app.models import AccessDenialLog
+
+    stmt = select(AccessDenialLog).order_by(desc(AccessDenialLog.ts), desc(AccessDenialLog.id)).limit(limit)
+    if target_user_id:
+        stmt = stmt.where(AccessDenialLog.target_user_id == target_user_id)
+    if status_code:
+        stmt = stmt.where(AccessDenialLog.status_code == status_code)
+    result = await db.execute(stmt)
+    return list(result.scalars().all())
+

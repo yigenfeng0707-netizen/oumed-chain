@@ -16,6 +16,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.deps import SessionDep
 from app.models import DataProduct, DataTransaction
 
 logger = logging.getLogger(__name__)
@@ -125,7 +126,7 @@ async def list_products(db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/products")
-async def create_product(req: ProductRequest, db: AsyncSession = Depends(get_db)):
+async def create_product(req: ProductRequest, db: AsyncSession = Depends(get_db), _session: str = SessionDep):
     """上架新产品（治理产物/数据集/模型服务）。"""
     p = DataProduct(id=str(uuid.uuid4()), **req.model_dump())
     db.add(p)
@@ -134,7 +135,7 @@ async def create_product(req: ProductRequest, db: AsyncSession = Depends(get_db)
 
 
 @router.post("/purchase")
-async def purchase(req: PurchaseRequest, db: AsyncSession = Depends(get_db)):
+async def purchase(req: PurchaseRequest, db: AsyncSession = Depends(get_db), _session: str = SessionDep):
     """发起交易申请：用途限定 → 自动授权审批（演示即时通过）→ 收益分成 → 存证上链。"""
     await _seed_if_empty(db)
     p = await db.get(DataProduct, req.product_id)
@@ -157,7 +158,7 @@ async def purchase(req: PurchaseRequest, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/transactions")
-async def list_transactions(limit: int = 20, db: AsyncSession = Depends(get_db)):
+async def list_transactions(limit: int = 20, db: AsyncSession = Depends(get_db), _session: str = SessionDep):
     rows = (await db.execute(
         select(DataTransaction).order_by(DataTransaction.created_at.desc()).limit(limit)
     )).scalars().all()
@@ -165,7 +166,7 @@ async def list_transactions(limit: int = 20, db: AsyncSession = Depends(get_db))
 
 
 @router.get("/regulatory")
-async def regulatory_view(db: AsyncSession = Depends(get_db)):
+async def regulatory_view(db: AsyncSession = Depends(get_db), _session: str = SessionDep):
     """监管方统计看板：交易总量/金额/收益分配/活跃产品/存证链状态。"""
     await _seed_if_empty(db)
     total_tx = (await db.execute(select(func.count()).select_from(DataTransaction))).scalar()

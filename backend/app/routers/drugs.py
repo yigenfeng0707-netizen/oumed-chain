@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import crud
 from app.database import get_db
+from app.deps import SessionDep
 from app.schemas import DrugRegisterRequest
 from app.services import orchestrator
 from app.services.drug_scan import engine as drug_engine
@@ -41,6 +42,7 @@ async def scan_drug(
     file: UploadFile = File(...),
     user_id: str = "user_001",
     db: AsyncSession = Depends(get_db),
+    _session: str = SessionDep,
 ):
     """拍照识别药品：返回结构化信息 + 类别 + 相互作用提示 + 有效期核验。
 
@@ -65,7 +67,7 @@ async def scan_drug(
 
 
 @router.post("/register")
-async def register_drug(request: DrugRegisterRequest, db: AsyncSession = Depends(get_db)):
+async def register_drug(request: DrugRegisterRequest, db: AsyncSession = Depends(get_db), _session: str = SessionDep):
     """用户确认后，把扫描到的药品登记到用药记录（并复核相互作用）。"""
     drug = request.drug or {}
     if not (str(drug.get("generic_name") or "").strip() or str(drug.get("brand_name") or "").strip()):

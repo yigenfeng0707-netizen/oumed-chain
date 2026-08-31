@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app import crud
 from app.auth import require_api_key
 from app.database import get_db
+from app.deps import SessionDep
 from app.schemas import ChatRequest
 from app.services import claims_engine, orchestrator
 from app.services.body import extractor as body_extractor
@@ -48,7 +49,7 @@ async def _ingest_chat(db: AsyncSession, user_id: str, message: str, conversatio
 
 
 @router.post("/chat")
-async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
+async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db), _session: str = SessionDep):
     """智能体对话入口
 
     流程：意图识别(LLM优先) → 查库拿用户画像 → 路由到对应Agent → LLM/RAG生成 → 聚合
@@ -191,7 +192,7 @@ async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)):
 
 @router.get("/conversations/{conversation_id}")
 async def get_conversation_history(
-    conversation_id: str, db: AsyncSession = Depends(get_db)
+    conversation_id: str, db: AsyncSession = Depends(get_db), _session: str = SessionDep
 ):
     conversation = await crud.get_conversation(db, conversation_id)
     if conversation is None:
@@ -231,6 +232,7 @@ async def complex_chat(
     request: ChatRequest,
     db: AsyncSession = Depends(get_db),
     _: str = Depends(require_api_key),
+    _session: str = SessionDep,
 ):
     """复合意图对话：多智能体并行协作（P2-1 核心亮点）
 

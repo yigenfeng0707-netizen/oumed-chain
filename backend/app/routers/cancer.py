@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.crud import create_cancer_prediction, get_cancer_predictions, get_user
 from app.database import get_db
+from app.deps import ScopeDep
 from app.services.cancer import engine
 
 router = APIRouter(prefix="/api/cancer", tags=["泛癌卫士"])
@@ -42,7 +43,7 @@ async def cancer_status():
 
 @router.post("/{user_id}/predict")
 async def predict_for_user(
-    user_id: str, req: PredictRequest | None = None, db: AsyncSession = Depends(get_db)
+    user_id: str, req: PredictRequest | None = None, db: AsyncSession = Depends(get_db), _scope: str = ScopeDep
 ):
     """对平台用户做泛癌风险预测并存档。"""
     user = await get_user(db, user_id)
@@ -68,7 +69,7 @@ async def predict_for_user(
 
 
 @router.get("/records/{user_id}")
-async def prediction_history(user_id: str, limit: int = 10, db: AsyncSession = Depends(get_db)):
+async def prediction_history(user_id: str, limit: int = 10, db: AsyncSession = Depends(get_db), _scope: str = ScopeDep):
     """用户泛癌预测历史。"""
     records = await get_cancer_predictions(db, user_id, limit=limit)
     return [

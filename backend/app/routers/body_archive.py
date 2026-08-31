@@ -23,6 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import crud
 from app.database import get_db
+from app.deps import ScopeDep, SessionDep
 from app.models import BodyArchiveFile
 from app.services.body.extractor import DISCLAIMER
 from app.services.body.taxonomy import LABELS
@@ -76,14 +77,14 @@ class MaterialIn(BaseModel):
 
 
 @router.get("/patients")
-async def list_patients(db: AsyncSession = Depends(get_db)):
+async def list_patients(db: AsyncSession = Depends(get_db), _session: str = SessionDep):
     """患者索引：查看器下拉切换用。"""
     users = await crud.get_users(db, limit=50)
     return {"patients": [{"id": _user_ref(u.id), "name": u.name} for u in users]}
 
 
 @router.get("/patients/{user_id}")
-async def get_patient(user_id: str, db: AsyncSession = Depends(get_db)):
+async def get_patient(user_id: str, db: AsyncSession = Depends(get_db), _scope: str = ScopeDep):
     """患者档案：性别（决定 3D 解剖模型）+ 档案记录 + 已存资料。"""
     user = await crud.get_user(db, user_id)
     if user is None:
@@ -113,7 +114,7 @@ async def get_patient(user_id: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/patients/{user_id}/records")
-async def append_record(user_id: str, payload: BodyRecordIn, db: AsyncSession = Depends(get_db)):
+async def append_record(user_id: str, payload: BodyRecordIn, db: AsyncSession = Depends(get_db), _scope: str = ScopeDep):
     """追加一条档案记录（只增不删）。调用方（Skill/Agent）须保证内容来自用户原文。"""
     user = await crud.get_user(db, user_id)
     if user is None:
@@ -140,7 +141,7 @@ async def append_record(user_id: str, payload: BodyRecordIn, db: AsyncSession = 
 
 
 @router.post("/patients/{user_id}/materials")
-async def register_material(user_id: str, payload: MaterialIn, db: AsyncSession = Depends(get_db)):
+async def register_material(user_id: str, payload: MaterialIn, db: AsyncSession = Depends(get_db), _scope: str = ScopeDep):
     """登记资料文件名与备注（只登记元数据，不接收文件本体）。"""
     user = await crud.get_user(db, user_id)
     if user is None:
@@ -157,7 +158,7 @@ async def register_material(user_id: str, payload: MaterialIn, db: AsyncSession 
 
 
 @router.get("/patients/{user_id}/dossier")
-async def get_dossier(user_id: str, db: AsyncSession = Depends(get_db)):
+async def get_dossier(user_id: str, db: AsyncSession = Depends(get_db), _scope: str = ScopeDep):
     user = await crud.get_user(db, user_id)
     if user is None:
         raise HTTPException(status_code=404, detail=f"患者不存在: {user_id}")
@@ -175,7 +176,8 @@ async def _all_dossiers(db: AsyncSession, requested: str = "") -> list[dict]:
 
 @router.get("/government-export")
 async def government_export(
-    patient: str = "", format: str = Query("json", pattern="^(csv|json)$"), db: AsyncSession = Depends(get_db)
+    patient: str = "", format: str = Query("json", pattern="^(csv|json)$"), db: AsyncSession = Depends(get_db),
+    _session: str = SessionDep,
 ):
     dossiers = await _all_dossiers(db, patient)
     rows = [government_row(d) for d in dossiers]
@@ -190,7 +192,8 @@ async def government_export(
 
 @router.get("/ai-table")
 async def ai_table(
-    patient: str = "", format: str = Query("json", pattern="^(csv|json)$"), db: AsyncSession = Depends(get_db)
+    patient: str = "", format: str = Query("json", pattern="^(csv|json)$"), db: AsyncSession = Depends(get_db),
+    _session: str = SessionDep,
 ):
     dossiers = await _all_dossiers(db, patient)
     if format == "csv":
@@ -210,7 +213,7 @@ async def ai_table(
 
 
 @router.get("/patients/{user_id}/files/{stored_name}")
-async def get_file(user_id: str, stored_name: str, download: bool = False, db: AsyncSession = Depends(get_db)):
+async def get_file(user_id: str, stored_name: str, download: bool = False, db: AsyncSession = Depends(get_db), _scope: str = ScopeDep):
     user = await crud.get_user(db, user_id)
     if user is None:
         raise HTTPException(status_code=404, detail="患者不存在")
@@ -241,6 +244,7 @@ async def upload_file(
     note: str = Form(""),
     category: str = Form("用户上传"),
     db: AsyncSession = Depends(get_db),
+    _scope: str = ScopeDep,
 ):
     user = await crud.get_user(db, user_id)
     if user is None:
@@ -300,7 +304,7 @@ async def _archive_bytes(db: AsyncSession, dossiers: list[dict]) -> bytes:
 
 
 @router.get("/patients/{user_id}/archive.zip")
-async def patient_archive(user_id: str, db: AsyncSession = Depends(get_db)):
+async def patient_archive(user_id: str, db: AsyncSession = Depends(get_db), _scope: str = ScopeDep):
     dossiers = await _all_dossiers(db, user_id)
     return Response(
         await _archive_bytes(db, dossiers),
@@ -310,7 +314,7 @@ async def patient_archive(user_id: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/archive/all.zip")
-async def all_archive(db: AsyncSession = Depends(get_db)):
+async def all_archive(db: AsyncSession = Depends(get_db), _session: str = SessionDep):
     dossiers = await _all_dossiers(db)
     return Response(
         await _archive_bytes(db, dossiers),

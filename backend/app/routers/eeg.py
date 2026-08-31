@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import crud
 from app.database import get_db
+from app.deps import ScopeDep
 from app.services.eeg import engine as eeg_engine
 
 logger = logging.getLogger(__name__)
@@ -118,6 +119,7 @@ async def create_eeg_session(
     mental_state: str = Query("auto", description="心理状态：auto/relaxed/focused/stressed/fatigued/sleep_deprived"),
     duration_seconds: int = Query(4, ge=1, le=30, description="采集时长（秒）"),
     db: AsyncSession = Depends(get_db),
+    _scope: str = ScopeDep,
 ):
     """发起一次 EEG 采集会话
 
@@ -164,7 +166,7 @@ async def create_eeg_session(
 
 
 @router.get("/{user_id}/latest")
-async def get_latest_eeg(user_id: str, db: AsyncSession = Depends(get_db)):
+async def get_latest_eeg(user_id: str, db: AsyncSession = Depends(get_db), _scope: str = ScopeDep):
     """获取用户最近一次 EEG 评估（从数据库读取历史摘要，再实时生成波形）"""
     profile = await crud.get_user_health_profile(db, user_id)
     if not profile.get("found"):
@@ -198,6 +200,7 @@ async def get_eeg_history(
     user_id: str,
     limit: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
+    _scope: str = ScopeDep,
 ):
     """获取用户 EEG 历史趋势"""
     profile = await crud.get_user_health_profile(db, user_id)
@@ -235,6 +238,7 @@ async def get_realtime_chunk(
     user_id: str,
     mental_state: str = Query("relaxed"),
     seed: int = Query(0, ge=0, le=100000),
+    _scope: str = ScopeDep,
 ):
     """实时数据块（前端轮询模拟实时采集，每次返回 1 秒数据）"""
     if mental_state not in eeg_engine.MENTAL_STATES:
@@ -243,7 +247,7 @@ async def get_realtime_chunk(
 
 
 @router.get("/{user_id}/policy-links")
-async def get_policy_links(user_id: str, db: AsyncSession = Depends(get_db)):
+async def get_policy_links(user_id: str, db: AsyncSession = Depends(get_db), _scope: str = ScopeDep):
     """脑电异常 → 医保政策联动推荐（基于最近一次 EEG 评估）"""
     profile = await crud.get_user_health_profile(db, user_id)
     if not profile.get("found"):
@@ -296,6 +300,7 @@ async def create_eeg_session_from_device(
     duration_seconds: int = Query(4, ge=1, le=30, description="采集时长（秒）"),
     mental_state: str = Query("auto", description="心理状态标签（auto 则根据信号推断）"),
     db: AsyncSession = Depends(get_db),
+    _scope: str = ScopeDep,
 ):
     """从真实 EEG 设备采集信号并评估（通过 LSL 协议）
 
@@ -370,6 +375,7 @@ async def import_eeg_file(
     sample_rate: int = Query(256, ge=1, le=1000, description="采样率（Hz），CSV/TXT 需指定"),
     mental_state: str = Query("auto", description="心理状态标签"),
     db: AsyncSession = Depends(get_db),
+    _scope: str = ScopeDep,
 ):
     """导入 EEG 文件并分析（支持 CSV / EDF / TXT）
 

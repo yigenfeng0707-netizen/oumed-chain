@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import crud
 from app.database import get_db
+from app.deps import SessionDep
 from app.schemas import UserCreate
 
 router = APIRouter(prefix="/api/users", tags=["用户管理"])
@@ -26,7 +27,7 @@ def _user_payload(user) -> dict:
 
 
 @router.get("")
-async def list_users(db: AsyncSession = Depends(get_db)):
+async def list_users(db: AsyncSession = Depends(get_db), _session: str = SessionDep):
     users = await crud.get_users(db, limit=200)
     return {"users": [_user_payload(user) for user in users]}
 
