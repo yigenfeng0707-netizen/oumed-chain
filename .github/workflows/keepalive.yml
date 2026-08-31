@@ -20,6 +20,10 @@ on:
     - cron: "*/5 * * * *"
   workflow_dispatch:
 
+permissions:
+  contents: read
+  actions: write   # 自清理历史 run 需要
+
 jobs:
   ping:
     name: Ping demo health endpoint
@@ -52,3 +56,20 @@ jobs:
           # 连续失败不阻断（可能是计划维护），仅告警
           echo "::warning::demo 未响应（HTTP ${code}/${code2}），可能仍在构建或休眠"
           exit 0
+
+      # 自清理：每 5 分钟一次 = 288 run/天，必须删除 1 天前的历史 run，
+      # 否则 Actions 列表会被刷爆（保留最近 1 天供排障）。
+      - name: Cleanup old keepalive runs
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -uo pipefail
+          CUTOFF=$(date -u -d '1 day ago' +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -v-1d +%Y-%m-%dT%H:%M:%SZ)
+          echo "删除 ${CUTOFF} 之前的保活 run..."
+          gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/workflows/keepalive.yml/runs?per_page=100" \
+            --jq '.workflow_runs[] | select(.created_at < "'"${CUTOFF}"'") | .id' \
+            | while read -r id; do
+                gh api -X DELETE "repos/${GITHUB_REPOSITORY}/actions/runs/${id}" >/dev/null 2>&1 || true
+              done
+          echo "清理完成"
