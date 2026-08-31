@@ -75,7 +75,7 @@ async def metrics_middleware(request, call_next):
     """请求埋点：按路由模板+状态码计数并记录耗时（/metrics 自身不计数）。"""
     start = time.perf_counter()
     response = await call_next(request)
-    if request.url.path != "/metrics":
+    if request.url.path not in ("/metrics", "/api/ops/metrics"):
         route_obj = request.scope.get("route")
         route = getattr(route_obj, "path", request.url.path) if route_obj else "unmatched"
         app_metrics.observe_request(route, response.status_code, time.perf_counter() - start)
@@ -83,8 +83,13 @@ async def metrics_middleware(request, call_next):
 
 
 @app.get("/metrics", include_in_schema=False)
+@app.get("/api/ops/metrics", include_in_schema=False)
 async def prometheus_metrics():
-    """Prometheus 采集端点（零依赖手写 exposition 格式；仅计数指标，不含个人数据）。"""
+    """Prometheus 采集端点（零依赖手写 exposition 格式；仅计数指标，不含个人数据）。
+
+    双路径：/metrics 供直连后端采集；/api/ops/metrics 走同域反代（魔搭 Next
+    rewrites 仅转发 /api/*，根路径端点会被前端 404）。
+    """
     return PlainTextResponse(
         app_metrics.render_prometheus(demo_mode=settings.DEMO_MODE),
         media_type="text/plain; version=0.0.4",
