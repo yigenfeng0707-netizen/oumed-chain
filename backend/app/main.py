@@ -1,3 +1,4 @@
+import asyncio
 import os
 import time
 from contextlib import asynccontextmanager
@@ -40,7 +41,16 @@ from app.services import orchestrator
 async def lifespan(app: FastAPI):
     await init_db()
     await orchestrator.initialize_services()
+    # 存证链定时锚定（周期可配；0 = 关闭仅手动锚定）
+    from app.services.anchor_scheduler import start_anchor_task
+    anchor_task = start_anchor_task()
     yield
+    if anchor_task is not None:
+        anchor_task.cancel()
+        try:
+            await anchor_task
+        except asyncio.CancelledError:
+            pass
 
 
 app = FastAPI(

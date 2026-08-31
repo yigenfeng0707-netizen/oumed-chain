@@ -39,6 +39,13 @@ class Settings(BaseSettings):
 
     # 存证链外部锚定：RFC 3161 可信时间戳机构地址（留空 = 仅离线留痕不请求 TSA）
     CHAIN_ANCHOR_TSA_URL: str = "https://freetsa.org/tsr"
+    # 定时锚定周期（小时；0 = 关闭，仅管理端手动锚定）
+    CHAIN_ANCHOR_INTERVAL_HOURS: int = 24
+
+    # 告警触达通道：钉钉/飞书群机器人 Webhook（留空 = 仅日志不推送）
+    ALERT_WEBHOOK_URL: str = ""
+    # 管理端登录失败多少次触发撞库告警（滑窗内计数）
+    ALERT_LOGIN_FAILURE_THRESHOLD: int = 5
 
     # 支付宝当面付（个人免资质）：sandbox = 沙箱零配置；live = 真实收款（个人当面付额度）
     ALIPAY_MODE: str = "sandbox"

@@ -11,6 +11,7 @@
 说明：Demo 阶段无真实登录日志，「使用情况」基于对话/脑电/影像等活动记录统计。
 """
 
+import asyncio
 import hashlib
 import logging
 from datetime import UTC, datetime, timedelta
@@ -79,7 +80,12 @@ async def admin_login(payload: AdminLoginRequest):
     """管理员登录，返回 token（有效期 24h，前端存 sessionStorage）。"""
     username, password = _admin_credentials()
     if payload.username != username or payload.password != password:
-        metrics.observe_admin_login_failure()  # 监控告警：撞库信号
+        metrics.observe_admin_login_failure()  # 监控告警：撞库信号（指标）
+        try:
+            from app.services import alerting
+            await asyncio.to_thread(alerting.record_admin_login_failure, payload.username)
+        except Exception:
+            pass  # 告警触达失败不影响拒绝响应
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="账号或密码错误")
     return {
         "token": _issue_admin_token(username),
