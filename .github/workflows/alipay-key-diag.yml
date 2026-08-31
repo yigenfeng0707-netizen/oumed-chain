@@ -1,0 +1,70 @@
+# ============================================================
+# 支付宝密钥同步链路诊断（临时，手动触发后删除）
+# 打印：GitHub Secret 指纹 + 魔搭平台 API 回读值指纹
+# 只输出 sha256/长度/前20字符（PEM 头，非密钥材料）
+# ============================================================
+name: Alipay Key Diag
+on:
+  workflow_dispatch:
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Fingerprint GitHub secret
+        shell: bash
+        env:
+          PRIV: ${{ secrets.ALIPAY_APP_PRIVATE_KEY }}
+          PUB: ${{ secrets.ALIPAY_PUBLIC_KEY }}
+        run: |
+          fp() {
+            local name="$1" val="$2"
+            if [ -z "$val" ]; then echo "$name: EMPTY"; return; fi
+            echo "$name: len=${#val} sha256=$(printf '%s' "$val" | sha256sum | cut -c1-16)"
+            echo "$name head20: [$(printf '%s' "$val" | cut -c1-20)]"
+            echo "$name tail15: [...$(printf '%s' "$val" | rev | cut -c1-15 | rev)]"
+            echo "$name backslash-n count: $(printf '%s' "$val" | grep -o '\\n' | wc -l)"
+            echo "$name real-newline count: $(printf '%s' "$val" | wc -l)"
+          }
+          fp "GH_PRIV" "${PRIV}"
+          fp "GH_PUB" "${PUB}"
+
+      - name: Read back from ModelScope platform API
+        shell: bash
+        env:
+          TOKEN: ${{ secrets.MODELSCOPE_TOKEN }}
+          OWNER: ${{ secrets.MODELSCOPE_USERNAME }}
+          SPACE: ${{ vars.MODELSCOPE_SPACE_NAME }}
+        run: |
+          set -uo pipefail
+          EP="https://modelscope.cn/openapi/v1"
+          AUTH="Authorization: Bearer ${TOKEN}"
+          echo "===== GET secrets list ====="
+          curl -s -H "${AUTH}" "${EP}/studios/${OWNER}/${SPACE}/secrets" -o /tmp/secrets.json
+          python3 - <<'PY'
+          import json
+          d = json.load(open('/tmp/secrets.json'))
+          data = d.get('Data') or d
+          print("raw keys structure:", json.dumps(d, ensure_ascii=False)[:500])
+          # 若 API 回读值，打指纹
+          items = None
+          if isinstance(data, list):
+              items = data
+          elif isinstance(data, dict):
+              for k in ('secrets', 'list', 'items'):
+                  if isinstance(data.get(k), list):
+                      items = data[k]
+                      break
+          if items:
+              for it in items:
+                  if not isinstance(it, dict):
+                      continue
+                  key = it.get('key') or it.get('name') or ''
+                  val = it.get('value') or it.get('Value') or ''
+                  if 'ALIPAY' in str(key):
+                      print(f"MS {key}: len={len(str(val))} head20=[{str(val)[:20]}]")
+                      import hashlib
+                      print(f"MS {key} sha256={hashlib.sha256(str(val).encode()).hexdigest()[:16]}")
+                      print(f"MS {key} backslash-n count={str(val).count(chr(92)+'n')}")
+          PY
