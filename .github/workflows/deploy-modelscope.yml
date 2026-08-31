@@ -174,6 +174,7 @@ jobs:
           DASHSCOPE_API_KEY: ${{ secrets.DASHSCOPE_API_KEY }}
           ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
           YIBAO_ADMIN_SECRET: ${{ secrets.YIBAO_ADMIN_SECRET }}
+          YIBAO_SESSION_SECRET: ${{ secrets.YIBAO_SESSION_SECRET }}
         run: |
           set -euo pipefail
           EP="https://modelscope.cn/openapi/v1"
@@ -221,6 +222,8 @@ jobs:
           # 管理后台超级管理员：密码与 token 签发密钥走 secrets（公开创空间不能用默认密码）
           if [ -n "${ADMIN_PASSWORD:-}" ]; then sync_kv secrets ADMIN_PASSWORD "${ADMIN_PASSWORD}"; fi
           if [ -n "${YIBAO_ADMIN_SECRET:-}" ]; then sync_kv secrets YIBAO_ADMIN_SECRET "${YIBAO_ADMIN_SECRET}"; fi
+          # 用户会话 token（HMAC）签发密钥：不配则容器用代码默认值，严格模式下 token 可被伪造
+          if [ -n "${YIBAO_SESSION_SECRET:-}" ]; then sync_kv secrets YIBAO_SESSION_SECRET "${YIBAO_SESSION_SECRET}"; fi
 
           # 非敏感配置 → 明文 variables（config.py 默认值已正确，此处同步防止平台残留旧值覆盖）
           sync_kv variables DEMO_OFFLINE "false"
