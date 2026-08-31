@@ -21,6 +21,7 @@ const geistMono = localFont({
 export const metadata: Metadata = {
   title: "瓯医数链 OuMedTrust · 医疗数据要素可信流通平台",
   description: "联邦学习医疗协作 × AI数据治理 × 数据要素流通交易 —— 让医疗数据可用不可见、可控可计量",
+  icons: [{ rel: "icon", url: "/logo.jpg", type: "image/jpeg" }],
 };
 
 export default function RootLayout({
