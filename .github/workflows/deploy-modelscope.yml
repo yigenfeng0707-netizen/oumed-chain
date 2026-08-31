@@ -57,7 +57,7 @@ jobs:
 
           # 前端：剔除构建产物与密钥文件（pnpm-lock.yaml 必须保留：Dockerfile 用 frozen-lockfile）
           rsync -a \
-            --exclude 'node_modules' --exclude '.next' --exclude '.pytest_cache' \
+            --exclude 'node_modules' --exclude '.next' --exclude '.next-build' --exclude '.pytest_cache' \
             --exclude '.env' --exclude '.env.*' \
             frontend/ "$PKG/frontend/"
 
