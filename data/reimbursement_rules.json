@@ -1,0 +1,46 @@
+{
+  "_comment": "报销规则库（演示用，参数参考全国通行水平，具体以参保地政策为准）",
+  "insurance_types": {
+    "职工医保": {"class_b_self_pay_rate": 0.10, "chronic_benefit_boost": 0.10, "retiree_boost": 0.05},
+    "居民医保": {"class_b_self_pay_rate": 0.15, "chronic_benefit_boost": 0.08, "retiree_boost": 0.05}
+  },
+  "rules": {
+    "职工医保": {
+      "门诊": {
+        "社区": {"deductible": 500, "rate": 0.80, "cap": 5000},
+        "二级": {"deductible": 800, "rate": 0.75, "cap": 5000},
+        "三级": {"deductible": 1000, "rate": 0.65, "cap": 5000}
+      },
+      "住院": {
+        "社区": {"deductible": 300, "rate": 0.92, "cap": 300000},
+        "二级": {"deductible": 600, "rate": 0.88, "cap": 300000},
+        "三级": {"deductible": 1000, "rate": 0.85, "cap": 300000}
+      }
+    },
+    "居民医保": {
+      "门诊": {
+        "社区": {"deductible": 200, "rate": 0.60, "cap": 3000},
+        "二级": {"deductible": 400, "rate": 0.50, "cap": 3000},
+        "三级": {"deductible": 800, "rate": 0.45, "cap": 3000}
+      },
+      "住院": {
+        "社区": {"deductible": 200, "rate": 0.85, "cap": 200000},
+        "二级": {"deductible": 500, "rate": 0.70, "cap": 200000},
+        "三级": {"deductible": 1000, "rate": 0.60, "cap": 200000}
+      }
+    }
+  },
+  "big_insurance": {
+    "deductible": 15000,
+    "tiers": [
+      {"max": 50000, "rate": 0.60, "label": "0-5万段"},
+      {"max": 100000, "rate": 0.70, "label": "5-10万段"},
+      {"max": null, "rate": 0.80, "label": "10万以上段"}
+    ]
+  },
+  "adjustments": {
+    "cross_region_penalty": -0.05,
+    "rate_floor": 0.50,
+    "rate_ceiling": 0.96
+  }
+}

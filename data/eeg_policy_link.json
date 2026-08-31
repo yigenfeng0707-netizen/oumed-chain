@@ -1,0 +1,68 @@
+{
+  "_comment": "脑电-医保政策联动规则库（与 eeg/engine.py 内置默认规则一致，演示用）",
+  "links": [
+    {
+      "trigger": "high_stress",
+      "condition": {"stress_index_min": 70},
+      "title": "持续高压力状态",
+      "policy_hint": "心理科门诊报销政策",
+      "description": "检测到持续高压力脑电模式，长期压力可能影响心血管和心理健康。",
+      "suggestion": "建议关注心理健康，可咨询心理科门诊。多地已将心理治疗纳入医保统筹。",
+      "related_policies": ["心理治疗医保报销", "门诊慢病待遇（抑郁/焦虑）"]
+    },
+    {
+      "trigger": "poor_sleep",
+      "condition": {"sleep_quality_max": 40},
+      "title": "睡眠质量持续下降",
+      "policy_hint": "睡眠障碍相关检查报销政策",
+      "description": "脑电 δ/θ 波比例异常，提示睡眠质量不佳，可能存在睡眠障碍。",
+      "suggestion": "建议进行睡眠监测（多导睡眠图），部分城市已纳入医保报销。",
+      "related_policies": ["睡眠监测医保报销", "门诊特殊病种（睡眠障碍）"]
+    },
+    {
+      "trigger": "cognitive_overload",
+      "condition": {"cognitive_load_min": 75},
+      "title": "认知负荷过高",
+      "policy_hint": "认知功能评估相关医保政策",
+      "description": "脑电 β/γ 波持续偏高，提示认知负荷过重，需关注脑健康。",
+      "suggestion": "建议进行认知功能筛查，65 岁以上可享受老年认知评估医保待遇。",
+      "related_policies": ["老年认知功能筛查", "门诊慢病待遇（阿尔茨海默病）"]
+    },
+    {
+      "trigger": "attention_low",
+      "condition": {"attention_index_max": 40},
+      "title": "注意力持续偏低",
+      "policy_hint": "注意力评估相关医保政策",
+      "description": "θ/β 比值偏高，提示注意力水平下降，可能影响日常生活。",
+      "suggestion": "建议关注注意力变化，必要时进行神经内科评估。",
+      "related_policies": ["神经内科门诊报销", "儿童注意力评估（学生医保）"]
+    },
+    {
+      "trigger": "cerebrovascular_risk",
+      "condition": {"cerebrovascular_risk_min": 60},
+      "title": "脑血管疾病风险预警",
+      "policy_hint": "脑血管病检查与治疗医保政策",
+      "description": "脑电频段异常提示脑血管功能风险，建议尽快进行脑血管专项检查。",
+      "suggestion": "建议进行颈动脉超声/经颅多普勒/头颅CT检查。脑血管病已纳入门诊慢病医保待遇，急性脑卒中可走绿色通道。",
+      "related_policies": ["脑血管病门诊慢病待遇", "脑卒中绿色通道", "颈动脉超声医保报销", "经颅多普勒医保报销"]
+    },
+    {
+      "trigger": "cognitive_decline_risk",
+      "condition": {"cognitive_decline_risk_min": 60},
+      "title": "认知功能衰退风险",
+      "policy_hint": "认知功能评估与治疗医保政策",
+      "description": "脑电特征符合轻度认知障碍(MCI)，建议进行认知功能评估。",
+      "suggestion": "建议进行MMSE/MoCA认知功能量表评估。65岁以上可享受老年认知评估医保待遇，阿尔茨海默病已纳入门诊慢病保障。",
+      "related_policies": ["老年认知功能筛查", "门诊慢病待遇（阿尔茨海默病）", "神经内科门诊报销"]
+    },
+    {
+      "trigger": "mental_health_risk",
+      "condition": {"mental_health_overall_min": 60},
+      "title": "精神状态筛查异常",
+      "policy_hint": "精神卫生医保政策",
+      "description": "脑电精神状态筛查显示焦虑/抑郁倾向，建议进行专业评估。",
+      "suggestion": "建议咨询精神卫生科或心理科。多地已将心理治疗纳入医保统筹，抑郁症/焦虑症可申请门诊慢病待遇。",
+      "related_policies": ["心理治疗医保报销", "门诊慢病待遇（抑郁症/焦虑症）", "精神卫生专科报销"]
+    }
+  ]
+}
