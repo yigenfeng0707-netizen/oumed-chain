@@ -40,7 +40,7 @@ import {
 import { motion } from "framer-motion";
 import { API_BASE } from "@/lib/api";
 
-const TOKEN_KEY = "medsignal_admin_token";
+const TOKEN_KEY = "oumed_admin_token";
 
 interface AdminUserRow {
   id: number;

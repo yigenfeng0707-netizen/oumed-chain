@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Generate MedSignal 16-slide presentation (16:9) using python-pptx 1.0.2.
+Generate 瓯医数链 16-slide presentation (16:9) using python-pptx 1.0.2.
 
 Based on docs/ppt_outline.md (VentureD Hackathon medical track).
 Uses colored shapes + text boxes only (no images).
@@ -174,7 +174,7 @@ def slide01(prs):
     set_bg(s, NAVY)
     rect(s, 0, 0, SW, 0.22, GREEN)
     rect(s, 0, SH - 0.22, SW, 0.22, NAVY_DARK)
-    tbox(s, 1.0, 1.55, 11.3, 1.0, ["MedSignal"], size=54, color=WHITE, bold=True,
+    tbox(s, 1.0, 1.55, 11.3, 1.0, ["瓯医数链"], size=54, color=WHITE, bold=True,
          align=PP_ALIGN.CENTER)
     tbox(s, 1.0, 2.60, 11.3, 0.5, ["multi-modal medical signal agent"], size=14,
          color=SUB_CL, align=PP_ALIGN.CENTER)
@@ -200,7 +200,7 @@ def slide01(prs):
         icon(s, st + i * (aw + g2), 6.1, aw, col, lab, size=10)
     tbox(s, 0.5, 7.1, 12.3, 0.3,
          [("VentureD Hackathon \u00b7 \u533b\u7597\u8d5b\u9053      |      2026 \u5e74 8 \u6708", 12, SUB_CL, False, PP_ALIGN.CENTER)])
-    notes(s, "\u5404\u4f4d\u8bc4\u59d4\u3001\u5404\u4f4d\u8001\u5e08\uff0c\u5927\u5bb6\u597d\u3002\u4eca\u5929\u6211\u5e26\u6765\u7684\u662f MedSignal\u2014\u2014\u4e00\u4e2a\u9762\u5411\u771f\u5b9e\u533b\u7597\u573a\u666f\u3001\u4e13\u95e8\u8bc6\u522b\u201c\u5173\u952e\u533b\u7597\u4fe1\u53f7\u201d\u7684 AI \u667a\u80fd\u4f53\u3002")
+    notes(s, "\u5404\u4f4d\u8bc4\u59d4\u3001\u5404\u4f4d\u8001\u5e08\uff0c\u5927\u5bb6\u597d\u3002\u4eca\u5929\u6211\u5e26\u6765\u7684\u662f 瓯医数链\u2014\u2014\u4e00\u4e2a\u9762\u5411\u771f\u5b9e\u533b\u7597\u573a\u666f\u3001\u4e13\u95e8\u8bc6\u522b\u201c\u5173\u952e\u533b\u7597\u4fe1\u53f7\u201d\u7684 AI \u667a\u80fd\u4f53\u3002")
 
 
 def slide02(prs):
@@ -271,7 +271,7 @@ def slide03(prs):
 def slide04(prs):
     s = prs.slides.add_slide(prs.slide_layouts[6])
     set_bg(s, LIGHT_BG)
-    title_bar(s, "MedSignal \u2014\u2014 \u8ba9\u5173\u952e\u533b\u7597\u4fe1\u53f7\uff0c\u4e0d\u518d\u88ab\u9519\u8fc7",
+    title_bar(s, "瓯医数链 \u2014\u2014 \u8ba9\u5173\u952e\u533b\u7597\u4fe1\u53f7\uff0c\u4e0d\u518d\u88ab\u9519\u8fc7",
              "\u4e00\u4e2a\u80fd\u201c\u770b\u4fe1\u53f7\u3001\u6293\u5f02\u5e38\u3001\u8fde\u8d44\u6e90\u201d\u7684\u591a\u6a21\u6001\u533b\u7597\u4fe1\u53f7\u667a\u80fd\u4f53", 4, accent=GREEN)
     pos = rrect(s, 2.0, 1.35, 9.33, 0.95, NAVY, radius=0.10)
     set_text(pos.text_frame,
@@ -298,7 +298,7 @@ def slide04(prs):
     set_text(slogan.text_frame,
              [("\u8bc6\u522b\u4fe1\u53f7 \u00b7 \u5b88\u62a4\u5065\u5eb7 \u00b7 \u8fde\u63a5\u8d44\u6e90", 18, WHITE, True, PP_ALIGN.CENTER)],
              anchor=MSO_ANCHOR.MIDDLE)
-    notes(s, "\u6240\u4ee5\u6211\u4eec\u505a\u4e86 MedSignal\u3002\u5b83\u4e0d\u53ea\u56de\u7b54\u95ee\u9898\uff0c\u5b83\u80fd\u8bc6\u522b\u8111\u7535\u4fe1\u53f7\u3001\u6293\u53d6\u5f71\u50cf\u75c5\u7076\u3001\u8fde\u63a5\u653f\u7b56\u4e0e\u62a5\u9500\u8d44\u6e90\uff0c\u628a\u201c\u770b\u4e0d\u89c1\u7684\u5f02\u5e38\u201d\u53d8\u6210\u201c\u770b\u5f97\u89c1\u7684\u884c\u52a8\u201d\u3002")
+    notes(s, "\u6240\u4ee5\u6211\u4eec\u505a\u4e86 瓯医数链\u3002\u5b83\u4e0d\u53ea\u56de\u7b54\u95ee\u9898\uff0c\u5b83\u80fd\u8bc6\u522b\u8111\u7535\u4fe1\u53f7\u3001\u6293\u53d6\u5f71\u50cf\u75c5\u7076\u3001\u8fde\u63a5\u653f\u7b56\u4e0e\u62a5\u9500\u8d44\u6e90\uff0c\u628a\u201c\u770b\u4e0d\u89c1\u7684\u5f02\u5e38\u201d\u53d8\u6210\u201c\u770b\u5f97\u89c1\u7684\u884c\u52a8\u201d\u3002")
 
 
 def slide05(prs):
@@ -384,7 +384,7 @@ def slide06(prs):
     set_text(badge.text_frame,
              [("✓ 双源真实数据集 · PhysioNet 运动想象 + EEGEmotions-27 情绪 · 289 项测试全绿", 15, WHITE, True, PP_ALIGN.CENTER)],
              anchor=MSO_ANCHOR.MIDDLE)
-    notes(s, "第一个 Demo。接入 EEG 设备，MedSignal 对脑电做频域分析，输出压力、睡眠等五个维度的客观指标。张先生的“睡不好”第一次有了数字。当指标异常，它主动预警，并自动匹配到相关医疗待遇。引擎已在双源真实公开数据集上验证：PhysioNet 运动想象数据集 + EEGEmotions-27 情绪数据集，加上 289 项单元测试在支撑。")
+    notes(s, "第一个 Demo。接入 EEG 设备，瓯医数链 对脑电做频域分析，输出压力、睡眠等五个维度的客观指标。张先生的“睡不好”第一次有了数字。当指标异常，它主动预警，并自动匹配到相关医疗待遇。引擎已在双源真实公开数据集上验证：PhysioNet 运动想象数据集 + EEGEmotions-27 情绪数据集，加上 289 项单元测试在支撑。")
 
 
 def slide07(prs):
@@ -465,7 +465,7 @@ def slide08(prs):
         icon(s, x + cw / 2 - 0.3, 3.7, 0.6, col, "\u2192", size=14)
         tbox(s, x + 0.1, 4.4, cw - 0.2, 0.4, [(h, 11.5, col, True, PP_ALIGN.CENTER)])
         tbox(s, x + 0.1, 4.85, cw - 0.2, 0.8, [b], size=10, color=DARK, align=PP_ALIGN.CENTER)
-    notes(s, "\u7b2c\u4e09\u4e2a Demo\u3002MedSignal \u5206\u6790\u5f20\u5148\u751f\u7684\u7528\u836f\u884c\u4e3a\u2014\u2014\u8fde\u7eed\u4e09\u4e2a\u6708\u4e70\u964d\u7cd6\u836f\uff0c\u5374\u6ca1\u590d\u67e5\u7cd6\u5316\u8840\u7ea2\u86cb\u767d\uff0c\u6162\u75c5\u7ba1\u7406\u8bc4\u5206\u660e\u663e\u4e0b\u964d\u3002\u7cfb\u7edf\u4e0d\u662f\u7b49\u4ed6\u6765\u95ee\uff0c\u800c\u662f\u4e3b\u52a8\u628a\u9884\u8b66\u63a8\u5230\u4ed6\u9762\u524d\u3002\u4ece\u88ab\u52a8\u7b49\u7b54\u6848\u5230\u4e3b\u52a8\u6293\u4fe1\u53f7\uff0c\u8fd9\u662f\u8303\u5f0f\u8f6c\u53d8\u3002")
+    notes(s, "\u7b2c\u4e09\u4e2a Demo\u3002瓯医数链 \u5206\u6790\u5f20\u5148\u751f\u7684\u7528\u836f\u884c\u4e3a\u2014\u2014\u8fde\u7eed\u4e09\u4e2a\u6708\u4e70\u964d\u7cd6\u836f\uff0c\u5374\u6ca1\u590d\u67e5\u7cd6\u5316\u8840\u7ea2\u86cb\u767d\uff0c\u6162\u75c5\u7ba1\u7406\u8bc4\u5206\u660e\u663e\u4e0b\u964d\u3002\u7cfb\u7edf\u4e0d\u662f\u7b49\u4ed6\u6765\u95ee\uff0c\u800c\u662f\u4e3b\u52a8\u628a\u9884\u8b66\u63a8\u5230\u4ed6\u9762\u524d\u3002\u4ece\u88ab\u52a8\u7b49\u7b54\u6848\u5230\u4e3b\u52a8\u6293\u4fe1\u53f7\uff0c\u8fd9\u662f\u8303\u5f0f\u8f6c\u53d8\u3002")
 
 
 def slide09(prs):
@@ -581,7 +581,7 @@ def slide11(prs):
     set_text(decl.text_frame,
              [("\u4ea7\u54c1\u4f7f\u7528\u8fb9\u754c\u58f0\u660e\uff1a\u672c\u4ea7\u54c1\u6240\u6709\u8f93\u51fa\u5747\u4e3a\u5065\u5eb7\u63d0\u793a\uff0c\u4e0d\u6784\u6210\u533b\u7597\u8bca\u65ad\u6216\u5904\u65b9\u5efa\u8bae\uff0c\u5371\u6025\u60c5\u51b5\u8bf7\u7acb\u5373\u5c31\u533b", 10.5, GRAY, False, PP_ALIGN.CENTER)],
              anchor=MSO_ANCHOR.MIDDLE)
-    notes(s, "\u533b\u7597\u4ea7\u54c1\u5b89\u5168\u7b2c\u4e00\u3002\u6211\u4eec\u660e\u786e\u4e09\u6761\u8fb9\u754c\uff1a\u5f71\u50cf\u62a5\u544a\u5fc5\u987b\u533b\u5e08\u590d\u6838\u7b7e\u5b57\uff1b\u6240\u6709\u9884\u8b66\u90fd\u662f\u63d0\u793a\u4e0d\u662f\u8bca\u65ad\uff1bMedSignal \u4e0d\u505a\u5904\u65b9\u3001\u4e0d\u505a\u786e\u8bca\uff0c\u5371\u6025\u4fe1\u53f7\u4e00\u5f8b\u5f15\u5bfc\u7ebf\u4e0b\u5c31\u533b\u3002\u6570\u636e\u65b9\u9762\uff0c\u7528\u6237\u53ef\u4ee5\u81ea\u4e3b\u6388\u6743\uff0c\u5168\u7a0b\u5b58\u8bc1\u53ef\u8ffd\u6eaf\u3002")
+    notes(s, "\u533b\u7597\u4ea7\u54c1\u5b89\u5168\u7b2c\u4e00\u3002\u6211\u4eec\u660e\u786e\u4e09\u6761\u8fb9\u754c\uff1a\u5f71\u50cf\u62a5\u544a\u5fc5\u987b\u533b\u5e08\u590d\u6838\u7b7e\u5b57\uff1b\u6240\u6709\u9884\u8b66\u90fd\u662f\u63d0\u793a\u4e0d\u662f\u8bca\u65ad\uff1b瓯医数链 \u4e0d\u505a\u5904\u65b9\u3001\u4e0d\u505a\u786e\u8bca\uff0c\u5371\u6025\u4fe1\u53f7\u4e00\u5f8b\u5f15\u5bfc\u7ebf\u4e0b\u5c31\u533b\u3002\u6570\u636e\u65b9\u9762\uff0c\u7528\u6237\u53ef\u4ee5\u81ea\u4e3b\u6388\u6743\uff0c\u5168\u7a0b\u5b58\u8bc1\u53ef\u8ffd\u6eaf\u3002")
 
 
 def slide12(prs):
@@ -629,7 +629,7 @@ def slide12(prs):
         tg = rrect(s, tx, ty, w, 0.45, LIGHT_BG, line=NAVY_LT, lw=1.0, radius=0.30)
         set_text(tg.text_frame, [(tag, 11, NAVY, True, PP_ALIGN.CENTER)], anchor=MSO_ANCHOR.MIDDLE)
         tx += w + 0.2
-    notes(s, "MedSignal \u7684\u4ef7\u503c\u662f\u8ba9\u5065\u5eb7\u7ba1\u7406\u4ece\u201c\u7b49\u751f\u75c5\u201d\u53d8\u6210\u201c\u65e9\u53d1\u73b0\u201d\uff1a\u57fa\u5c42\u533b\u751f\u6709\u4e86 AI \u52a9\u624b\uff0c\u60a3\u8005\u6709\u4e86\u80fd\u770b\u61c2\u4fe1\u53f7\u3001\u62ff\u5f97\u5230\u7ea2\u5229\u7684\u7ba1\u5bb6\u3002\u8fd9\u662f\u5bf9\u201c\u5065\u5eb7\u4e2d\u56fd\u201d\u6700\u76f4\u63a5\u7684\u54cd\u5e94\u3002")
+    notes(s, "瓯医数链 \u7684\u4ef7\u503c\u662f\u8ba9\u5065\u5eb7\u7ba1\u7406\u4ece\u201c\u7b49\u751f\u75c5\u201d\u53d8\u6210\u201c\u65e9\u53d1\u73b0\u201d\uff1a\u57fa\u5c42\u533b\u751f\u6709\u4e86 AI \u52a9\u624b\uff0c\u60a3\u8005\u6709\u4e86\u80fd\u770b\u61c2\u4fe1\u53f7\u3001\u62ff\u5f97\u5230\u7ea2\u5229\u7684\u7ba1\u5bb6\u3002\u8fd9\u662f\u5bf9\u201c\u5065\u5eb7\u4e2d\u56fd\u201d\u6700\u76f4\u63a5\u7684\u54cd\u5e94\u3002")
 
 
 def slide13(prs):
@@ -709,11 +709,11 @@ def slide14(prs):
 def slide15(prs):
     s = prs.slides.add_slide(prs.slide_layouts[6])
     set_bg(s, LIGHT_BG)
-    title_bar(s, "\u56e2\u961f", "MedSignal Team \u00b7 \u591a\u6a21\u6001\u533b\u7597\u4fe1\u53f7\u8bc6\u522b\u56e2\u961f", 15, accent=GREEN)
+    title_bar(s, "\u56e2\u961f", "瓯医数链 Team \u00b7 \u591a\u6a21\u6001\u533b\u7597\u4fe1\u53f7\u8bc6\u522b\u56e2\u961f", 15, accent=GREEN)
     oval(s, SW / 2 - 1.1, 1.7, 2.2, NAVY)
     tbox(s, SW / 2 - 1.1, 1.7, 2.2, 2.2, [("MS", 40, WHITE, True, PP_ALIGN.CENTER)],
          anchor=MSO_ANCHOR.MIDDLE)
-    tbox(s, 1.0, 4.05, 11.3, 0.45, [("MedSignal Team", 22, NAVY, True, PP_ALIGN.CENTER)])
+    tbox(s, 1.0, 4.05, 11.3, 0.45, [("瓯医数链 Team", 22, NAVY, True, PP_ALIGN.CENTER)])
     tbox(s, 1.0, 4.5, 11.3, 0.4, [("\u5168\u6808\u5f00\u53d1 + \u4ea7\u54c1\u8bbe\u8ba1 + AI \u5e94\u7528\u5f00\u53d1", 13, GRAY, False, PP_ALIGN.CENTER)])
     tbox(s, 1.0, 5.05, 11.3, 0.3, [("\u6280\u672f\u6808", 12, NAVY, True, PP_ALIGN.CENTER)])
     tags = ["Python", "FastAPI", "Next.js", "React", "Multi-Agent", "EEG \u4fe1\u53f7\u5904\u7406", "\u533b\u5b66\u5f71\u50cf\u5de5\u4f5c\u6d41", "LLM \u5e94\u7528", "Prompt \u5de5\u7a0b"]
@@ -742,7 +742,7 @@ def slide16(prs):
     set_bg(s, NAVY)
     rect(s, 0, 0, SW, 0.22, GREEN)
     rect(s, 0, SH - 0.22, SW, 0.22, NAVY_DARK)
-    tbox(s, 1.0, 1.0, 11.3, 0.6, [("MedSignal", 30, WHITE, True, PP_ALIGN.CENTER)])
+    tbox(s, 1.0, 1.0, 11.3, 0.6, [("瓯医数链", 30, WHITE, True, PP_ALIGN.CENTER)])
     q = rrect(s, 1.5, 2.2, 10.33, 2.0, NAVY_DARK, line=GREEN, lw=1.5, radius=0.08)
     set_text(q.text_frame,
              [("\u8ba9\u5173\u952e\u533b\u7597\u4fe1\u53f7", 34, WHITE, True, PP_ALIGN.CENTER),
@@ -767,7 +767,7 @@ def slide16(prs):
     for i, (lab, col) in enumerate(agents):
         icon(s, st + i * (aw + g2), 6.35, aw, col, lab, size=9)
     tbox(s, 0.5, 7.0, 12.3, 0.3, [("\u8c22\u8c22\u5927\u5bb6\uff01", 13, SUB_CL, True, PP_ALIGN.CENTER)])
-    notes(s, "\u56de\u5230\u5f20\u5148\u751f\u7684\u6545\u4e8b\u3002\u6709\u4e86 MedSignal\uff0c\u538b\u529b\u6709\u4e86\u6570\u5b57\uff0c\u75c5\u7076\u6709\u4eba\u628a\u5173\uff0c\u653f\u7b56\u7ea2\u5229\u4e0d\u518d\u9519\u8fc7\u3002\u8ba9\u5173\u952e\u533b\u7597\u4fe1\u53f7\uff0c\u4e0d\u518d\u88ab\u9519\u8fc7\u3002\u8c22\u8c22\u5927\u5bb6\uff01")
+    notes(s, "\u56de\u5230\u5f20\u5148\u751f\u7684\u6545\u4e8b\u3002\u6709\u4e86 瓯医数链\uff0c\u538b\u529b\u6709\u4e86\u6570\u5b57\uff0c\u75c5\u7076\u6709\u4eba\u628a\u5173\uff0c\u653f\u7b56\u7ea2\u5229\u4e0d\u518d\u9519\u8fc7\u3002\u8ba9\u5173\u952e\u533b\u7597\u4fe1\u53f7\uff0c\u4e0d\u518d\u88ab\u9519\u8fc7\u3002\u8c22\u8c22\u5927\u5bb6\uff01")
 
 
 def main():
@@ -779,7 +779,7 @@ def main():
                 slide15, slide16]
     for b in builders:
         b(prs)
-    out = r"d:\APPs\VentureDhealthcare\docs\MedSignal.pptx"
+    out = r"d:\APPs\VentureDhealthcare\docs\瓯医数链.pptx"
     prs.save(out)
     size = os.path.getsize(out)
     print("OK -> " + out)

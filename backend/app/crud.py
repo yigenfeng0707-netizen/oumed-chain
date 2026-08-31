@@ -1,5 +1,5 @@
 """
-MedSignal - 统一数据访问层 (CRUD)
+瓯医数链 - 统一数据访问层 (CRUD)
 
 所有 Router / Service 通过本模块查询数据库，避免直接操作 session。
 所有函数均为 async，接收 AsyncSession，返回 ORM 对象或标量。
@@ -437,7 +437,7 @@ def eeg_record_to_dict(record: EEGRecord) -> dict:
 
 
 # ============================================================
-# 医学影像检查记录（MedSignal 影像引擎）
+# 医学影像检查记录（瓯医数链 影像引擎）
 # ============================================================
 
 async def create_imaging_record(

@@ -143,7 +143,7 @@ def _ai_table(d: dict) -> list[dict]:
         )
 
     add("身份", "档案编号", d["archive_id"], d["profile"]["registered_at"])
-    add("主系统同步", "系统用户ID", d["patient_id"], d["source_system"]["synced_at"], "medsignal-agent")
+    add("主系统同步", "系统用户ID", d["patient_id"], d["source_system"]["synced_at"], "oumed-chain")
     add("基本信息", "参保与就业", f"{d['profile']['insurance_type']} / {d['profile']['employee_status']}")
     for x in d["lab_results"]:
         add("检验", x["item"], f"{x['value']} {x['unit']}", x["date"], "数据库检验测试数据")
@@ -221,7 +221,7 @@ async def build_dossier(db: AsyncSession, user: User) -> dict:
         "sex": "f" if user.gender == "女" else "m",
         "age": user.age,
         "source_system": {
-            "system": "medsignal-agent",
+            "system": "oumed-chain",
             "system_user_id": patient_ref(uid),
             "synced_at": "2026-08-28 14:00",
         },
@@ -432,7 +432,7 @@ async def seed_demo_archive(db: AsyncSession) -> dict:
                         event_date=f"2026-{max(1, 8 - i):02d}",
                         source_type="upload",
                         source_label="主系统记录",
-                        source_ref="medsignal-agent",
+                        source_ref="oumed-chain",
                         batch_id="synthetic-demo-2026",
                     )
                 )

@@ -1,5 +1,5 @@
 """
-MedSignal - EEG 设备适配层（Device Adapter）
+瓯医数链 - EEG 设备适配层（Device Adapter）
 
 将不同来源的 EEG 信号统一为 (signals, channels, sample_rate) 格式，
 直接喂给已有的分析引擎（engine.py），无需修改引擎核心逻辑。

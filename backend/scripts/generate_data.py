@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-MedSignal - 合成数据生成脚本
+瓯医数链 - 合成数据生成脚本
 
 为10个典型用户画像生成逼真的医保数据，包括：
 - 用户基本信息
@@ -552,7 +552,7 @@ def generate_medication_records(user_id: int, profile: dict) -> list:
 def generate_all_data():
     """生成全部合成数据并保存为JSON和CSV"""
     print("=" * 60)
-    print("MedSignal - 合成数据生成")
+    print("瓯医数链 - 合成数据生成")
     print("=" * 60)
 
     all_data = {

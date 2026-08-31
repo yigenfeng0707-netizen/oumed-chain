@@ -1,5 +1,5 @@
 """
-MedSignal - 档案管家路由（人体健康档案）
+瓯医数链 - 档案管家路由（人体健康档案）
 
 - GET  /api/body/organs                 器官/部位分类表（前端 3D 网格契约）
 - GET  /api/body/{user_id}/records      档案记录（时间倒序，可按 organ 过滤）

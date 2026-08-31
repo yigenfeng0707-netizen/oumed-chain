@@ -1,5 +1,5 @@
 """
-MedSignal - 知识库构建脚本
+瓯医数链 - 知识库构建脚本
 
 功能：
 1. 读取 policy_knowledge.json
@@ -51,7 +51,7 @@ SAMPLE_QUERIES = [
 async def build_knowledge_base():
     """构建知识库主流程"""
     print("=" * 70)
-    print("  MedSignal - 知识库构建工具")
+    print("  瓯医数链 - 知识库构建工具")
     print("=" * 70)
 
     # ---- 第一步：读取政策文档 ----

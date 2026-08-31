@@ -1,5 +1,5 @@
 """
-MedSignal - 数据管家引擎（Data Lake Engine，湖仓一体）
+瓯医数链 - 数据管家引擎（Data Lake Engine，湖仓一体）
 
 数据管家智能体（Data Agent）的核心模块，提供：
 - 湖仓一体数据资产目录（仓层结构化主题表 + 湖层原始数据文件）

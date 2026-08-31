@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-# MedSignal 魔搭创空间入口
+# 瓯医数链 魔搭创空间入口
 # - 后端 FastAPI   → 127.0.0.1:8000（内部）
 # - 前端 Next.js   → 0.0.0.0:7860（对外，魔搭强制端口）
 # - /api/* 由 Next rewrites 代理到本地 8000
@@ -17,7 +17,7 @@ export PYTHONIOENCODING=utf-8
 
 # 默认环境变量（优先保留平台注入的 variables/secrets，仅缺省时使用默认值）
 export DEMO_OFFLINE="${DEMO_OFFLINE:-true}"
-export YIBAO_SESSION_SECRET="${YIBAO_SESSION_SECRET:-medsignal-modelscope-demo-secret-change-me}"
+export YIBAO_SESSION_SECRET="${YIBAO_SESSION_SECRET:-oumed-modelscope-demo-secret-change-me}"
 
 # 持久化目录（魔搭 /mnt/workspace 挂载点，重启不丢）
 # 探测可写性：挂载异常时降级到容器内路径（数据不持久，但服务可用、容器不崩溃）

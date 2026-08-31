@@ -1,5 +1,5 @@
 """
-MedSignal - 药品卫士路由（药品拍照识别与用药安全）
+瓯医数链 - 药品卫士路由（药品拍照识别与用药安全）
 
 - POST /api/drugs/scan      药品拍照识别（视觉模型 → OCR+LLM → mock）+ 富化（归类/相互作用/有效期）
 - POST /api/drugs/register  用户确认后把扫描到的药品写入 medication_records

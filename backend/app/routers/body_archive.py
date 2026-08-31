@@ -1,4 +1,4 @@
-"""MedSignal - 档案管家 · 数字人体 3D 查看器适配路由
+"""瓯医数链 - 档案管家 · 数字人体 3D 查看器适配路由
 
 静态查看器 backend/app/static/digital-body/index.html（main.py 挂载于 /digital-body）
 的数据契约，复用 routers/body.py 同一套 BodyRecord/BodyDocument 数据，只增不删：

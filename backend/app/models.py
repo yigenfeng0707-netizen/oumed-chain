@@ -180,7 +180,7 @@ class EEGRecord(Base):
 
 
 class ImagingRecord(Base):
-    """医学影像检查记录（MedSignal 影像引擎）
+    """医学影像检查记录（瓯医数链 影像引擎）
 
     存储每次影像 AI 分析会话的结果摘要（影像数据以确定性合成参数
     study_type + seed + findings 可随时复现，不存大体积 base64）。

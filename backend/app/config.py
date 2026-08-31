@@ -38,9 +38,9 @@ class Settings(BaseSettings):
 
     # 管理后台超级管理员（/admin 页面登录用）
     ADMIN_USERNAME: str = "admin"
-    ADMIN_PASSWORD: str = "MedSignal@2026"
+    ADMIN_PASSWORD: str = "瓯医数链@2026"
     # 管理员 token 签发密钥（改后所有已签发 token 失效）
-    YIBAO_ADMIN_SECRET: str = "medsignal-admin-secret"
+    YIBAO_ADMIN_SECRET: str = "oumed-admin-secret"
 
     # 部署/鉴权相关：auth.py 、main.py 直接从环境变量读取，
     # 此处声明是为了让 pydantic-settings 解析 .env 时不报 extra_forbidden 错误

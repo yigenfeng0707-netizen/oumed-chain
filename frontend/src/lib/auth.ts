@@ -3,16 +3,16 @@
 /**
  * 用户认证（邮箱注册/登录）：token 存取 + API 封装。
  *
- * - token 存 localStorage（medsignal_user_token），24h 有效（后端 HMAC 签发）
- * - 登录用户画像存 medsignal_user_profile，用于启动时恢复会话
+ * - token 存 localStorage（oumed_user_token），24h 有效（后端 HMAC 签发）
+ * - 登录用户画像存 oumed_user_profile，用于启动时恢复会话
  * - 演示用户（user-switcher）不走此模块，两套体系并存
  */
 
 import { API_BASE } from "./api";
 import type { UserInfo } from "./mock-data";
 
-const TOKEN_KEY = "medsignal_user_token";
-const PROFILE_KEY = "medsignal_user_profile";
+const TOKEN_KEY = "oumed_user_token";
+const PROFILE_KEY = "oumed_user_profile";
 
 export interface AuthUser extends UserInfo {
   email?: string | null;

@@ -1,5 +1,5 @@
 """
-MedSignal Agent - 医学影像 AI 标注引擎 (Imaging Engine)
+瓯医数链 Agent - 医学影像 AI 标注引擎 (Imaging Engine)
 
 多模态医疗信号识别核心模块之一 —— 医学影像病灶检测与 AI 辅助标注。
 与 EEG 脑电引擎并列，构成"脑电 + 影像"双模态关键医疗信号识别闭环。

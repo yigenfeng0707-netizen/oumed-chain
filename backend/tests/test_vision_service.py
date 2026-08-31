@@ -1,4 +1,4 @@
-"""视觉模型服务单元测试（MedSignal Agent · GLM-4.6V 影像解读）
+"""视觉模型服务单元测试（瓯医数链 Agent · GLM-4.6V 影像解读）
 
 覆盖：
 - 降级路径（未配置 Key / DEMO_OFFLINE / 空影像 / 调用失败 → None，不影响主流程）

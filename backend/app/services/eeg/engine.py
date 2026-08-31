@@ -1,5 +1,5 @@
 """
-MedSignal - 脑电健康引擎（EEG Engine）
+瓯医数链 - 脑电健康引擎（EEG Engine）
 
 BCI×医保创新核心模块 —— 将 EEG 脑电指标纳入医保健康画像
 - 合成 EEG 信号生成（4 通道，256Hz，模拟不同心理状态）
@@ -57,8 +57,8 @@ MENTAL_STATES = {
 }
 
 # 脑电异常 → 医保政策联动映射
-# engine.py 位于 backend/app/services/eeg/，数据文件在 medsignal-agent/data/
-# 向上 5 层：eeg/ → services/ → app/ → backend/ → medsignal-agent/
+# engine.py 位于 backend/app/services/eeg/，数据文件在 oumed-chain/data/
+# 向上 5 层：eeg/ → services/ → app/ → backend/ → oumed-chain/
 _EEG_POLICY_LINK_PATH = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))),
     "data", "eeg_policy_link.json",

@@ -1,5 +1,5 @@
 """
-MedSignal - 政策精准匹配引擎（Policy Matcher）
+瓯医数链 - 政策精准匹配引擎（Policy Matcher）
 
 P1-3：从硬编码 4 条政策升级为"用户画像 → 政策特征 → 规则匹配 + 省钱计算"
 - 解析 policy_knowledge.json 的适用条件（tags/applicable_to/key_points）

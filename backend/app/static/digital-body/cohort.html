@@ -10,7 +10,7 @@
 <body>
 <header><b>嘀嗒医 · 10人数据整合总览</b><a class="btn" href="./">数字人体</a><a class="btn" href="dossier.html">单人全量档案</a><a class="btn" href="/api/body-archive/ai-table?format=csv" download>AI总表</a><a class="btn primary" href="/api/body-archive/archive/all.zip" download>下载10人ZIP</a></header>
 <main>
-<div class="notice">正式测试名单与主系统 <b>medsignal-agent</b> 的 `user_001—user_010` 一一对应。患者数据为合成测试数据；公开 CT/PET/SVG 仅作为独立教学素材，不会混入患者原片。</div>
+<div class="notice">正式测试名单与主系统 <b>oumed-chain</b> 的 `user_001—user_010` 一一对应。患者数据为合成测试数据；公开 CT/PET/SVG 仅作为独立教学素材，不会混入患者原片。</div>
 <div class="metrics" id="metrics"></div>
 <section class="card"><div class="head"><h2>数据整合链路</h2><span>所有患者执行相同流程</span></div><div class="pipeline"><div class="step"><b>① 主系统人数</b>10个稳定用户ID</div><span class="arrow">→</span><div class="step"><b>② 一人一档</b>人口学与医保</div><span class="arrow">→</span><div class="step"><b>③ 3D病史</b>器官与时间线</div><span class="arrow">→</span><div class="step"><b>④ 多模态</b>检验、EEG、原件</div><span class="arrow">→</span><div class="step"><b>⑤ AI归整</b>来源可追溯长表</div><span class="arrow">→</span><div class="step"><b>⑥ 输出</b>CSV/JSON/ZIP</div></div></section>
 <section class="card" style="margin-top:18px"><div class="head"><h2>10位用户数据覆盖矩阵</h2><span id="updated">正在加载…</span></div><div class="table" id="table"><div class="loading">正在按用户ID归集数据…</div></div></section>

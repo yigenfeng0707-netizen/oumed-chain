@@ -1,5 +1,5 @@
 # ============================================================
-# MedSignal 魔搭创空间精简依赖
+# 瓯医数链 魔搭创空间精简依赖
 # 剔除：sentence-transformers（依赖 torch，体积数 GB，代码未直接 import）
 #        PostgreSQL 驱动（Demo 用 SQLite）
 # 保留：chromadb（knowledge_base.py 顶层 import，必须存在）

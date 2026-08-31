@@ -36,7 +36,7 @@ def test_create_user_and_persist_conversation():
                 session,
                 "conversation-1",
                 "assistant",
-                "我是 MedSignal 助手。",
+                "我是 瓯医数链 助手。",
                 "assistant_agent",
             )
             await session.commit()

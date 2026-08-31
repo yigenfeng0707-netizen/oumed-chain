@@ -1,5 +1,5 @@
 """
-MedSignal - 药品卫士引擎（药品拍照识别 × 用药安全）
+瓯医数链 - 药品卫士引擎（药品拍照识别 × 用药安全）
 
 识别管线：qwen-vl 视觉抽取 → OCR 文本 + LLM 解析 → mock 兜底
 富化层：药品归类（drug_categories）/ 相互作用核查（interactions）/ 有效期核验

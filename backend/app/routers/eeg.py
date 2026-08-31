@@ -1,5 +1,5 @@
 """
-MedSignal - 脑电健康路由（EEG Router）
+瓯医数链 - 脑电健康路由（EEG Router）
 
 BCI×医保创新模块的 API 入口
 - POST /api/eeg/{user_id}/session：发起一次 EEG 采集会话（合成信号 + 完整评估）

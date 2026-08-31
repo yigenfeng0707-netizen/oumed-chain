@@ -1,5 +1,5 @@
 """
-MedSignal - OCR 服务封装
+瓯医数链 - OCR 服务封装
 
 基于 OCR.space API 的票据识别服务，支持：
 - 医疗发票/票据图片识别

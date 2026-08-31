@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-MedSignal - 数据库初始化脚本
+瓯医数链 - 数据库初始化脚本
 
 读取 mock_data.json，将数据插入到数据库中。
 支持 SQLite（开发环境）和 PostgreSQL（生产环境）。
@@ -212,7 +212,7 @@ async def init_database(data_path: str):
     """主函数：建表 + 插入数据"""
     database_url = get_database_url()
     print("=" * 60)
-    print("MedSignal - 数据库初始化")
+    print("瓯医数链 - 数据库初始化")
     print("=" * 60)
     print(f"数据库URL: {database_url}")
     print(f"数据文件: {data_path}")
@@ -311,7 +311,7 @@ async def init_database(data_path: str):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="MedSignal数据库初始化")
+    parser = argparse.ArgumentParser(description="瓯医数链数据库初始化")
     parser.add_argument(
         "--data-path",
         type=str,

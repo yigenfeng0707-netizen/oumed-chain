@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-MedSignal - 医疗发票图片生成脚本
+瓯医数链 - 医疗发票图片生成脚本
 
 使用 Pillow 生成3张模拟中国医疗收费票据图片，用于OCR演示。
 每张发票包含：医院名称、患者姓名、日期、费用明细、总金额、报销金额。
@@ -333,7 +333,7 @@ def draw_receipt(template: dict) -> Image.Image:
 def generate_all_receipts():
     """生成所有发票图片"""
     print("=" * 60)
-    print("MedSignal - 医疗发票图片生成")
+    print("瓯医数链 - 医疗发票图片生成")
     print("=" * 60)
 
     for i, template in enumerate(RECEIPT_TEMPLATES, 1):

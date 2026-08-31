@@ -1,5 +1,5 @@
 """
-MedSignal - LLM 服务封装
+瓯医数链 - LLM 服务封装
 
 基于 OpenAI 兼容 API 的大语言模型服务，支持：
 - 通用对话（chat）
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 class LLMService:
     """大语言模型服务
 
-    封装 OpenAI 兼容 API，提供MedSignal所需的各项 LLM 能力。
+    封装 OpenAI 兼容 API，提供瓯医数链所需的各项 LLM 能力。
     """
 
     # 意图识别的系统提示词
@@ -45,7 +45,7 @@ class LLMService:
 只返回 JSON，不要其他内容。"""
 
     # RAG 系统提示词模板
-    RAG_SYSTEM_TEMPLATE = """你是"MedSignal"——一个专业的医保政策智能助手。你的职责是基于检索到的政策资料，准确、专业地回答用户关于医保政策的问题。
+    RAG_SYSTEM_TEMPLATE = """你是"瓯医数链"——一个专业的医保政策智能助手。你的职责是基于检索到的政策资料，准确、专业地回答用户关于医保政策的问题。
 
 ## 回答要求：
 1. 基于下方【参考资料】中的信息回答，不要编造政策内容
@@ -63,7 +63,7 @@ class LLMService:
 - 最后给出建议或注意事项"""
 
     # 健康预警系统提示词
-    HEALTH_ALERT_PROMPT = """你是MedSignal的健康管理模块。根据用户的健康数据，生成个性化的健康预警和建议。
+    HEALTH_ALERT_PROMPT = """你是瓯医数链的健康管理模块。根据用户的健康数据，生成个性化的健康预警和建议。
 
 请分析以下用户健康数据，返回 JSON 格式的预警结果：
 {

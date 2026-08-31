@@ -1,5 +1,5 @@
 # ============================================================
-# 自动部署 MedSignal Demo 到魔搭创空间（ModelScope Studio）
+# 自动部署瓯医数链 Demo 到魔搭创空间（ModelScope Studio）
 #
 # 触发方式：
 #   1. push 到 main 且涉及 后端/前端/部署文件 变更

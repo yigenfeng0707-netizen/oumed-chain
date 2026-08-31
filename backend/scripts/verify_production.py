@@ -60,7 +60,7 @@ def section(t):
 
 
 # 命令行参数解析
-parser = argparse.ArgumentParser(description="MedSignal线上验证脚本")
+parser = argparse.ArgumentParser(description="瓯医数链线上验证脚本")
 parser.add_argument("--base", default=DEFAULT_BASE,
                     help=f"后端 API 基地址（默认：{DEFAULT_BASE}）")
 args = parser.parse_args()
