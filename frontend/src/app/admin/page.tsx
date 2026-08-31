@@ -36,6 +36,7 @@ import {
   HeartPulse,
   FileText,
   ChevronRight,
+  Wallet,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { API_BASE } from "@/lib/api";
@@ -113,6 +114,25 @@ interface UserProfileData {
   body_organ_summary: Record<string, { label: string; count: number; latest_event_date: string }>;
 }
 
+interface PaymentsData {
+  total: number;
+  mode: string;
+  paid_count: number;
+  revenue_cents: number;
+  orders: Array<{
+    order_no: string;
+    kind: string;
+    ref_id: string;
+    subject: string;
+    amount_cents: number;
+    status: string;
+    gateway: string;
+    pay_proof: string | null;
+    paid_at: string | null;
+    created_at: string | null;
+  }>;
+}
+
 const fadeIn = {
   initial: { opacity: 0, y: 20 },
   animate: { opacity: 1, y: 0 },
@@ -141,6 +161,7 @@ export default function AdminPage() {
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [profile, setProfile] = useState<UserProfileData | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
+  const [payments, setPayments] = useState<PaymentsData | null>(null);
   const [error, setError] = useState("");
 
   // 登录表单
@@ -169,6 +190,13 @@ export default function AdminPage() {
     [token]
   );
 
+  const loadPayments = useCallback(async () => {
+    const res = await authFetch("/api/admin/payments?limit=50");
+    if (res && res.ok) {
+      setPayments(await res.json());
+    }
+  }, [authFetch]);
+
   const loadOverview = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -187,7 +215,8 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (token && !data) loadOverview();
-  }, [token, data, loadOverview]);
+    if (token && !payments) loadPayments();
+  }, [token, data, payments, loadOverview, loadPayments]);
 
   const loadProfile = useCallback(
     async (userId: number) => {
@@ -236,6 +265,7 @@ export default function AdminPage() {
     sessionStorage.removeItem(TOKEN_KEY);
     setToken(null);
     setData(null);
+    setPayments(null);
   };
 
   const openProfile = (userId: number) => {
@@ -315,7 +345,7 @@ export default function AdminPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={loadOverview} disabled={loading} className="gap-1.5">
+            <Button variant="outline" size="sm" onClick={() => { loadOverview(); loadPayments(); }} disabled={loading} className="gap-1.5">
               <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
               刷新
             </Button>
@@ -455,6 +485,76 @@ export default function AdminPage() {
               </CardContent>
             </Card>
           </motion.div>
+
+          {/* 支付对账（支付宝当面付：Agent 微支付 / 数据产品结算） */}
+          {payments && (
+            <motion.div {...fadeIn} transition={{ duration: 0.4, delay: 0.35 }}>
+              <Card className="rounded-xl border border-gray-100 bg-white shadow-sm">
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex flex-wrap items-center gap-2 text-base font-semibold">
+                    <Wallet className="h-4 w-4 text-cyan-600" />
+                    支付对账（支付宝当面付）
+                    <Badge variant="secondary" className="text-xs">
+                      {payments.mode === "sandbox" ? "沙箱模式" : "真实收款"}
+                    </Badge>
+                    <Badge variant="secondary" className="text-xs">已收 ¥{(payments.revenue_cents / 100).toLocaleString("zh-CN", { minimumFractionDigits: 2 })}</Badge>
+                    <Badge variant="secondary" className="text-xs">{payments.paid_count}/{payments.total} 笔已付</Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {payments.orders.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">暂无支付订单（在数据要素市场「扫码购买」即可产生订单）</p>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full min-w-[720px]">
+                        <thead>
+                          <tr className="border-b border-border text-xs text-muted-foreground">
+                            <th className="pb-2 pr-4 text-left font-medium">订单号</th>
+                            <th className="px-2 pb-2 text-left font-medium">商品/服务</th>
+                            <th className="px-2 pb-2 text-center font-medium">类型</th>
+                            <th className="px-2 pb-2 text-right font-medium">金额</th>
+                            <th className="px-2 pb-2 text-center font-medium">状态</th>
+                            <th className="pb-2 pl-2 text-right font-medium">支付时间/凭证</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {payments.orders.map((o) => (
+                            <tr key={o.order_no} className="border-b border-border/50 last:border-0">
+                              <td className="py-2.5 pr-4 font-mono text-xs">{o.order_no}</td>
+                              <td className="max-w-[260px] truncate px-2 py-2.5 text-sm">{o.subject}</td>
+                              <td className="px-2 py-2.5 text-center">
+                                <Badge variant="secondary" className="text-[10px]">
+                                  {o.kind === "marketplace" ? "数据产品" : "Agent 服务"}
+                                </Badge>
+                              </td>
+                              <td className="px-2 py-2.5 text-right text-sm font-semibold text-cyan-700">
+                                ¥{(o.amount_cents / 100).toLocaleString("zh-CN", { minimumFractionDigits: 2 })}
+                              </td>
+                              <td className="px-2 py-2.5 text-center">
+                                <Badge className={o.status === "paid" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}>
+                                  {o.status === "paid" ? "已支付" : "待支付"}
+                                </Badge>
+                              </td>
+                              <td className="py-2.5 pl-2 text-right text-[11px] text-muted-foreground">
+                                {o.status === "paid" ? (
+                                  <>
+                                    {fmtTime(o.paid_at)}
+                                    {o.pay_proof && <div className="font-mono text-[9px]">凭证 {o.pay_proof}</div>}
+                                  </>
+                                ) : (
+                                  fmtTime(o.created_at)
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
 
           <p className="text-xs text-muted-foreground">
             数据更新于 {fmtTime(data?.generated_at)} · 管理后台仅限授权人员使用，涉及个人信息请遵守《个人信息保护法》《数据安全法》及医疗数据合规要求

@@ -1135,6 +1135,58 @@ export async function getRegulatoryView(): Promise<RegulatoryView | null> {
   return apiFetch<RegulatoryView>("/api/marketplace/regulatory");
 }
 
+// ==================== 支付宝当面付（Agent 微支付 / 数据产品结算） ====================
+
+export interface PaymentOrderView {
+  order_no: string;
+  kind: string;
+  ref_id: string;
+  subject: string;
+  amount_cents: number;
+  status: string;
+  gateway: string;
+  trade_no: string | null;
+  pay_proof: string | null;
+  paid_at: string | null;
+  created_at: string | null;
+  qr_code?: string;
+}
+
+/** 当面付下单（返回二维码载荷：沙箱为模拟、live 为支付宝收款码链接） */
+export async function precreatePayment(params: {
+  kind: "marketplace" | "agent_service";
+  ref_id: string;
+  user_id?: string;
+}): Promise<PaymentOrderView | null> {
+  return apiFetch<PaymentOrderView>("/api/payments/precreate", {
+    method: "POST",
+    body: JSON.stringify(params),
+  });
+}
+
+/** 订单状态轮询（扫码页用；无鉴权，仅含金额与状态） */
+export async function getPaymentOrder(orderNo: string): Promise<PaymentOrderView | null> {
+  return apiFetch<PaymentOrderView>(`/api/payments/order/${encodeURIComponent(orderNo)}`);
+}
+
+/** 沙箱模拟扫码支付成功（仅沙箱模式开放） */
+export async function completeSandboxPayment(orderNo: string): Promise<{
+  order_no: string;
+  status: string;
+  already: boolean;
+  pay_proof?: string;
+  settle?: {
+    transaction_id: string;
+    event_hash: string | null;
+    revenue: { provider: number; platform: number; contributor: number };
+  } | null;
+} | null> {
+  return apiFetch("/api/payments/sandbox/complete", {
+    method: "POST",
+    body: JSON.stringify({ order_no: orderNo }),
+  });
+}
+
 // ==================== 泛癌卫士（Oncoformer 泛癌预测） ====================
 
 import type {

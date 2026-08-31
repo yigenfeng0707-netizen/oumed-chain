@@ -17,6 +17,10 @@ import {
   Building2,
   BadgeCheck,
   Gavel,
+  QrCode,
+  X,
+  Smartphone,
+  CheckCircle2,
 } from "lucide-react";
 import {
   BarChart,
@@ -36,9 +40,13 @@ import {
   purchaseDataProduct,
   listDataTransactions,
   getRegulatoryView,
+  precreatePayment,
+  getPaymentOrder,
+  completeSandboxPayment,
   type DataProductItem,
   type DataTransactionItem,
   type RegulatoryView,
+  type PaymentOrderView,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -64,6 +72,10 @@ export default function MarketplacePage() {
   const [regulatory, setRegulatory] = useState<RegulatoryView | null>(null);
   const [buying, setBuying] = useState<string | null>(null);
   const [lastTx, setLastTx] = useState<DataTransactionItem | null>(null);
+  // 支付宝当面付：扫码购买弹框（沙箱模拟 / live 真码）
+  const [payOrder, setPayOrder] = useState<PaymentOrderView | null>(null);
+  const [paying, setPaying] = useState<string | null>(null);
+  const [payError, setPayError] = useState("");
 
   const refresh = useCallback(async () => {
     const [p, t, r] = await Promise.all([
@@ -96,6 +108,28 @@ export default function MarketplacePage() {
     } finally {
       setBuying(null);
     }
+  }
+
+  /** 支付宝当面付下单：弹出扫码支付框 */
+  async function startPay(product: DataProductItem) {
+    setPaying(product.id);
+    setPayError("");
+    try {
+      const order = await precreatePayment({ kind: "marketplace", ref_id: product.id });
+      if (!order) {
+        setPayError("支付下单失败（后端不可达或产品不存在）");
+        return;
+      }
+      setPayOrder(order);
+    } finally {
+      setPaying(null);
+    }
+  }
+
+  /** 支付完成（轮询到 paid 或沙箱模拟成功）：关闭弹框并刷新交易链 */
+  async function onPaid() {
+    setPayOrder(null);
+    await refresh();
   }
 
   const revenueOption = regulatory && {
@@ -180,17 +214,31 @@ export default function MarketplacePage() {
                   <span className="text-lg font-bold text-cyan-700">¥{p.price.toLocaleString()}</span>
                   <span className="text-xs text-slate-400"> /{p.price_unit}</span>
                 </div>
-                <button
-                  onClick={() => buy(p)}
-                  disabled={buying === p.id}
-                  className={cn(
-                    "flex items-center gap-1 rounded-lg bg-gradient-to-r from-cyan-500 to-sky-600 px-3 py-1.5 text-xs font-semibold text-white shadow transition-all",
-                    buying === p.id && "cursor-not-allowed opacity-60"
-                  )}
-                >
-                  {buying === p.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <BadgeCheck className="h-3.5 w-3.5" />}
-                  申请授权
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => startPay(p)}
+                    disabled={paying === p.id}
+                    title="支付宝当面付（扫码购买，自动 70/20/10 分账上链）"
+                    className={cn(
+                      "flex items-center gap-1 rounded-lg border border-cyan-200 bg-cyan-50 px-2.5 py-1.5 text-xs font-semibold text-cyan-700 transition-all hover:bg-cyan-100",
+                      paying === p.id && "cursor-not-allowed opacity-60"
+                    )}
+                  >
+                    {paying === p.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <QrCode className="h-3.5 w-3.5" />}
+                    扫码购买
+                  </button>
+                  <button
+                    onClick={() => buy(p)}
+                    disabled={buying === p.id}
+                    className={cn(
+                      "flex items-center gap-1 rounded-lg bg-gradient-to-r from-cyan-500 to-sky-600 px-3 py-1.5 text-xs font-semibold text-white shadow transition-all",
+                      buying === p.id && "cursor-not-allowed opacity-60"
+                    )}
+                  >
+                    {buying === p.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <BadgeCheck className="h-3.5 w-3.5" />}
+                    申请授权
+                  </button>
+                </div>
               </div>
             </motion.div>
           ))}
@@ -200,6 +248,9 @@ export default function MarketplacePage() {
             </div>
           )}
         </div>
+        {payError && (
+          <div className="mt-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">{payError}</div>
+        )}
       </section>
 
       {/* 最近成交 + 存证链 */}
@@ -282,6 +333,163 @@ export default function MarketplacePage() {
           </div>
         </section>
       )}
+
+      {/* 支付宝当面付：扫码支付弹框 */}
+      {payOrder && <PaymentDialog order={payOrder} onClose={() => setPayOrder(null)} onPaid={onPaid} />}
+    </div>
+  );
+}
+
+// ============================================================
+// 扫码支付弹框（沙箱模拟 / live 真码）
+// ============================================================
+
+/** 确定性伪二维码渲染（零依赖）：对载荷哈希生成稳定点阵，仅作演示视觉 */
+function PseudoQr({ payload, size = 168 }: { payload: string; size?: number }) {
+  const n = 21;
+  const cell = size / n;
+  // 简易字符串哈希 → 确定性伪随机序列（mulberry32）
+  let h = 2166136261;
+  for (let i = 0; i < payload.length; i++) {
+    h ^= payload.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  let s = h >>> 0;
+  const rnd = () => {
+    s |= 0; s = (s + 0x6d2b79f5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  const inFinder = (r: number, c: number) =>
+    (r < 7 && c < 7) || (r < 7 && c >= n - 7) || (r >= n - 7 && c < 7);
+  const finderDark = (r: number, c: number) => {
+    const lr = r < 7 ? r : r - (n - 7);
+    const lc = c < 7 ? c : c - (n - 7);
+    return lr === 0 || lr === 6 || lc === 0 || lc === 6 || (lr >= 2 && lr <= 4 && lc >= 2 && lc <= 4);
+  };
+  const cells: boolean[] = [];
+  for (let r = 0; r < n; r++) {
+    for (let c = 0; c < n; c++) {
+      cells.push(inFinder(r, c) ? finderDark(r, c) : rnd() < 0.46);
+    }
+  }
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="rounded-lg bg-white p-2 shadow-inner">
+      {cells.map((dark, i) =>
+        dark ? (
+          <rect key={i} x={(i % n) * cell} y={Math.floor(i / n) * cell} width={cell + 0.3} height={cell + 0.3} fill="#1e293b" />
+        ) : null
+      )}
+    </svg>
+  );
+}
+
+function PaymentDialog({
+  order,
+  onClose,
+  onPaid,
+}: {
+  order: PaymentOrderView;
+  onClose: () => void;
+  onPaid: () => void;
+}) {
+  const [phase, setPhase] = useState<"waiting" | "completing" | "paid">("waiting");
+  const [proof, setProof] = useState<string | null>(null);
+  const isSandbox = order.gateway === "sandbox";
+
+  // live 模式：轮询订单状态等待支付宝异步回调（沙箱由「模拟扫码」驱动）
+  useEffect(() => {
+    if (isSandbox || phase !== "waiting") return;
+    const timer = setInterval(async () => {
+      const latest = await getPaymentOrder(order.order_no);
+      if (latest?.status === "paid") {
+        setProof(latest.pay_proof);
+        setPhase("paid");
+      }
+    }, 2500);
+    return () => clearInterval(timer);
+  }, [isSandbox, phase, order.order_no]);
+
+  async function simulateScan() {
+    setPhase("completing");
+    const r = await completeSandboxPayment(order.order_no);
+    if (r?.status === "paid") {
+      setProof(r.pay_proof ?? null);
+      setPhase("paid");
+    } else {
+      setPhase("waiting");
+    }
+  }
+
+  const yuan = (order.amount_cents / 100).toLocaleString("zh-CN", { minimumFractionDigits: 2 });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/45 p-4" onClick={phase === "waiting" ? onClose : undefined}>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl"
+      >
+        <div className="mb-3 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm font-bold text-slate-800">
+            <QrCode className="h-4 w-4 text-cyan-600" />
+            支付宝当面付
+            <span className={cn("rounded-full px-1.5 py-0.5 text-[10px] font-medium", isSandbox ? "bg-amber-50 text-amber-600" : "bg-emerald-50 text-emerald-600")}>
+              {isSandbox ? "沙箱演示" : "真实收款"}
+            </span>
+          </div>
+          {phase === "waiting" && (
+            <button onClick={onClose} className="rounded-md p-1 text-slate-400 hover:bg-slate-100">
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+
+        <div className="mb-1 text-xs text-slate-500">{order.subject}</div>
+        <div className="mb-3 text-2xl font-bold text-slate-900">¥{yuan}</div>
+
+        {phase !== "paid" ? (
+          <>
+            <div className="flex justify-center">
+              <PseudoQr payload={order.qr_code || order.order_no} />
+            </div>
+            <p className="mt-2 text-center text-[11px] leading-4 text-slate-400">
+              {isSandbox
+                ? "演示模式：下方二维码为模拟载荷，点击下方按钮模拟扫码支付"
+                : "请使用支付宝 App 扫码支付（支付成功后自动完成分账上链）"}
+            </p>
+            <div className="mt-1 text-center font-mono text-[10px] text-slate-300">订单号 {order.order_no}</div>
+            {isSandbox && (
+              <button
+                onClick={simulateScan}
+                disabled={phase === "completing"}
+                className={cn(
+                  "mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg bg-gradient-to-r from-cyan-500 to-sky-600 py-2 text-sm font-semibold text-white shadow",
+                  phase === "completing" && "cursor-not-allowed opacity-60"
+                )}
+              >
+                {phase === "completing" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Smartphone className="h-4 w-4" />}
+                模拟扫码支付
+              </button>
+            )}
+          </>
+        ) : (
+          <div className="py-4 text-center">
+            <CheckCircle2 className="mx-auto mb-2 h-12 w-12 text-emerald-500" />
+            <div className="text-base font-bold text-emerald-700">支付成功</div>
+            <div className="mt-1 text-xs text-slate-500">已自动完成 70/20/10 分账并写入存证链</div>
+            {proof && <div className="mt-2 font-mono text-[10px] text-slate-400">支付凭证 {proof}</div>}
+            <button
+              onClick={onPaid}
+              className="mt-4 w-full rounded-lg bg-emerald-500 py-2 text-sm font-semibold text-white shadow hover:bg-emerald-600"
+            >
+              查看交易存证
+            </button>
+          </div>
+        )}
+      </motion.div>
     </div>
   );
 }
