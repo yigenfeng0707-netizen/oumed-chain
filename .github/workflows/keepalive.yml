@@ -6,7 +6,7 @@
 #
 # 需要的仓库 Secret：
 #   MODELSCOPE_DEMO_URL  — 创空间公网地址
-#     - 浏览器/同域代理用 .ms.show 域名（推荐）：https://gsym236998-medsignal-demo.ms.show
+#     - 浏览器/同域代理用 .ms.show 域名（推荐）：https://gsym236998-oumed-chain-demo.ms.show
 #     - API 直连用 .api-inference.modelscope.net 域名：需魔搭 SDK Token，不建议保活用
 #     - 实际值见 GitHub Secrets（每次部署后可在创空间页面查看最新地址）
 #

@@ -9,7 +9,7 @@
 #   MODELSCOPE_USERNAME  — 魔搭用户名（如手机号或自定义名）
 #   MODELSCOPE_TOKEN     — 魔搭个人访问令牌（设置 → 访问令牌）
 # 需要的仓库 Variables：
-#   MODELSCOPE_SPACE_NAME— 创空间名（如 medsignal-demo）
+#   MODELSCOPE_SPACE_NAME— 创空间名（当前：oumed-chain-demo）
 #
 # 原理：创空间本质是 Git 仓库，推送代码后魔搭平台自动 Docker 构建。
 # ============================================================
