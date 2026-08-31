@@ -22,7 +22,7 @@ from app.database import get_db  # noqa: E402
 from app.main import app  # noqa: E402
 from app.models import Base, DataProduct, DataTransaction  # noqa: E402
 from app.routers.admin import _admin_credentials, _issue_admin_token  # noqa: E402
-from app.services.payment import _sandbox_sig  # noqa: E402
+from app.services.payment import _normalize_pem, _sandbox_sig  # noqa: E402
 
 
 def _admin_token() -> str:
@@ -223,6 +223,32 @@ class TestAdminPayments:
 
 
 # ---------------- live 电脑网站支付（mock 客户端） ----------------
+
+_PEM_FAKE = "-----BEGIN RSA PRIVATE KEY-----\nMIIEfake\n-----END RSA PRIVATE KEY-----"
+
+
+class TestPemNormalize:
+    """环境变量 PEM 归一化：
+    Windows CRLF 密钥转义后每个换行是「CR + 字面 \\n」，
+    平台 secrets 链路可能残留字面 \\r——三种形态都应归一到纯 LF PEM。"""
+
+    def test_clean_escaped(self):
+        v = _PEM_FAKE.replace(chr(10), chr(92) + "n")
+        assert _normalize_pem(v) == _PEM_FAKE
+
+    def test_cr_contaminated(self):
+        # GitHub Secret 实测形态：CR + 字面 \n（3 字符/换行）
+        v = _PEM_FAKE.replace(chr(10), chr(13) + chr(92) + "n")
+        assert _normalize_pem(v) == _PEM_FAKE
+
+    def test_literal_backslash_r(self):
+        # 平台可能的重转义形态：字面 \r + 字面 \n
+        v = _PEM_FAKE.replace(chr(10), chr(92) + "r" + chr(92) + "n")
+        assert _normalize_pem(v) == _PEM_FAKE
+
+    def test_real_crlf_passthrough(self):
+        assert _normalize_pem(_PEM_FAKE.replace(chr(10), chr(13) + chr(10))) == _PEM_FAKE
+
 
 class _FakeAlipayClient:
     """模拟 python-alipay-sdk：收银台表单 + 查单（首次未付，第二次已付）。"""

@@ -192,8 +192,10 @@ jobs:
           # upsert：存在则 PUT 更新，不存在则 POST 新增
           sync_kv() {
             local kind="$1" key="$2" val="$3" method="POST" code esc
-            # JSON 转义（反斜杠/双引号）：私钥等含 \n 转义的密钥值避免被 JSON 解析吞掉
-            esc=$(printf '%s' "$val" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g')
+            # 先剥离 CR（Windows CRLF 密钥转义残留：裸 CR 在 JSON 字符串里非法，
+            # 平台存储链路会破坏值——实证：私钥 502 Not a valid PEM pre boundary）
+            # 再 JSON 转义（反斜杠/双引号）：私钥等含 \n 转义的密钥值避免被 JSON 解析吞掉
+            esc=$(printf '%s' "$val" | tr -d '\r' | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g')
             if key_exists "${kind}" "${key}"; then
               method="PUT"
             fi

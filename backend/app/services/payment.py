@@ -48,6 +48,20 @@ def _read_key_file(name: str) -> str:
     return p.read_text(encoding="utf-8") if p.exists() else ""
 
 
+def _normalize_pem(raw: str) -> str:
+    """环境变量 PEM 归一化：单行 \n 转义还原为换行，并剥离 CR 污染。
+
+    Windows CRLF 密钥经 \n 转义后每个换行变成「CR + 字面 \n」（3 字符），
+    平台 secrets 存储链路对裸 CR 兼容性不可控——统一剥离真实 CR 与
+    字面 \r，再把 \n 还原为 LF，保证送入 SDK 的是纯 LF PEM。"""
+    return (
+        raw.replace("\\r", "")   # 字面 \r（部分转义工具的副产物）
+        .replace("\r", "")      # 真实 CR（CRLF 残留）
+        .replace("\\n", "\n")  # 字面 \n → 换行
+        .strip()
+    )
+
+
 def _get_client():
     """live 模式懒初始化 AliPay 客户端（缺配置时报错，由调用方降级）。"""
     global _client
@@ -66,8 +80,8 @@ def _get_client():
     _client = AliPay(
         appid=settings.ALIPAY_APP_ID,
         app_notify_url=settings.ALIPAY_NOTIFY_URL or None,
-        app_private_key_string=app_private_key.replace("\\n", "\n"),
-        alipay_public_key_string=alipay_public_key.replace("\\n", "\n"),
+        app_private_key_string=_normalize_pem(app_private_key),
+        alipay_public_key_string=_normalize_pem(alipay_public_key),
         sign_type="RSA2",
         debug=False,  # 正式网关（个人电脑网站支付）
     )
