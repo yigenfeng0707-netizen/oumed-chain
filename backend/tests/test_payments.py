@@ -251,12 +251,20 @@ class TestPemNormalize:
 
 
 class _FakeAlipayClient:
-    """模拟 python-alipay-sdk：收银台表单 + 查单（首次未付，第二次已付）。"""
+    """模拟 python-alipay-sdk 3.x：api_alipay_trade_page_pay 返回 URL 查询串
+    （sign_data 的 key=quote_plus(value) 拼接，而非表单 HTML）+ 查单。"""
     def __init__(self):
         self.query_calls = 0
 
     def api_alipay_trade_page_pay(self, **kwargs):
-        return f"<form action='gateway'>{kwargs['out_trade_no']}</form>"
+        from urllib.parse import quote_plus
+        items = [
+            ("app_id", "2021006195651204"),
+            ("method", "alipay.trade.page.pay"),
+            ("biz_content", f'{{"out_trade_no":"{kwargs["out_trade_no"]}"}}'),
+            ("sign", "AbCd+/=="),
+        ]
+        return "&".join(f"{k}={quote_plus(v)}" for k, v in items)
 
     def api_alipay_trade_query(self, out_trade_no):
         self.query_calls += 1
@@ -277,7 +285,12 @@ class TestLivePagePay:
         assert r.status_code == 200
         body = r.json()
         assert body["gateway"] == "live"
-        assert body["pay_form"].startswith("<form")
+        # SDK 查询串应被包装为指向官方网关的 POST 表单（hidden input 逐参数）
+        form = body["pay_form"]
+        assert form.startswith("<form")
+        assert 'action="https://openapi.alipay.com/gateway.do"' in form
+        assert 'method="POST"' in form
+        assert 'name="biz_content"' in form
         assert not body["qr_code"]
 
     def test_order_polling_completes_via_query(self, client, monkeypatch):

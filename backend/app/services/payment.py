@@ -15,7 +15,9 @@
 import hashlib
 import hmac
 import logging
+from html import escape
 from pathlib import Path
+from urllib.parse import parse_qsl
 
 from app.config import settings
 
@@ -40,6 +42,22 @@ def mode() -> str:
 
 
 _KEYS_DIR = Path(__file__).resolve().parents[2] / "keys"
+
+_ALIPAY_GATEWAY = "https://openapi.alipay.com/gateway.do"
+
+
+def _wrap_page_pay_form(query: str) -> str:
+    """SDK 3.x 的 api_alipay_trade_page_pay 返回 URL 查询串而非表单 HTML，
+    解析为 hidden input 逐参数组装 POST 表单（与支付宝官方表单提交一致），
+    前端写入新窗口后 document.querySelector('form').submit() 即进收银台。"""
+    fields = "".join(
+        f'<input type="hidden" name="{escape(k)}" value="{escape(v)}"/>'
+        for k, v in parse_qsl(query, keep_blank_values=True)
+    )
+    return (
+        f'<form id="alipaysubmit" name="alipaysubmit" '
+        f'method="POST" action="{_ALIPAY_GATEWAY}">{fields}</form>'
+    )
 
 
 def _read_key_file(name: str) -> str:
@@ -98,13 +116,13 @@ def create_precreate(order_no: str, subject: str, amount_yuan: float) -> dict:
         return {"qr_code": qr, "pay_form": None, "gateway": "sandbox"}
 
     client = _get_client()
-    form_html = client.api_alipay_trade_page_pay(
+    query = client.api_alipay_trade_page_pay(
         out_trade_no=order_no,
         total_amount=f"{amount_yuan:.2f}",
         subject=subject[:128],
         return_url=(settings.ALIPAY_RETURN_URL or None) or None,
     )
-    return {"qr_code": None, "pay_form": form_html, "gateway": "live"}
+    return {"qr_code": None, "pay_form": _wrap_page_pay_form(query), "gateway": "live"}
 
 
 def query_trade_status(order_no: str) -> dict | None:
