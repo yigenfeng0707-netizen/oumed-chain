@@ -3,7 +3,7 @@
 第1页
 瓯医数链医疗数据要素可信流通平台 V1.0
 """
-MedSignal - 鉴权层
+瓯医数链 - 鉴权层
 设计原则：Demo 友好 + 安全叙事自洽
 - 默认开放（无 token 也能访问，保证 Demo 流畅）
 - 配置了 API_KEY 环境变量时，要求 X-API-Key 头校验
@@ -149,9 +149,9 @@ class Settings(BaseSettings):
     OCR_API_URL: str = "https://api.ocr.space/parse/image"
     # 管理后台超级管理员（/admin 页面登录用）
     ADMIN_USERNAME: str = "admin"
-    ADMIN_PASSWORD: str = "MedSignal@2026"
+    ADMIN_PASSWORD: str = "OuMed@2026"
     # 管理员 token 签发密钥（改后所有已签发 token 失效）
-    YIBAO_ADMIN_SECRET: str = "medsignal-admin-secret"
+    YIBAO_ADMIN_SECRET: str = "oumed-admin-secret"
     # 部署/鉴权相关：auth.py 、main.py 直接从环境变量读取，
     # 此处声明是为了让 pydantic-settings 解析 .env 时不报 extra_forbidden 错误
     YIBAO_API_KEY: str = ""
@@ -164,7 +164,7 @@ class Settings(BaseSettings):
 settings = Settings()
 
 """
-MedSignal - 统一数据访问层 (CRUD)
+瓯医数链 - 统一数据访问层 (CRUD)
 所有 Router / Service 通过本模块查询数据库，避免直接操作 session。
 所有函数均为 async，接收 AsyncSession，返回 ORM 对象或标量。
 """
@@ -551,7 +551,7 @@ def eeg_record_to_dict(record: EEGRecord) -> dict:
         "summary": record.summary or "",
     }
 # ============================================================
-# 医学影像检查记录（MedSignal 影像引擎）
+# 医学影像检查记录（瓯医数链影像引擎）
 # ============================================================
 async def create_imaging_record(
     db: AsyncSession,
@@ -1185,7 +1185,7 @@ class EEGRecord(Base):
     summary = Column(Text, default="")
     user = relationship("User", back_populates="eeg_records")
 class ImagingRecord(Base):
-    """医学影像检查记录（MedSignal 影像引擎）
+    """医学影像检查记录（瓯医数链影像引擎）
     存储每次影像 AI 分析会话的结果摘要（影像数据以确定性合成参数
     study_type + seed + findings 可随时复现，不存大体积 base64）。
     """
@@ -1322,7 +1322,7 @@ class DataTransaction(Base):
     event_hash = Column(String(64), nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
 
-# MedSignal - 多智能体系统提示词定义
+# 瓯医数链 - 多智能体系统提示词定义
 # 所有提示词均为中文指令，JSON输出字段使用英文命名
 
 第26页
@@ -1330,7 +1330,7 @@ class DataTransaction(Base):
 # ============================================================
 # 1. 编排智能体 (Orchestrator Agent)
 # ============================================================
-ORCHESTRATOR_PROMPT = """你是"MedSignal"系统的编排智能体（Orchestrator），负责理解用户意图并将请求路由到最合适的专业智能体。
+ORCHESTRATOR_PROMPT = """你是"瓯医数链"系统的编排智能体（Orchestrator），负责理解用户意图并将请求路由到最合适的专业智能体。
 ## 核心职责
 1. **意图理解**：从用户的自然语言输入中准确识别其真实需求，包括隐含意图和多重意图。
 2. **智能路由**：将用户请求分发到一个或多个专业智能体进行处理。
@@ -1385,7 +1385,7 @@ ORCHESTRATOR_PROMPT = """你是"MedSignal"系统的编排智能体（Orchestrato
 # ============================================================
 # 2. 权益管家 (Coverage Agent)
 # ============================================================
-COVERAGE_AGENT_PROMPT = """你是"MedSignal"系统的权益管家智能体（Coverage Agent），你是医保权益领域的专业顾问，帮助用户全面了解和管理自己的医保权益。
+COVERAGE_AGENT_PROMPT = """你是"瓯医数链"系统的权益管家智能体（Coverage Agent），你是医保权益领域的专业顾问，帮助用户全面了解和管理自己的医保权益。
 ## 核心职责
 1. **缴费查询**：查询用户的医保缴费历史、缴费基数、缴费月数，判断缴费是否连续。
 2. **账户余额**：查询个人账户余额、统筹账户状态，解释账户资金构成。
@@ -1451,7 +1451,7 @@ COVERAGE_AGENT_PROMPT = """你是"MedSignal"系统的权益管家智能体（Cov
 # ============================================================
 # 3. 报销助手 (Claims Agent)
 # ============================================================
-CLAIMS_AGENT_PROMPT = """你是"MedSignal"系统的报销助手智能体（Claims Agent），你是医保报销流程的专业向导，帮助用户顺利完成报销并理解报销计算细节。
+CLAIMS_AGENT_PROMPT = """你是"瓯医数链"系统的报销助手智能体（Claims Agent），你是医保报销流程的专业向导，帮助用户顺利完成报销并理解报销计算细节。
 ## 核心职责
 1. **票据OCR识别**：对用户上传的医疗发票、费用清单、诊断证明等进行OCR识别，提取结构化数据。
 2. **报销预审**：在用户正式提交报销前，预估可报销金额，帮助用户了解预期结果。
@@ -1540,7 +1540,7 @@ CLAIMS_AGENT_PROMPT = """你是"MedSignal"系统的报销助手智能体（Claim
 第30页
 瓯医数链医疗数据要素可信流通平台 V1.0
 # ============================================================
-HEALTH_AGENT_PROMPT = """你是"MedSignal"系统的健康卫士智能体（Health Agent），你是整个系统中最核心的智能体。你通过分析用户的医疗记录和用药数据，主动发现健康风险，提供个性化的健康管理建议，守护用户的健康。
+HEALTH_AGENT_PROMPT = """你是"瓯医数链"系统的健康卫士智能体（Health Agent），你是整个系统中最核心的智能体。你通过分析用户的医疗记录和用药数据，主动发现健康风险，提供个性化的健康管理建议，守护用户的健康。
 ## 核心职责
 1. **动态健康画像**：基于用户的就医记录、用药记录、体检数据，生成多维度健康画像。
 2. **健康风险评估**：从数据模式中识别潜在健康风险，进行分级预警。
@@ -1724,7 +1724,7 @@ async def regulatory_view(db: AsyncSession = Depends(get_db)):
     }
 
 """
-MedSignal - 政策解读路由
+瓯医数链 - 政策解读路由
 P0-2 升级：
 - match: 基于用户真实慢病/参保类型匹配政策（规则引擎，P1-3 接入 policy_matcher 完整算法）
 - search: 真实调用 KnowledgeBase 向量检索
@@ -1796,7 +1796,7 @@ async def get_policy_detail(policy_id: int, db: AsyncSession = Depends(get_db)):
     }
 
 """
-MedSignal - 数据安全路由
+瓯医数链 - 数据安全路由
 P0-2 升级：
 - 接入真实 DataAuthorization 表
 - 授权矩阵基于真实授权数据生成
@@ -2139,7 +2139,7 @@ _SENT_SPLIT = re.compile(r"[。！？；\n!?;]+")
 # 提到他人的句子不归档（档案只记用户本人）。# ponytail: 词表启发式；LLM 路径由提示词规则 7 兜底
 _THIRD_PARTY = ("父亲", "母亲", "爸", "妈", "儿子", "女儿", "老公", "老婆", "丈夫", "妻子",
                 "爷爷", "奶奶", "外公", "外婆", "孩子", "朋友", "同事", "邻居", "亲戚")
-_EXTRACT_SYSTEM = """你是 MedSignal 档案管家的信息整理模块，不是医生。
+_EXTRACT_SYSTEM = """你是瓯医数链档案管家的信息整理模块，不是医生。
 任务：从用户原文中摘录**已明确陈述**的身体部位/症状/检查结果，按器官归档。
 规则：
 1. 只摘录原文已有信息，不推断、不补充诊断、不加评价。
@@ -2551,7 +2551,7 @@ def _ai_table(d: dict) -> list[dict]:
             {"category": category, "item": item, "value": str(value), "date": date, "source": source, "status": status}
         )
     add("身份", "档案编号", d["archive_id"], d["profile"]["registered_at"])
-    add("主系统同步", "系统用户ID", d["patient_id"], d["source_system"]["synced_at"], "medsignal-agent")
+    add("主系统同步", "系统用户ID", d["patient_id"], d["source_system"]["synced_at"], "oumed-chain")
     add("基本信息", "参保与就业", f"{d['profile']['insurance_type']} / {d['profile']['employee_status']}")
     for x in d["lab_results"]:
         add("检验", x["item"], f"{x['value']} {x['unit']}", x["date"], "数据库检验测试数据")
@@ -2630,7 +2630,7 @@ async def build_dossier(db: AsyncSession, user: User) -> dict:
         "sex": "f" if user.gender == "女" else "m",
         "age": user.age,
         "source_system": {
-            "system": "medsignal-agent",
+            "system": "oumed-chain",
             "system_user_id": patient_ref(uid),
             "synced_at": "2026-08-28 14:00",
         },
@@ -2839,7 +2839,7 @@ async def seed_demo_archive(db: AsyncSession) -> dict:
                         event_date=f"2026-{max(1, 8 - i):02d}",
                         source_type="upload",
                         source_label="主系统记录",
-                        source_ref="medsignal-agent",
+                        source_ref="oumed-chain",
                         batch_id="synthetic-demo-2026",
                     )
                 )
@@ -2889,7 +2889,7 @@ async def seed_demo_archive(db: AsyncSession) -> dict:
     return {"users": len(users), "records_added": added_records, "files_added": added_files}
 
 """
-MedSignal - 报销计算引擎（Claims Engine）
+瓯医数链 - 报销计算引擎（Claims Engine）
 P1-1：完整的、可解释的医保报销计算引擎。
 - 输入：费用总额 + 费用明细（甲/乙/自费分类）+ 参保类型 + 医院等级 + 调整因子
 - 输出：分步推导的 JSON（每步含 name/detail/amount）+ 自然语言解释 + 大病保险分段计算
