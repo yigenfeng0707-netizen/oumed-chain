@@ -37,6 +37,18 @@ class Settings(BaseSettings):
     # false = 生产模式，业务端点强制 X-User-Token 与 user_id 匹配（管理员可代查）。
     DEMO_MODE: bool = True
 
+    # 存证链外部锚定：RFC 3161 可信时间戳机构地址（留空 = 仅离线留痕不请求 TSA）
+    CHAIN_ANCHOR_TSA_URL: str = "https://freetsa.org/tsr"
+
+    # 支付宝当面付（个人免资质）：sandbox = 沙箱零配置；live = 真实收款（个人当面付额度）
+    ALIPAY_MODE: str = "sandbox"
+    ALIPAY_APP_ID: str = ""
+    # PKCS1 PEM（换行用 \n 转义写入 .env）；私钥切勿提交仓库/粘贴聊天
+    ALIPAY_APP_PRIVATE_KEY: str = ""
+    ALIPAY_PUBLIC_KEY: str = ""
+    # 支付成功异步回调地址（需公网 HTTPS，如 ms.show 域名）
+    ALIPAY_NOTIFY_URL: str = ""
+
     # OCR 服务：OCR.space
     OCR_API_KEY: str = ""
     OCR_API_URL: str = "https://api.ocr.space/parse/image"

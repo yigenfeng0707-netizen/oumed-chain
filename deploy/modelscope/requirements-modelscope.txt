@@ -23,3 +23,4 @@ numpy>=1.26.0
 pandas>=2.0.0
 scikit-learn>=1.4.0
 greenlet>=3.0.0
+python-alipay-sdk>=3.4.0  # 支付宝当面付（沙箱/真实双模，缺省沙箱零配置）

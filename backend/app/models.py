@@ -371,6 +371,54 @@ class DataTransaction(Base):
     created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
 
 
+class PaymentOrder(Base):
+    """支付宝当面付订单（Agent 微支付 / 数据产品结算）。
+
+    kind：marketplace（数据产品购买，支付成功后自动创建已成交交易+分账）
+    / agent_service（智能体按次付费）。
+    双模：沙箱模拟（演示）/ 真实当面付（个人免资质，小额）。
+    """
+
+    __tablename__ = "payment_orders"
+
+    id = Column(Integer, primary_key=True, index=True)
+    order_no = Column(String(32), unique=True, nullable=False, index=True)
+    kind = Column(String(20), nullable=False)  # marketplace / agent_service
+    ref_id = Column(String(60), default="")  # 产品 id 或服务键（如 cancer_predict）
+    user_id = Column(String(50), default="")  # 下单用户（可空：匿名购买演示）
+    subject = Column(String(120), nullable=False)
+    amount_cents = Column(Integer, nullable=False)
+    status = Column(String(20), nullable=False, default="pending")  # pending/paid/closed
+    gateway = Column(String(10), nullable=False, default="sandbox")  # sandbox/live
+    qr_code = Column(String(500), default="")
+    trade_no = Column(String(64), default="")  # 支付宝交易号（沙箱为模拟值）
+    paid_at = Column(DateTime, nullable=True)
+    pay_proof = Column(String(64), default="")  # 支付存证哈希（可信数据空间叙事）
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
+
+
+class ChainAnchor(Base):
+    """存证链外部锚定（P2-3.4）。
+
+    定期把链尖摘要（联邦任务链 + 交易链的 event_hash 合并哈希）
+    送公共可信时间戳机构（RFC 3161 TSA）签名，防止内部重算哈希抵赖。
+    TSA 不可达时降级为 offline 记录（链尖仍留痕，下次补锚）。
+    """
+
+    __tablename__ = "chain_anchors"
+
+    id = Column(Integer, primary_key=True, index=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
+    tip_hash = Column(String(64), nullable=False)  # sha256(fed_tip|market_tip|event_count)
+    fed_tip = Column(String(64), nullable=False)  # 联邦任务链最新 event_hash（空链用 0*64）
+    market_tip = Column(String(64), nullable=False)  # 交易链最新 event_hash（空链用 0*64）
+    event_count = Column(Integer, default=0)  # 两链累计存证事件数
+    tsa_url = Column(String(255), default="")
+    status = Column(String(20), nullable=False, default="pending")  # anchored / offline
+    ts_token_b64 = Column(Text, default="")  # RFC3161 TimeStampResp 令牌（base64）
+    error = Column(String(255), default="")
+
+
 class AccessDenialLog(Base):
     """越权访问审计（P0 生产鉴权：严格模式下 401/403 拒绝记录落库）。"""
 

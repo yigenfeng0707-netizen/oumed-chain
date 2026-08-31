@@ -18,6 +18,7 @@ numpy>=1.26.0
 scikit-learn>=1.4.0       # 联邦学习引擎：逻辑回归 + AUC 评估
 pandas>=2.0.0             # 联邦学习引擎：合成医疗数据集
 pypdf>=4.0.0             # 档案管家：PDF 报告文本提取
+python-alipay-sdk>=3.4.0  # 支付宝当面付（个人免资质）：扫码支付/回调验签，沙箱与真实双模
 
 # EEG 真实设备接入（可选，按需安装；Demo/比赛环境可跳过）
 # Muse 头环：pip install pylsl muselsl bleak

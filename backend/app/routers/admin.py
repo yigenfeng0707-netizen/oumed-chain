@@ -20,9 +20,10 @@ from pydantic import BaseModel
 from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app import crud
+from app import crud, metrics
 from app.config import settings
 from app.database import get_db
+from app.services import chain_anchor
 from app.models import (
     BodyRecord,
     ChatConversation,
@@ -78,6 +79,7 @@ async def admin_login(payload: AdminLoginRequest):
     """管理员登录，返回 token（有效期 24h，前端存 sessionStorage）。"""
     username, password = _admin_credentials()
     if payload.username != username or payload.password != password:
+        metrics.observe_admin_login_failure()  # 监控告警：撞库信号
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="账号或密码错误")
     return {
         "token": _issue_admin_token(username),
@@ -367,4 +369,60 @@ async def admin_security_denials(
         "total": len(rows),
         "demo_mode": settings.DEMO_MODE,
         "logs": rows,
+    }
+
+
+# ============================================================
+# 存证链外部锚定（P2-3.4）：链尖摘要 → RFC 3161 可信时间戳
+# ============================================================
+
+@router.post("/security/anchor")
+async def admin_chain_anchor_create(
+    admin: str = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """立即对存证链链尖做一次外部锚定（RFC 3161 TSA）。
+
+    TSA 不可达时降级为 offline 留痕（链尖哈希仍入库，可事后补锚）。
+    """
+    anchor = await chain_anchor.create_anchor(db, tsa_url=settings.CHAIN_ANCHOR_TSA_URL or None)
+    return chain_anchor.anchor_to_dict(anchor, include_token=True)
+
+
+@router.get("/security/anchors")
+async def admin_chain_anchors(
+    admin: str = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+    limit: int = 100,
+):
+    """存证链锚定历史（管理员视图，含时间戳令牌）。"""
+    anchors = await crud.get_chain_anchors(db, limit=min(limit, 500))
+    return {
+        "total": len(anchors),
+        "tsa_url": settings.CHAIN_ANCHOR_TSA_URL,
+        "anchors": [chain_anchor.anchor_to_dict(a, include_token=True) for a in anchors],
+    }
+
+
+# ============================================================
+# 支付对账（支付宝当面付：Agent 微支付 / 数据产品结算）
+# ============================================================
+
+@router.get("/payments")
+async def admin_payments(
+    admin: str = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+    limit: int = 100,
+):
+    """支付订单对账：订单列表 + 已收总额/分渠道统计。"""
+    from app.routers.payments import _order_to_dict
+
+    orders = await crud.get_payment_orders(db, limit=min(limit, 500))
+    paid = [o for o in orders if o.status == "paid"]
+    return {
+        "total": len(orders),
+        "mode": settings.ALIPAY_MODE,
+        "paid_count": len(paid),
+        "revenue_cents": sum(o.amount_cents for o in paid),
+        "orders": [_order_to_dict(o) for o in orders],
     }

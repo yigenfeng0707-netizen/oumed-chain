@@ -1,0 +1,50 @@
+# 瓯医数链告警规则（配合 Alertmanager / Grafana Alerting 使用）
+# 阈值口径：演示环境量小，窗口取 5 分钟避免毛刺误报。
+groups:
+  - name: oumed-trust-availability
+    rules:
+      - alert: BackendDown
+        expr: up{job="oumed-trust-backend"} == 0
+        for: 1m
+        labels: {severity: critical}
+        annotations:
+          summary: "后端采集失败（1 分钟）"
+          description: "Prometheus 无法抓取 /metrics，服务可能宕机。"
+
+      - alert: HighErrorRate
+        expr: >
+          sum(rate(http_requests_total{status=~"5.."}[5m]))
+            / sum(rate(http_requests_total[5m])) > 0.05
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "5xx 错误率超过 5%"
+          description: "近 5 分钟 5xx 占比 > 5%，检查后端日志。"
+
+      - alert: HighLatency
+        expr: >
+          histogram_quantile(0.95,
+            sum by (le) (rate(http_request_duration_seconds_bucket[5m]))) > 3
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "P95 延迟超过 3 秒"
+          description: "全站 P95 延迟持续高于 3s（LLM 降级链路可能阻塞）。"
+
+  - name: oumed-trust-security
+    rules:
+      - alert: DenialSpike
+        expr: increase(auth_denials_total[5m]) > 20
+        for: 0m
+        labels: {severity: warning}
+        annotations:
+          summary: "越权拒绝突增（5 分钟 > 20 次）"
+          description: "严格模式 401/403 拒绝突增，疑似扫描/越权尝试，查 /api/admin/security/denials。"
+
+      - alert: AdminBruteForce
+        expr: increase(admin_login_failures_total[5m]) > 5
+        for: 0m
+        labels: {severity: critical}
+        annotations:
+          summary: "管理后台疑似撞库（5 分钟登录失败 > 5 次）"
+          description: "管理端登录连续失败，建议立即核查来源 IP 并考虑临时封禁。"

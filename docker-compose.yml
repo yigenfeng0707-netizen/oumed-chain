@@ -172,7 +172,41 @@ services:
     restart: unless-stopped
     profiles: ["dev", "prod"]
 
+  # ============================================================
+  # 监控栈（docker compose --profile monitoring up -d）
+  # ============================================================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: yibao-prometheus
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./deploy/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./deploy/monitoring/alert-rules.yml:/etc/prometheus/rules/alert-rules.yml:ro
+      - prometheus_data:/prometheus
+    restart: unless-stopped
+    profiles: ["monitoring"]
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: yibao-grafana
+    ports:
+      - "${GRAFANA_PORT:-3001}:3000"
+    environment:
+      # 演示环境弱口令，生产请改环境变量；首次登录后立即修改
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-oumed2026}
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./deploy/monitoring/grafana-dashboard.json:/var/lib/grafana/dashboards/oumed-trust.json:ro
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    profiles: ["monitoring"]
+
 volumes:
   postgres_data:
   redis_data:
   chroma_data:
+  prometheus_data:
+  grafana_data:

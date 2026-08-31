@@ -200,6 +200,36 @@ async def get_data_flow(user_id: str, db: AsyncSession = Depends(get_db), _scope
     }
 
 
+@router.get("/chain-anchors")
+async def get_chain_anchors(db: AsyncSession = Depends(get_db), limit: int = 20):
+    """存证链外部锚定公开视图（P2-3.4）。
+
+    仅返回哈希/时间戳状态，不含任何个人数据；供监管与用户验证存证不可篡改：
+    链尖摘要定期送公共可信时间戳机构（RFC 3161）签名，平台自身无法伪造历史。
+    """
+    anchors = await crud.get_chain_anchors(db, limit=min(limit, 100))
+    latest = anchors[0] if anchors else None
+    return {
+        "anchored_count": len(anchors),
+        "latest": {
+            "tip_hash": latest.tip_hash,
+            "status": latest.status,
+            "event_count": latest.event_count,
+            "created_at": latest.created_at.isoformat() if latest.created_at else None,
+        } if latest else None,
+        "principle": "链尖摘要 → 公共可信时间戳签名：存证历史不可伪造、篡改可追溯",
+        "anchors": [
+            {
+                "tip_hash": a.tip_hash,
+                "status": a.status,
+                "event_count": a.event_count,
+                "created_at": a.created_at.isoformat() if a.created_at else None,
+            }
+            for a in anchors
+        ],
+    }
+
+
 # ============================================================
 # 内部工具
 # ============================================================

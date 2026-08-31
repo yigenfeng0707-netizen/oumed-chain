@@ -1,11 +1,14 @@
 import os
+import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
+from app import metrics as app_metrics
 from app.config import settings
 from app.database import init_db
 from app.routers import (
@@ -25,6 +28,7 @@ from app.routers import (
     health_profile,
     imaging,
     marketplace,
+    payments,
     policy,
     security,
     users,
@@ -65,6 +69,27 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.middleware("http")
+async def metrics_middleware(request, call_next):
+    """请求埋点：按路由模板+状态码计数并记录耗时（/metrics 自身不计数）。"""
+    start = time.perf_counter()
+    response = await call_next(request)
+    if request.url.path != "/metrics":
+        route_obj = request.scope.get("route")
+        route = getattr(route_obj, "path", request.url.path) if route_obj else "unmatched"
+        app_metrics.observe_request(route, response.status_code, time.perf_counter() - start)
+    return response
+
+
+@app.get("/metrics", include_in_schema=False)
+async def prometheus_metrics():
+    """Prometheus 采集端点（零依赖手写 exposition 格式；仅计数指标，不含个人数据）。"""
+    return PlainTextResponse(
+        app_metrics.render_prometheus(demo_mode=settings.DEMO_MODE),
+        media_type="text/plain; version=0.0.4",
+    )
+
 app.include_router(auth.router)
 app.include_router(admin.router)
 app.include_router(agents.router)
@@ -76,6 +101,7 @@ app.include_router(security.router)
 app.include_router(federation.router)
 app.include_router(governance.router)
 app.include_router(marketplace.router)
+app.include_router(payments.router)
 app.include_router(eeg.router)
 app.include_router(imaging.router)
 app.include_router(cancer.router)

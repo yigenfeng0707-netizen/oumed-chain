@@ -764,3 +764,31 @@ async def get_access_denials(
     result = await db.execute(stmt)
     return list(result.scalars().all())
 
+
+async def get_chain_anchors(db: AsyncSession, limit: int = 100) -> list:
+    """查询存证链外部锚定记录（按时间倒序）。"""
+    from app.models import ChainAnchor
+
+    result = await db.execute(
+        select(ChainAnchor).order_by(desc(ChainAnchor.created_at), desc(ChainAnchor.id)).limit(limit)
+    )
+    return list(result.scalars().all())
+
+
+async def get_payment_order(db: AsyncSession, order_no: str):
+    """按订单号查支付订单。"""
+    from app.models import PaymentOrder
+
+    result = await db.execute(select(PaymentOrder).where(PaymentOrder.order_no == order_no))
+    return result.scalar_one_or_none()
+
+
+async def get_payment_orders(db: AsyncSession, limit: int = 100) -> list:
+    """支付订单列表（按时间倒序，对账用）。"""
+    from app.models import PaymentOrder
+
+    result = await db.execute(
+        select(PaymentOrder).order_by(desc(PaymentOrder.created_at), desc(PaymentOrder.id)).limit(limit)
+    )
+    return list(result.scalars().all())
+

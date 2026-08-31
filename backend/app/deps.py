@@ -44,7 +44,10 @@ async def _log_denial(
 ) -> None:
     """越权拒绝审计落库（best-effort：写库失败仅记日志，不影响拒绝响应）。"""
     from app.database import async_session
+    from app.metrics import observe_denial
     from app.models import AccessDenialLog
+
+    observe_denial(reason)  # 监控告警：拒绝突增信号
 
     try:
         async with async_session() as session:
