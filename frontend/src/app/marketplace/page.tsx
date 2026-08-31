@@ -72,7 +72,7 @@ export default function MarketplacePage() {
   const [regulatory, setRegulatory] = useState<RegulatoryView | null>(null);
   const [buying, setBuying] = useState<string | null>(null);
   const [lastTx, setLastTx] = useState<DataTransactionItem | null>(null);
-  // 支付宝当面付：扫码购买弹框（沙箱模拟 / live 真码）
+  // 支付宝在线支付：扫码购买弹框（沙箱模拟 / live 收银台）
   const [payOrder, setPayOrder] = useState<PaymentOrderView | null>(null);
   const [paying, setPaying] = useState<string | null>(null);
   const [payError, setPayError] = useState("");
@@ -110,7 +110,7 @@ export default function MarketplacePage() {
     }
   }
 
-  /** 支付宝当面付下单：弹出扫码支付框 */
+  /** 支付宝在线支付下单：弹出支付框（沙箱二维码 / live 收银台） */
   async function startPay(product: DataProductItem) {
     setPaying(product.id);
     setPayError("");
@@ -218,7 +218,7 @@ export default function MarketplacePage() {
                   <button
                     onClick={() => startPay(p)}
                     disabled={paying === p.id}
-                    title="支付宝当面付（扫码购买，自动 70/20/10 分账上链）"
+                    title="支付宝在线支付（扫码购买，自动 70/20/10 分账上链）"
                     className={cn(
                       "flex items-center gap-1 rounded-lg border border-cyan-200 bg-cyan-50 px-2.5 py-1.5 text-xs font-semibold text-cyan-700 transition-all hover:bg-cyan-100",
                       paying === p.id && "cursor-not-allowed opacity-60"
@@ -334,7 +334,7 @@ export default function MarketplacePage() {
         </section>
       )}
 
-      {/* 支付宝当面付：扫码支付弹框 */}
+      {/* 支付宝在线支付：支付弹框 */}
       {payOrder && <PaymentDialog order={payOrder} onClose={() => setPayOrder(null)} onPaid={onPaid} />}
     </div>
   );
@@ -422,6 +422,15 @@ function PaymentDialog({
     }
   }
 
+  /** live：新窗口写入支付宝收银台表单并自动提交（收银台支持扫码付） */
+  function openCashier() {
+    if (!order.pay_form) return;
+    const w = window.open("", "_blank");
+    if (!w) return;
+    w.document.write(`${order.pay_form}<script>document.querySelector('form').submit();<\/script>`);
+    w.document.close();
+  }
+
   const yuan = (order.amount_cents / 100).toLocaleString("zh-CN", { minimumFractionDigits: 2 });
 
   return (
@@ -435,7 +444,7 @@ function PaymentDialog({
         <div className="mb-3 flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm font-bold text-slate-800">
             <QrCode className="h-4 w-4 text-cyan-600" />
-            支付宝当面付
+            支付宝在线支付
             <span className={cn("rounded-full px-1.5 py-0.5 text-[10px] font-medium", isSandbox ? "bg-amber-50 text-amber-600" : "bg-emerald-50 text-emerald-600")}>
               {isSandbox ? "沙箱演示" : "真实收款"}
             </span>
@@ -452,14 +461,34 @@ function PaymentDialog({
 
         {phase !== "paid" ? (
           <>
-            <div className="flex justify-center">
-              <PseudoQr payload={order.qr_code || order.order_no} />
-            </div>
-            <p className="mt-2 text-center text-[11px] leading-4 text-slate-400">
-              {isSandbox
-                ? "演示模式：下方二维码为模拟载荷，点击下方按钮模拟扫码支付"
-                : "请使用支付宝 App 扫码支付（支付成功后自动完成分账上链）"}
-            </p>
+            {isSandbox ? (
+              <>
+                <div className="flex justify-center">
+                  <PseudoQr payload={order.qr_code || order.order_no} />
+                </div>
+                <p className="mt-2 text-center text-[11px] leading-4 text-slate-400">
+                  演示模式：下方二维码为模拟载荷，点击下方按钮模拟扫码支付
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="mt-2 text-center text-[11px] leading-4 text-slate-400">
+                  点击下方按钮打开支付宝收银台（支持支付宝扫码支付）；
+                  支付完成后本页自动确认并分账上链，请勿重复下单。
+                </p>
+                <button
+                  onClick={openCashier}
+                  disabled={!order.pay_form}
+                  className={cn(
+                    "mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg bg-gradient-to-r from-cyan-500 to-sky-600 py-2 text-sm font-semibold text-white shadow",
+                    !order.pay_form && "cursor-not-allowed opacity-60"
+                  )}
+                >
+                  <Smartphone className="h-4 w-4" />
+                  打开支付宝收银台
+                </button>
+              </>
+            )}
             <div className="mt-1 text-center font-mono text-[10px] text-slate-300">订单号 {order.order_no}</div>
             {isSandbox && (
               <button

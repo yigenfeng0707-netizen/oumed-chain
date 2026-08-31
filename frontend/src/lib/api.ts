@@ -1135,7 +1135,7 @@ export async function getRegulatoryView(): Promise<RegulatoryView | null> {
   return apiFetch<RegulatoryView>("/api/marketplace/regulatory");
 }
 
-// ==================== 支付宝当面付（Agent 微支付 / 数据产品结算） ====================
+// ==================== 支付宝在线支付（Agent 微支付 / 数据产品结算） ====================
 
 export interface PaymentOrderView {
   order_no: string;
@@ -1150,9 +1150,11 @@ export interface PaymentOrderView {
   paid_at: string | null;
   created_at: string | null;
   qr_code?: string;
+  /** live 电脑网站支付：支付宝收银台表单 HTML（新窗口写入并自动提交） */
+  pay_form?: string | null;
 }
 
-/** 当面付下单（返回二维码载荷：沙箱为模拟、live 为支付宝收款码链接） */
+/** 支付下单（沙箱返回模拟二维码载荷；live 返回支付宝收银台表单） */
 export async function precreatePayment(params: {
   kind: "marketplace" | "agent_service";
   ref_id: string;

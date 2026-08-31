@@ -175,6 +175,8 @@ jobs:
           ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
           YIBAO_ADMIN_SECRET: ${{ secrets.YIBAO_ADMIN_SECRET }}
           YIBAO_SESSION_SECRET: ${{ secrets.YIBAO_SESSION_SECRET }}
+          ALIPAY_APP_PRIVATE_KEY: ${{ secrets.ALIPAY_APP_PRIVATE_KEY }}
+          ALIPAY_PUBLIC_KEY: ${{ secrets.ALIPAY_PUBLIC_KEY }}
         run: |
           set -euo pipefail
           EP="https://modelscope.cn/openapi/v1"
@@ -189,14 +191,16 @@ jobs:
 
           # upsert：存在则 PUT 更新，不存在则 POST 新增
           sync_kv() {
-            local kind="$1" key="$2" val="$3" method="POST" code
+            local kind="$1" key="$2" val="$3" method="POST" code esc
+            # JSON 转义（反斜杠/双引号）：私钥等含 \n 转义的密钥值避免被 JSON 解析吞掉
+            esc=$(printf '%s' "$val" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g')
             if key_exists "${kind}" "${key}"; then
               method="PUT"
             fi
             code=$(curl -s -o /tmp/sync_resp.json -w "%{http_code}" -X "${method}" \
               "${EP}/studios/${SPACE_OWNER}/${SPACE_NAME}/${kind}" \
               -H "${AUTH}" -H "Content-Type: application/json" \
-              -d "{\"key\":\"${key}\",\"value\":\"${val}\"}")
+              -d "{\"key\":\"${key}\",\"value\":\"${esc}\"}")
             echo "${kind%/s} ${key}: ${method} -> HTTP ${code}"
             if [ "${code}" != "200" ] && [ "${code}" != "201" ]; then
               echo "::warning::${kind%/s} ${key} 同步失败: $(head -c 300 /tmp/sync_resp.json)"
@@ -224,6 +228,9 @@ jobs:
           if [ -n "${YIBAO_ADMIN_SECRET:-}" ]; then sync_kv secrets YIBAO_ADMIN_SECRET "${YIBAO_ADMIN_SECRET}"; fi
           # 用户会话 token（HMAC）签发密钥：不配则容器用代码默认值，严格模式下 token 可被伪造
           if [ -n "${YIBAO_SESSION_SECRET:-}" ]; then sync_kv secrets YIBAO_SESSION_SECRET "${YIBAO_SESSION_SECRET}"; fi
+          # 支付宝电脑网站支付（个人账号）：密钥单行 \n 转义存 secret，运行时 .replace("\\n","\n") 还原
+          if [ -n "${ALIPAY_APP_PRIVATE_KEY:-}" ]; then sync_kv secrets ALIPAY_APP_PRIVATE_KEY "${ALIPAY_APP_PRIVATE_KEY}"; fi
+          if [ -n "${ALIPAY_PUBLIC_KEY:-}" ]; then sync_kv secrets ALIPAY_PUBLIC_KEY "${ALIPAY_PUBLIC_KEY}"; fi
 
           # 非敏感配置 → 明文 variables（config.py 默认值已正确，此处同步防止平台残留旧值覆盖）
           sync_kv variables DEMO_OFFLINE "false"
@@ -236,6 +243,11 @@ jobs:
           sync_kv variables DASHSCOPE_MODEL "step-3.7-flash"
           # Chroma 索引持久化到魔搭挂载点（容器内路径重启即丢，曾致重启后 KB 重建+模型重下）
           sync_kv variables CHROMA_PERSIST_DIR "/mnt/workspace/chroma_data"
+          # 支付宝切 live（个人电脑网站支付，APPID 2021006195651204）
+          sync_kv variables ALIPAY_MODE "live"
+          sync_kv variables ALIPAY_APP_ID "2021006195651204"
+          sync_kv variables ALIPAY_NOTIFY_URL "https://gsym236998-oumed-chain-demo.ms.show/api/payments/alipay/notify"
+          sync_kv variables ALIPAY_RETURN_URL "https://gsym236998-oumed-chain-demo.ms.show/marketplace"
 
           # 清理历史遗留的旧网关密钥（SenseNova/STEP，已弃用）
           delete_kv secrets STEP_API_KEY || true

@@ -47,14 +47,16 @@ class Settings(BaseSettings):
     # 管理端登录失败多少次触发撞库告警（滑窗内计数）
     ALERT_LOGIN_FAILURE_THRESHOLD: int = 5
 
-    # 支付宝当面付（个人免资质）：sandbox = 沙箱零配置；live = 真实收款（个人当面付额度）
+    # 支付宝在线支付：sandbox = 沙箱零配置；live = 真实收款（个人电脑网站支付）
     ALIPAY_MODE: str = "sandbox"
     ALIPAY_APP_ID: str = ""
-    # PKCS1 PEM（换行用 \n 转义写入 .env）；私钥切勿提交仓库/粘贴聊天
+    # PKCS1 PEM（换行用 \n 转义写入 .env）；私钥切勿提交仓库/粘贴聊天。留空兜底读 backend/keys/
     ALIPAY_APP_PRIVATE_KEY: str = ""
     ALIPAY_PUBLIC_KEY: str = ""
     # 支付成功异步回调地址（需公网 HTTPS，如 ms.show 域名）
     ALIPAY_NOTIFY_URL: str = ""
+    # 支付完成同步跳转地址（电脑网站支付 return_url，留空 = 不跳转）
+    ALIPAY_RETURN_URL: str = ""
 
     # OCR 服务：OCR.space
     OCR_API_KEY: str = ""

@@ -486,14 +486,14 @@ export default function AdminPage() {
             </Card>
           </motion.div>
 
-          {/* 支付对账（支付宝当面付：Agent 微支付 / 数据产品结算） */}
+          {/* 支付对账（支付宝在线支付：Agent 微支付 / 数据产品结算） */}
           {payments && (
             <motion.div {...fadeIn} transition={{ duration: 0.4, delay: 0.35 }}>
               <Card className="rounded-xl border border-gray-100 bg-white shadow-sm">
                 <CardHeader className="pb-2">
                   <CardTitle className="flex flex-wrap items-center gap-2 text-base font-semibold">
                     <Wallet className="h-4 w-4 text-cyan-600" />
-                    支付对账（支付宝当面付）
+                    支付对账（支付宝在线支付）
                     <Badge variant="secondary" className="text-xs">
                       {payments.mode === "sandbox" ? "沙箱模式" : "真实收款"}
                     </Badge>

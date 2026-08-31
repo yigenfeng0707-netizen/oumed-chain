@@ -1,7 +1,7 @@
-"""支付宝当面付路由（Agent 微支付 / 数据产品结算）。
+"""支付宝在线支付路由（Agent 微支付 / 数据产品结算）。
 
-链路：下单（扫码）→ 回调验签 → 订单完结 →（市场单）自动创建已成交交易
-+ 70/20/10 分账 + 存证链。沙箱模式全本地模拟，live 模式走真实当面付。
+链路：下单（沙箱二维码 / live 收银台表单）→ 回调验签或主动查单 →
+订单完结 →（市场单）自动创建已成交交易 + 70/20/10 分账 + 存证链。
 """
 
 import logging
@@ -20,7 +20,7 @@ from app.models import DataProduct, DataTransaction, PaymentOrder
 from app.services import payment
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api/payments", tags=["支付宝当面付"])
+router = APIRouter(prefix="/api/payments", tags=["支付宝在线支付"])
 
 
 class PrecreateRequest(BaseModel):
@@ -37,7 +37,7 @@ def _new_order_no() -> str:
     return "OM" + datetime.now(UTC).strftime("%y%m%d%H%M%S") + secrets.token_hex(2).upper()
 
 
-def _order_to_dict(o: PaymentOrder, include_qr: bool = False) -> dict:
+def _order_to_dict(o: PaymentOrder, include_qr: bool = False, pay_form: str | None = None) -> dict:
     d = {
         "order_no": o.order_no,
         "kind": o.kind,
@@ -53,6 +53,9 @@ def _order_to_dict(o: PaymentOrder, include_qr: bool = False) -> dict:
     }
     if include_qr:
         d["qr_code"] = o.qr_code
+        # live 电脑网站支付：前端新窗口写入此表单并自动提交即进支付宝收银台
+        if pay_form:
+            d["pay_form"] = pay_form
     return d
 
 
@@ -84,7 +87,7 @@ async def _complete_payment(db: AsyncSession, order: PaymentOrder, trade_no: str
                 revenue_provider=round(amount * 0.7),
                 revenue_platform=round(amount * 0.2),
                 revenue_contributor=amount - round(amount * 0.7) - round(amount * 0.2),
-                purpose="支付宝当面付在线购买",
+                purpose="支付宝在线支付购买",
                 created_at=now,
             )
             db.add(tx)
@@ -111,7 +114,7 @@ async def _complete_payment(db: AsyncSession, order: PaymentOrder, trade_no: str
 @router.post("/precreate")
 async def precreate(req: PrecreateRequest, db: AsyncSession = Depends(get_db),
                     _session: str = SessionDep):
-    """当面付下单：返回支付二维码（沙箱为模拟载荷）。"""
+    """下单：沙箱返回模拟二维码载荷；live 返回支付宝收银台表单（电脑网站支付）。"""
     if req.kind == "marketplace":
         product = await db.get(DataProduct, req.ref_id)
         if product is None:
@@ -146,15 +149,20 @@ async def precreate(req: PrecreateRequest, db: AsyncSession = Depends(get_db),
     db.add(order)
     await db.commit()
     await db.refresh(order)
-    return _order_to_dict(order, include_qr=True)
+    return _order_to_dict(order, include_qr=True, pay_form=qr.get("pay_form"))
 
 
 @router.get("/order/{order_no}")
 async def order_status(order_no: str, db: AsyncSession = Depends(get_db)):
-    """订单状态轮询（前端扫码页用；仅含金额与状态，无个人数据）。"""
+    """订单状态轮询（前端支付弹框用；仅含金额与状态，无个人数据）。
+    live 待付单会主动查单补偿（回调未达/应用未上线时也能完结）。"""
     order = await crud.get_payment_order(db, order_no)
     if order is None:
         raise HTTPException(status_code=404, detail="订单不存在")
+    if order.status == "pending" and order.gateway == "live":
+        q = payment.query_trade_status(order_no)
+        if q and q["paid"]:
+            await _complete_payment(db, order, q["trade_no"] or order_no)
     return _order_to_dict(order)
 
 

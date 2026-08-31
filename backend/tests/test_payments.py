@@ -1,7 +1,8 @@
-"""支付宝当面付测试（app/routers/payments.py + app/services/payment.py）。
+"""支付宝在线支付测试（app/routers/payments.py + app/services/payment.py）。
 
 沙箱模式全链路：下单→模拟扫码→订单完结→市场分账存证；
-回调验签（沙箱签名防伪）；严格模式会话鉴权；管理端对账。
+回调验签（沙箱签名防伪）；严格模式会话鉴权；管理端对账；
+live 电脑网站支付分支（收银台表单/主动查单，mock 客户端）。
 内存 SQLite + dependency_overrides，不触发真实网关。
 """
 
@@ -219,3 +220,54 @@ class TestAdminPayments:
         assert body["mode"] == "sandbox"
         assert body["paid_count"] == 1
         assert body["revenue_cents"] == 19900
+
+
+# ---------------- live 电脑网站支付（mock 客户端） ----------------
+
+class _FakeAlipayClient:
+    """模拟 python-alipay-sdk：收银台表单 + 查单（首次未付，第二次已付）。"""
+    def __init__(self):
+        self.query_calls = 0
+
+    def api_alipay_trade_page_pay(self, **kwargs):
+        return f"<form action='gateway'>{kwargs['out_trade_no']}</form>"
+
+    def api_alipay_trade_query(self, out_trade_no):
+        self.query_calls += 1
+        if self.query_calls == 1:
+            return {"code": "40004", "sub_code": "ACQ.TRADE_NOT_EXIST"}
+        return {"code": "10000", "trade_status": "TRADE_SUCCESS", "trade_no": "2088T123"}
+
+
+class TestLivePagePay:
+    def test_precreate_returns_pay_form(self, client, monkeypatch):
+        from app.services import payment
+        c, _ = client
+        monkeypatch.setattr(settings, "ALIPAY_MODE", "live")
+        monkeypatch.setattr(settings, "ALIPAY_APP_ID", "2021006195651204")
+        monkeypatch.setattr(payment, "_client", _FakeAlipayClient())
+        r = c.post("/api/payments/precreate",
+                   json={"kind": "marketplace", "ref_id": "prod_test"})
+        assert r.status_code == 200
+        body = r.json()
+        assert body["gateway"] == "live"
+        assert body["pay_form"].startswith("<form")
+        assert not body["qr_code"]
+
+    def test_order_polling_completes_via_query(self, client, monkeypatch):
+        """回调未达时，轮询主动查单补偿完结（首次未付→第二次已付）。"""
+        from app.services import payment
+        c, _ = client
+        monkeypatch.setattr(settings, "ALIPAY_MODE", "live")
+        monkeypatch.setattr(settings, "ALIPAY_APP_ID", "2021006195651204")
+        monkeypatch.setattr(payment, "_client", _FakeAlipayClient())
+        order_no = c.post("/api/payments/precreate",
+                          json={"kind": "marketplace", "ref_id": "prod_test"}).json()["order_no"]
+        assert c.get(f"/api/payments/order/{order_no}").json()["status"] == "pending"
+        r = c.get(f"/api/payments/order/{order_no}").json()
+        assert r["status"] == "paid"
+        assert r["trade_no"] == "2088T123"
+
+    def test_query_returns_none_in_sandbox(self):
+        from app.services import payment
+        assert payment.query_trade_status("OM1") is None
