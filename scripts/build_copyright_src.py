@@ -29,9 +29,10 @@ TITLE_REGISTER = [
         "name": "瓯医病历智能治理系统",
         "version": "V1.0",
         "roots": [BACKEND / "app" / "services", BACKEND / "app" / "routers",
-                  ROOT / "frontend" / "src" / "app" / "governance", ROOT / "frontend" / "src" / "lib"],
-        "globs": ["governance.py", "governance", "api.ts"],
-        "exclude_substrings": [],
+                  ROOT / "frontend" / "src" / "app" / "governance"],
+        "globs": ["governance.py", "*.tsx"],
+        "exclude_substrings": ["test_"],
+        "filter_contains": True,  # 只取治理相关文件
     },
     {
         "file": "3-瓯医联邦学习医疗协作引擎V1.0-源代码.txt",
