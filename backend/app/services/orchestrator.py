@@ -1,5 +1,5 @@
 """
-MedSignal - 智能体编排服务
+瓯医数链 - 智能体编排服务
 
 增强版编排器，集成：
 - LLMService：用于意图识别和对话生成
@@ -522,7 +522,7 @@ class Orchestrator:
                     agent_outputs.append(f"【{name}】{resp}")
 
                 fusion_prompt = (
-                    "你是MedSignal的编排智能体。以下是多个专业智能体对同一问题的回答，"
+                    "你是瓯医数链的编排智能体。以下是多个专业智能体对同一问题的回答，"
                     "请将它们融合成一段连贯、完整、不重复的回答。"
                     "保留各智能体的关键结论，用【智能体名】标注信息来源。"
                     "如果某些信息重复，合并表述。最后给出 1-2 条综合建议。"
@@ -731,7 +731,7 @@ class Orchestrator:
                         {
                             "role": "system",
                             "content": (
-                                "你是 MedSignal 智能助手。自然、简洁地回应普通对话；"
+                                "你是瓯医数链智能助手。自然、简洁地回应普通对话；"
                                 "可引导用户使用医保权益、健康画像、报销预审、政策匹配、"
                                 "脑电、影像和数字人体档案功能。不得虚构诊断或政策结论。"
                                 + profile_text
@@ -748,7 +748,7 @@ class Orchestrator:
         text = message.strip().lower()
         if any(word in text for word in ("你是谁", "能做什么", "怎么用", "帮助")):
             response = (
-                f"您好，{name}！我是 MedSignal 医疗健康与医保智能助手。"
+                f"您好，{name}！我是瓯医数链医疗健康与医保智能助手。"
                 "我可以结合当前用户资料，查询医保权益、评估健康风险、整理数字人体档案、"
                 "辅助报销预审和政策匹配，也能解读脑电与医学影像演示结果。"
                 "您可以直接问：‘我最近身体怎么样？’或‘我的住院费用大概能报多少？’"
@@ -813,7 +813,7 @@ class Orchestrator:
                 ]
 
                 # 个性化系统提示
-                sys_prompt = "你是MedSignal的政策参谋。请基于政策资料准确回答，结合用户实际情况给出可享受的政策建议，并引用来源。"
+                sys_prompt = "你是瓯医数链的政策参谋。请基于政策资料准确回答，结合用户实际情况给出可享受的政策建议，并引用来源。"
                 if user_profile and user_profile.get("found"):
                     sys_prompt += (
                         f"\n\n## 用户情况：{user_profile.get('name', '')}，"
@@ -967,7 +967,7 @@ class Orchestrator:
                         f"来源: {r.source} | 标题: {r.title}\n{r.content}"
                         for r in search_results
                     ]
-                    sys_prompt = "你是MedSignal的权益管家，请根据政策资料准确回答用户的报销比例、起付线、封顶线、个人账户等问题。"
+                    sys_prompt = "你是瓯医数链的权益管家，请根据政策资料准确回答用户的报销比例、起付线、封顶线、个人账户等问题。"
                     if user_profile and user_profile.get("found"):
                         sys_prompt += (
                             f"\n\n## 用户情况：{user_profile.get('name', '')}，"
@@ -1068,7 +1068,7 @@ class Orchestrator:
         if self._llm is not None:
             try:
                 sys_prompt = (
-                    "你是MedSignal的脑电卫士智能体（EEG Agent），负责解读 EEG 脑电评估结果并给出健康建议。"
+                    "你是瓯医数链的脑电卫士智能体（EEG Agent），负责解读 EEG 脑电评估结果并给出健康建议。"
                     "基于五频段功率（δ/θ/α/β/γ）和四维健康指标（压力/注意力/睡眠/认知负荷）解读用户脑电状态，"
                     "并主动推荐相关医保政策。回答要专业、温暖、可操作，体现'脑电采集→健康评估→医保联动'全链路。"
                 )
@@ -1188,7 +1188,7 @@ class Orchestrator:
         if self._llm is not None:
             try:
                 sys_prompt = (
-                    "你是 MedSignal Agent 的影像卫士智能体（Imaging Agent），负责解读医学影像 AI 分析结果。"
+                    "你是瓯医数链的影像卫士智能体（Imaging Agent），负责解读医学影像 AI 分析结果。"
                     "说明 AI 检测到的病灶征象、置信度与严重度，强调 AI 标注需医师复核，"
                     "并主动推荐相关医保检查报销政策。回答要专业、严谨、可操作，"
                     "体现'影像分析→病灶识别→医师复核→医保联动'全链路，同时强调医疗安全边界。"
@@ -1255,10 +1255,10 @@ class Orchestrator:
             try:
                 # 优先使用 prompts/agent_prompts.py 里的专业系统提示词
                 agent_descriptions = {
-                    "claims": "你是MedSignal的报销助手，帮助用户了解报销流程、准备报销材料、解读报销差额。回答要专业、具体、可操作。",
-                    "security": "你是MedSignal的安全守门，解答用户关于数据授权、隐私保护、审计追溯、可信数据空间的问题。强调'数据可用不可见'理念。",
+                    "claims": "你是瓯医数链的报销助手，帮助用户了解报销流程、准备报销材料、解读报销差额。回答要专业、具体、可操作。",
+"security": "你是瓯医数链的安全守门，解答用户关于数据授权、隐私保护、审计追溯、可信数据空间的问题。强调'数据可用不可见'理念。",
                 }
-                system_prompt = agent_descriptions.get(agent_type, "你是MedSignal的智能助手，请专业、准确地回答用户问题。")
+                system_prompt = agent_descriptions.get(agent_type, "你是瓯医数链的智能助手，请专业、准确地回答用户问题。")
 
                 # 注入用户上下文
                 user_msg = message
@@ -1325,7 +1325,7 @@ class Orchestrator:
         if self._llm is not None:
             try:
                 sys_prompt = (
-                    "你是 MedSignal 档案管家的规划模块。根据用户消息和档案概况，决定要执行的工具序列，只返回 JSON。\n"
+                    "你是瓯医数链档案管家的规划模块。根据用户消息和档案概况，决定要执行的工具序列，只返回 JSON。\n"
                     "可用工具：archive（用户陈述了新的身体部位/症状/检查信息时归档）、"
                     "retrieve（用户想查看档案，args.organ 可为 null 表示全部）、"
                     "compare（用户想对比同一部位不同时间的记录，args.organ）、"

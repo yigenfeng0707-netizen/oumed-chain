@@ -250,7 +250,7 @@ class TestRouteToAgentOffline:
         greetings = await orch.route_to_agent("general", "你好", "1", PROFILE)
         assert "您好" in greetings["response"]
         identity = await orch.route_to_agent("general", "你是谁能做什么", "1", None)
-        assert "MedSignal" in identity["response"]
+        assert "瓯医数链" in identity["response"]
         thanks = await orch.route_to_agent("general", "谢谢", "1", None)
         assert "不客气" in thanks["response"]
         unknown = await orch.route_to_agent("general", "随便聊聊天气", "1", None)

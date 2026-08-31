@@ -345,22 +345,22 @@ export interface EEGMentalState {
 // ==================== 用户数据 ====================
 
 export const mockUsers: UserInfo[] = [
-  { id: 1, name: "张阿姨", age: 58, gender: "女", city: "南京", insurance_type: "职工医保", employee_status: "退休", conditions: ["糖尿病", "高血压"] },
-  { id: 2, name: "李大爷", age: 72, gender: "男", city: "苏州", insurance_type: "居民医保", employee_status: "退休", conditions: ["冠心病"] },
-  { id: 3, name: "王先生", age: 35, gender: "男", city: "南京", insurance_type: "职工医保", employee_status: "在职", conditions: [] },
-  { id: 4, name: "赵女士", age: 42, gender: "女", city: "无锡", insurance_type: "职工医保", employee_status: "在职", conditions: ["甲状腺结节"] },
-  { id: 5, name: "陈同学", age: 22, gender: "男", city: "南京", insurance_type: "居民医保", employee_status: "学生", conditions: [] },
-  { id: 6, name: "刘阿姨", age: 65, gender: "女", city: "常州", insurance_type: "职工医保", employee_status: "退休", conditions: ["糖尿病", "骨质疏松"] },
-  { id: 7, name: "周先生", age: 50, gender: "男", city: "南京", insurance_type: "职工医保", employee_status: "在职", conditions: ["胃病"] },
-  { id: 8, name: "吴女士", age: 28, gender: "女", city: "苏州", insurance_type: "职工医保", employee_status: "在职", conditions: [] },
-  { id: 9, name: "孙大爷", age: 78, gender: "男", city: "南通", insurance_type: "居民医保", employee_status: "退休", conditions: ["高血压", "关节炎", "白内障"] },
-  { id: 10, name: "郑先生", age: 45, gender: "男", city: "南京", insurance_type: "灵活就业医保", employee_status: "灵活就业", conditions: ["腰椎间盘突出"] },
+  { id: 1, name: "张阿姨", age: 58, gender: "女", city: "温州", insurance_type: "职工医保", employee_status: "退休", conditions: ["糖尿病", "高血压"] },
+  { id: 2, name: "李大爷", age: 72, gender: "男", city: "宁波", insurance_type: "居民医保", employee_status: "退休", conditions: ["冠心病"] },
+  { id: 3, name: "王先生", age: 35, gender: "男", city: "温州", insurance_type: "职工医保", employee_status: "在职", conditions: [] },
+  { id: 4, name: "赵女士", age: 42, gender: "女", city: "嘉兴", insurance_type: "职工医保", employee_status: "在职", conditions: ["甲状腺结节"] },
+  { id: 5, name: "陈同学", age: 22, gender: "男", city: "温州", insurance_type: "居民医保", employee_status: "学生", conditions: [] },
+  { id: 6, name: "刘阿姨", age: 65, gender: "女", city: "台州", insurance_type: "职工医保", employee_status: "退休", conditions: ["糖尿病", "骨质疏松"] },
+  { id: 7, name: "周先生", age: 50, gender: "男", city: "温州", insurance_type: "职工医保", employee_status: "在职", conditions: ["胃病"] },
+  { id: 8, name: "吴女士", age: 28, gender: "女", city: "宁波", insurance_type: "职工医保", employee_status: "在职", conditions: [] },
+  { id: 9, name: "孙大爷", age: 78, gender: "男", city: "丽水", insurance_type: "居民医保", employee_status: "退休", conditions: ["高血压", "关节炎", "白内障"] },
+  { id: 10, name: "郑先生", age: 45, gender: "男", city: "温州", insurance_type: "灵活就业医保", employee_status: "灵活就业", conditions: ["腰椎间盘突出"] },
 ];
 
 // ==================== 权益全景 ====================
 
 export const mockCoverageSummary: CoverageSummary = {
-  user: { id: 1, name: "张明", age: 45, gender: "男", city: "南京市", insurance_type: "职工医保", employee_status: "在职", conditions: ["糖尿病", "高血压"] },
+  user: { id: 1, name: "张明", age: 45, gender: "男", city: "温州市", insurance_type: "职工医保", employee_status: "在职", conditions: ["糖尿病", "高血压"] },
   payment_years: "15年3个月",
   account_balance: 8562.30,
   outpatient_ratio: 0.85,
@@ -437,7 +437,7 @@ export const mockHealthProfile: HealthProfile = {
 // ==================== 报销预审 ====================
 
 export const mockOCRResult: OCRResult = {
-  hospital: "南京市第一人民医院",
+  hospital: "温州市中心医院",
   date: "2025-06-10",
   patient: "张明",
   department: "内分泌科",
@@ -475,7 +475,7 @@ export const mockClaimsPreReview: ClaimsPreReview = {
     { name: "银行卡复印件", status: "missing" },
   ],
   claim_status: [
-    { date: "2025-06-05", title: "提交报销申请", desc: "南京市第一人民医院门诊费用", status: "completed" },
+    { date: "2025-06-05", title: "提交报销申请", desc: "温州市中心医院门诊费用", status: "completed" },
     { date: "2025-06-06", title: "材料审核通过", desc: "所有材料齐全，审核通过", status: "completed" },
     { date: "2025-06-08", title: "报销款已到账", desc: "报销金额 ¥256.50 已转入您的银行账户", status: "completed" },
   ],
@@ -496,7 +496,7 @@ export const mockPolicyMatch: PolicyMatch = {
       category: "门诊保障",
       description: "门诊慢病待遇是指将部分慢性病、特殊疾病的门诊治疗费用纳入医保统筹基金支付范围的政策。糖尿病患者经认定后，门诊治疗费用可按住院标准报销。",
       requirements: [
-        "已参加南京市职工基本医疗保险",
+        "已参加温州市职工基本医疗保险",
         "经二级以上医院确诊为糖尿病",
         "近6个月内有规律治疗记录",
         "糖化血红蛋白检测报告",
@@ -519,7 +519,7 @@ export const mockPolicyMatch: PolicyMatch = {
       category: "用药保障",
       description: "高血压门诊用药保障政策为高血压患者提供门诊用药费用报销，降低长期用药经济负担。",
       requirements: [
-        "已参加南京市职工基本医疗保险",
+        "已参加温州市职工基本医疗保险",
         "经确诊为高血压（I级及以上）",
         "正在使用降压药物治疗",
       ],
@@ -540,7 +540,7 @@ export const mockPolicyMatch: PolicyMatch = {
       category: "异地就医",
       description: "异地就医直接结算政策允许参保人员在异地就医时直接刷卡结算，无需垫付费用后回参保地报销。",
       requirements: [
-        "已参加南京市职工基本医疗保险",
+        "已参加温州市职工基本医疗保险",
         "已办理异地就医备案",
         "就医医院已开通异地结算",
       ],
@@ -561,7 +561,7 @@ export const mockPolicyMatch: PolicyMatch = {
       category: "大病保障",
       description: "大病保险是对基本医保的补充，当个人年度自付医疗费用超过起付线后，超出部分由大病保险按比例报销。",
       requirements: [
-        "已参加南京市职工基本医疗保险",
+        "已参加温州市职工基本医疗保险",
         "年度自付费用超过起付线（1.5万元）",
       ],
       benefits: [
@@ -648,7 +648,7 @@ export interface ChatMockResponse {
 
 export const mockChatResponses: Record<string, ChatMockResponse> = {
   "帮我查看我的医保权益": {
-    content: "正在为您查询医保权益信息...\n\n📋 **参保类型**：南京市职工基本医疗保险\n💰 **账户余额**：¥8,562.30\n📅 **缴费年限**：15年3个月\n🏥 **门诊报销比例**：85%\n🏥 **住院报销比例**：90%\n\n您的医保权益状态良好，已满足门诊统筹和大病保险的享受条件。如需了解更详细的信息，可以前往「权益全景」页面查看。",
+    content: "正在为您查询医保权益信息...\n\n📋 **参保类型**：温州市职工基本医疗保险\n💰 **账户余额**：¥8,562.30\n📅 **缴费年限**：15年3个月\n🏥 **门诊报销比例**：85%\n🏥 **住院报销比例**：90%\n\n您的医保权益状态良好，已满足门诊统筹和大病保险的享受条件。如需了解更详细的信息，可以前往「权益全景」页面查看。",
     agent: "权益管家",
     agentColor: "bg-blue-100 text-blue-700",
   },
