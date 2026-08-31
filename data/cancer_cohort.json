@@ -1,0 +1,2020 @@
+{
+ "_comment": "COMPASS 示例队列预计算结果（真模型离线推理）。上游数据/权重: kaiwang13/Oncoformer (Apache-2.0)，仅研究演示用途。",
+ "generated_at": "2026-08-31T08:33:17",
+ "ckpt": "demo_finetune.ckpt",
+ "population": {
+  "total": 790,
+  "prevalence": {
+   "Lung cancer": 198,
+   "Colorectal cancer": 81,
+   "Gastric cancer": 84,
+   "Liver cancer": 9,
+   "Breast cancer": 57,
+   "Ovarian/Cervical cancer": 16,
+   "Prostate cancer": 35
+  }
+ },
+ "patients": [
+  {
+   "pid": "19110a4e69168dfb",
+   "meta": {
+    "cancers_present": [
+     "Lung cancer"
+    ],
+    "cancer_stage": "I",
+    "has_image": true
+   },
+   "modes": {
+    "fused": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.3940584361553192,
+       "Colorectal cancer": 0.26278266310691833,
+       "Gastric cancer": 0.2541617453098297,
+       "Liver cancer": 0.2115991711616516,
+       "Breast cancer": 0.28798744082450867,
+       "Ovarian/Cervical cancer": 0.20498602092266083,
+       "Prostate cancer": 0.235662579536438
+      },
+      "future": {
+       "Lung cancer": 0.570549726486206,
+       "Colorectal cancer": 0.2681024670600891,
+       "Gastric cancer": 0.2517344355583191,
+       "Liver cancer": 0.26975172758102417,
+       "Breast cancer": 0.28874602913856506,
+       "Ovarian/Cervical cancer": 0.24595245718955994,
+       "Prostate cancer": 0.2752109169960022
+      }
+     },
+     "pred_age": 58.09370510280132,
+     "n_visits": 4
+    },
+    "ehr_only": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.3582644462585449,
+       "Colorectal cancer": 0.2931922972202301,
+       "Gastric cancer": 0.30311018228530884,
+       "Liver cancer": 0.29518741369247437,
+       "Breast cancer": 0.2334941327571869,
+       "Ovarian/Cervical cancer": 0.22358684241771698,
+       "Prostate cancer": 0.2977731227874756
+      },
+      "future": {
+       "Lung cancer": 0.3614497482776642,
+       "Colorectal cancer": 0.2731947600841522,
+       "Gastric cancer": 0.2709956765174866,
+       "Liver cancer": 0.287365585565567,
+       "Breast cancer": 0.28928467631340027,
+       "Ovarian/Cervical cancer": 0.24574333429336548,
+       "Prostate cancer": 0.29950442910194397
+      }
+     },
+     "pred_age": 61.17761358618736,
+     "n_visits": 4
+    },
+    "img_only": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.42345231771469116,
+       "Colorectal cancer": 0.22780027985572815,
+       "Gastric cancer": 0.23896931111812592,
+       "Liver cancer": 0.18087230622768402,
+       "Breast cancer": 0.2053850293159485,
+       "Ovarian/Cervical cancer": 0.15670713782310486,
+       "Prostate cancer": 0.19642533361911774
+      },
+      "future": {
+       "Lung cancer": 0.5821603536605835,
+       "Colorectal cancer": 0.2817510664463043,
+       "Gastric cancer": 0.2463834285736084,
+       "Liver cancer": 0.22961761057376862,
+       "Breast cancer": 0.2620795667171478,
+       "Ovarian/Cervical cancer": 0.23617962002754211,
+       "Prostate cancer": 0.25093111395835876
+      }
+     },
+     "pred_age": 62.501154989004135,
+     "n_visits": 4
+    }
+   }
+  },
+  {
+   "pid": "a55055ab21909f98",
+   "meta": {
+    "cancers_present": [
+     "Lung cancer",
+     "Gastric cancer"
+    ],
+    "cancer_stage": "III",
+    "has_image": true
+   },
+   "modes": {
+    "fused": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.39575424790382385,
+       "Colorectal cancer": 0.31671690940856934,
+       "Gastric cancer": 0.31314679980278015,
+       "Liver cancer": 0.28383225202560425,
+       "Breast cancer": 0.2527107298374176,
+       "Ovarian/Cervical cancer": 0.19891300797462463,
+       "Prostate cancer": 0.36975717544555664
+      },
+      "future": {
+       "Lung cancer": 0.41845107078552246,
+       "Colorectal cancer": 0.3237383961677551,
+       "Gastric cancer": 0.32224810123443604,
+       "Liver cancer": 0.2920103073120117,
+       "Breast cancer": 0.21714909374713898,
+       "Ovarian/Cervical cancer": 0.2292843759059906,
+       "Prostate cancer": 0.3203578293323517
+      }
+     },
+     "pred_age": 68.60510051250458,
+     "n_visits": 13
+    },
+    "ehr_only": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.3631042242050171,
+       "Colorectal cancer": 0.31470218300819397,
+       "Gastric cancer": 0.30381086468696594,
+       "Liver cancer": 0.30176421999931335,
+       "Breast cancer": 0.2608017027378082,
+       "Ovarian/Cervical cancer": 0.22827386856079102,
+       "Prostate cancer": 0.3518367409706116
+      },
+      "future": {
+       "Lung cancer": 0.3438451290130615,
+       "Colorectal cancer": 0.29009753465652466,
+       "Gastric cancer": 0.28827109932899475,
+       "Liver cancer": 0.2783913314342499,
+       "Breast cancer": 0.28291594982147217,
+       "Ovarian/Cervical cancer": 0.23483864963054657,
+       "Prostate cancer": 0.30150237679481506
+      }
+     },
+     "pred_age": 62.64091283082962,
+     "n_visits": 13
+    },
+    "img_only": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.4305487871170044,
+       "Colorectal cancer": 0.26202109456062317,
+       "Gastric cancer": 0.25506770610809326,
+       "Liver cancer": 0.23409295082092285,
+       "Breast cancer": 0.2571859061717987,
+       "Ovarian/Cervical cancer": 0.16945068538188934,
+       "Prostate cancer": 0.32702428102493286
+      },
+      "future": {
+       "Lung cancer": 0.5795854926109314,
+       "Colorectal cancer": 0.287653386592865,
+       "Gastric cancer": 0.29625269770622253,
+       "Liver cancer": 0.2609970271587372,
+       "Breast cancer": 0.25606000423431396,
+       "Ovarian/Cervical cancer": 0.22973079979419708,
+       "Prostate cancer": 0.27270904183387756
+      }
+     },
+     "pred_age": 64.21618580818176,
+     "n_visits": 13
+    }
+   }
+  },
+  {
+   "pid": "e8b3dd2ec15c31cd",
+   "meta": {
+    "cancers_present": [
+     "Colorectal cancer"
+    ],
+    "cancer_stage": "II",
+    "has_image": true
+   },
+   "modes": {
+    "fused": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.3685113787651062,
+       "Colorectal cancer": 0.3087429702281952,
+       "Gastric cancer": 0.32325610518455505,
+       "Liver cancer": 0.2554767429828644,
+       "Breast cancer": 0.18535882234573364,
+       "Ovarian/Cervical cancer": 0.19299523532390594,
+       "Prostate cancer": 0.29380711913108826
+      },
+      "future": {
+       "Lung cancer": 0.44660982489585876,
+       "Colorectal cancer": 0.3269815742969513,
+       "Gastric cancer": 0.3426703214645386,
+       "Liver cancer": 0.30494368076324463,
+       "Breast cancer": 0.21191997826099396,
+       "Ovarian/Cervical cancer": 0.2086927890777588,
+       "Prostate cancer": 0.33145105838775635
+      }
+     },
+     "pred_age": 70.97124338150024,
+     "n_visits": 6
+    },
+    "ehr_only": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.34297385811805725,
+       "Colorectal cancer": 0.294878751039505,
+       "Gastric cancer": 0.31676527857780457,
+       "Liver cancer": 0.2709774971008301,
+       "Breast cancer": 0.18824981153011322,
+       "Ovarian/Cervical cancer": 0.19895534217357635,
+       "Prostate cancer": 0.3042287826538086
+      },
+      "future": {
+       "Lung cancer": 0.36027076840400696,
+       "Colorectal cancer": 0.30273932218551636,
+       "Gastric cancer": 0.34668615460395813,
+       "Liver cancer": 0.2984137237071991,
+       "Breast cancer": 0.19332419335842133,
+       "Ovarian/Cervical cancer": 0.20070840418338776,
+       "Prostate cancer": 0.3271094858646393
+      }
+     },
+     "pred_age": 75.02806663513184,
+     "n_visits": 6
+    },
+    "img_only": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.41761842370033264,
+       "Colorectal cancer": 0.23490522801876068,
+       "Gastric cancer": 0.24724557995796204,
+       "Liver cancer": 0.20154353976249695,
+       "Breast cancer": 0.20493724942207336,
+       "Ovarian/Cervical cancer": 0.1728946417570114,
+       "Prostate cancer": 0.19414043426513672
+      },
+      "future": {
+       "Lung cancer": 0.6026073098182678,
+       "Colorectal cancer": 0.2809085547924042,
+       "Gastric cancer": 0.25547611713409424,
+       "Liver cancer": 0.23940332233905792,
+       "Breast cancer": 0.26419591903686523,
+       "Ovarian/Cervical cancer": 0.23573340475559235,
+       "Prostate cancer": 0.25314605236053467
+      }
+     },
+     "pred_age": 63.35284799337387,
+     "n_visits": 6
+    }
+   }
+  },
+  {
+   "pid": "5285fc9d340efcce",
+   "meta": {
+    "cancers_present": [
+     "Lung cancer",
+     "Colorectal cancer",
+     "Liver cancer"
+    ],
+    "cancer_stage": "IV",
+    "has_image": true
+   },
+   "modes": {
+    "fused": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.39692074060440063,
+       "Colorectal cancer": 0.347793310880661,
+       "Gastric cancer": 0.34490808844566345,
+       "Liver cancer": 0.2967250645160675,
+       "Breast cancer": 0.27657899260520935,
+       "Ovarian/Cervical cancer": 0.2161383032798767,
+       "Prostate cancer": 0.3663840889930725
+      },
+      "future": {
+       "Lung cancer": 0.3969290256500244,
+       "Colorectal cancer": 0.3317374587059021,
+       "Gastric cancer": 0.33393576741218567,
+       "Liver cancer": 0.2770751416683197,
+       "Breast cancer": 0.15919966995716095,
+       "Ovarian/Cervical cancer": 0.19434010982513428,
+       "Prostate cancer": 0.3207537829875946
+      }
+     },
+     "pred_age": 74.45561170578003,
+     "n_visits": 16
+    },
+    "ehr_only": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.365876704454422,
+       "Colorectal cancer": 0.33044785261154175,
+       "Gastric cancer": 0.33264198899269104,
+       "Liver cancer": 0.29137709736824036,
+       "Breast cancer": 0.3158169984817505,
+       "Ovarian/Cervical cancer": 0.244157075881958,
+       "Prostate cancer": 0.3389270305633545
+      },
+      "future": {
+       "Lung cancer": 0.3605788052082062,
+       "Colorectal cancer": 0.3167884945869446,
+       "Gastric cancer": 0.34658876061439514,
+       "Liver cancer": 0.27464887499809265,
+       "Breast cancer": 0.15623602271080017,
+       "Ovarian/Cervical cancer": 0.19639240205287933,
+       "Prostate cancer": 0.3352094888687134
+      }
+     },
+     "pred_age": 76.16369068622589,
+     "n_visits": 16
+    },
+    "img_only": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.40248432755470276,
+       "Colorectal cancer": 0.3151445984840393,
+       "Gastric cancer": 0.3073493540287018,
+       "Liver cancer": 0.21737425029277802,
+       "Breast cancer": 0.40933385491371155,
+       "Ovarian/Cervical cancer": 0.2492082267999649,
+       "Prostate cancer": 0.26692289113998413
+      },
+      "future": {
+       "Lung cancer": 0.5683643221855164,
+       "Colorectal cancer": 0.3498667776584625,
+       "Gastric cancer": 0.30627554655075073,
+       "Liver cancer": 0.27688512206077576,
+       "Breast cancer": 0.24242006242275238,
+       "Ovarian/Cervical cancer": 0.23120521008968353,
+       "Prostate cancer": 0.28997349739074707
+      }
+     },
+     "pred_age": 66.4387983083725,
+     "n_visits": 16
+    }
+   }
+  },
+  {
+   "pid": "34278ec93e16752b",
+   "meta": {
+    "cancers_present": [
+     "Lung cancer",
+     "Gastric cancer"
+    ],
+    "cancer_stage": "I",
+    "has_image": true
+   },
+   "modes": {
+    "fused": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.3734055459499359,
+       "Colorectal cancer": 0.3304751515388489,
+       "Gastric cancer": 0.3239082396030426,
+       "Liver cancer": 0.2618643045425415,
+       "Breast cancer": 0.3395364284515381,
+       "Ovarian/Cervical cancer": 0.22034461796283722,
+       "Prostate cancer": 0.3370653986930847
+      },
+      "future": {
+       "Lung cancer": 0.4416646659374237,
+       "Colorectal cancer": 0.35348767042160034,
+       "Gastric cancer": 0.34222590923309326,
+       "Liver cancer": 0.3109216094017029,
+       "Breast cancer": 0.2489144206047058,
+       "Ovarian/Cervical cancer": 0.24460145831108093,
+       "Prostate cancer": 0.31617310643196106
+      }
+     },
+     "pred_age": 70.50935983657837,
+     "n_visits": 16
+    },
+    "ehr_only": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.3661530315876007,
+       "Colorectal cancer": 0.33660298585891724,
+       "Gastric cancer": 0.32730013132095337,
+       "Liver cancer": 0.29052260518074036,
+       "Breast cancer": 0.3939947187900543,
+       "Ovarian/Cervical cancer": 0.30763494968414307,
+       "Prostate cancer": 0.3327534794807434
+      },
+      "future": {
+       "Lung cancer": 0.36881598830223083,
+       "Colorectal cancer": 0.3152289390563965,
+       "Gastric cancer": 0.30910852551460266,
+       "Liver cancer": 0.3088963031768799,
+       "Breast cancer": 0.2922843396663666,
+       "Ovarian/Cervical cancer": 0.2971241772174835,
+       "Prostate cancer": 0.3017723560333252
+      }
+     },
+     "pred_age": 63.18154513835907,
+     "n_visits": 16
+    },
+    "img_only": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.3019382357597351,
+       "Colorectal cancer": 0.2718254327774048,
+       "Gastric cancer": 0.2771306037902832,
+       "Liver cancer": 0.21142390370368958,
+       "Breast cancer": 0.2685055434703827,
+       "Ovarian/Cervical cancer": 0.17502440512180328,
+       "Prostate cancer": 0.27790021896362305
+      },
+      "future": {
+       "Lung cancer": 0.5711803436279297,
+       "Colorectal cancer": 0.3464300334453583,
+       "Gastric cancer": 0.32826322317123413,
+       "Liver cancer": 0.29492753744125366,
+       "Breast cancer": 0.23734793066978455,
+       "Ovarian/Cervical cancer": 0.21822617948055267,
+       "Prostate cancer": 0.3011823296546936
+      }
+     },
+     "pred_age": 69.46597695350647,
+     "n_visits": 16
+    }
+   }
+  },
+  {
+   "pid": "22b6c807ff4a10c5",
+   "meta": {
+    "cancers_present": [
+     "Lung cancer",
+     "Liver cancer"
+    ],
+    "cancer_stage": "I",
+    "has_image": true
+   },
+   "modes": {
+    "fused": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.40483224391937256,
+       "Colorectal cancer": 0.3375864326953888,
+       "Gastric cancer": 0.34517139196395874,
+       "Liver cancer": 0.28066709637641907,
+       "Breast cancer": 0.19169221818447113,
+       "Ovarian/Cervical cancer": 0.19291874766349792,
+       "Prostate cancer": 0.32843396067619324
+      },
+      "future": {
+       "Lung cancer": 0.3485419452190399,
+       "Colorectal cancer": 0.2445427030324936,
+       "Gastric cancer": 0.23643040657043457,
+       "Liver cancer": 0.2477370649576187,
+       "Breast cancer": 0.21185781061649323,
+       "Ovarian/Cervical cancer": 0.21197745203971863,
+       "Prostate cancer": 0.2548478841781616
+      }
+     },
+     "pred_age": 73.24653714895248,
+     "n_visits": 10
+    },
+    "ehr_only": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.37177523970603943,
+       "Colorectal cancer": 0.3093045651912689,
+       "Gastric cancer": 0.33061620593070984,
+       "Liver cancer": 0.28274965286254883,
+       "Breast cancer": 0.18668241798877716,
+       "Ovarian/Cervical cancer": 0.20087619125843048,
+       "Prostate cancer": 0.3309952914714813
+      },
+      "future": {
+       "Lung cancer": 0.3238988220691681,
+       "Colorectal cancer": 0.22680547833442688,
+       "Gastric cancer": 0.24457494914531708,
+       "Liver cancer": 0.2442016899585724,
+       "Breast cancer": 0.24309022724628448,
+       "Ovarian/Cervical cancer": 0.21050941944122314,
+       "Prostate cancer": 0.24861031770706177
+      }
+     },
+     "pred_age": 75.69728136062622,
+     "n_visits": 10
+    },
+    "img_only": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.42141422629356384,
+       "Colorectal cancer": 0.26912984251976013,
+       "Gastric cancer": 0.26493364572525024,
+       "Liver cancer": 0.21834547817707062,
+       "Breast cancer": 0.20673881471157074,
+       "Ovarian/Cervical cancer": 0.1684083491563797,
+       "Prostate cancer": 0.22900089621543884
+      },
+      "future": {
+       "Lung cancer": 0.4179219901561737,
+       "Colorectal cancer": 0.24879765510559082,
+       "Gastric cancer": 0.2094067633152008,
+       "Liver cancer": 0.23541904985904694,
+       "Breast cancer": 0.26580893993377686,
+       "Ovarian/Cervical cancer": 0.2371511161327362,
+       "Prostate cancer": 0.2526973485946655
+      }
+     },
+     "pred_age": 67.65265256166458,
+     "n_visits": 10
+    }
+   }
+  },
+  {
+   "pid": "696ba5ad1bcb9786",
+   "meta": {
+    "cancers_present": [
+     "Breast cancer"
+    ],
+    "cancer_stage": "II",
+    "has_image": true
+   },
+   "modes": {
+    "fused": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.3629019558429718,
+       "Colorectal cancer": 0.23749764263629913,
+       "Gastric cancer": 0.22684600949287415,
+       "Liver cancer": 0.18284162878990173,
+       "Breast cancer": 0.2309562712907791,
+       "Ovarian/Cervical cancer": 0.1819087415933609,
+       "Prostate cancer": 0.21187636256217957
+      },
+      "future": {
+       "Lung cancer": 0.5426369905471802,
+       "Colorectal cancer": 0.25994056463241577,
+       "Gastric cancer": 0.24761879444122314,
+       "Liver cancer": 0.27041447162628174,
+       "Breast cancer": 0.43851345777511597,
+       "Ovarian/Cervical cancer": 0.28834789991378784,
+       "Prostate cancer": 0.2777749300003052
+      }
+     },
+     "pred_age": 50.368874073028564,
+     "n_visits": 9
+    },
+    "ehr_only": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.290348619222641,
+       "Colorectal cancer": 0.22668838500976562,
+       "Gastric cancer": 0.23864102363586426,
+       "Liver cancer": 0.24685271084308624,
+       "Breast cancer": 0.2550896108150482,
+       "Ovarian/Cervical cancer": 0.24874529242515564,
+       "Prostate cancer": 0.23019734025001526
+      },
+      "future": {
+       "Lung cancer": 0.3308105766773224,
+       "Colorectal cancer": 0.23774823546409607,
+       "Gastric cancer": 0.2309066355228424,
+       "Liver cancer": 0.2601316571235657,
+       "Breast cancer": 0.3723517060279846,
+       "Ovarian/Cervical cancer": 0.2588905692100525,
+       "Prostate cancer": 0.27154138684272766
+      }
+     },
+     "pred_age": 50.21711200475693,
+     "n_visits": 9
+    },
+    "img_only": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.42122405767440796,
+       "Colorectal cancer": 0.22714678943157196,
+       "Gastric cancer": 0.23340339958667755,
+       "Liver cancer": 0.16828148066997528,
+       "Breast cancer": 0.20307064056396484,
+       "Ovarian/Cervical cancer": 0.15472158789634705,
+       "Prostate cancer": 0.169826939702034
+      },
+      "future": {
+       "Lung cancer": 0.5620595812797546,
+       "Colorectal cancer": 0.31473833322525024,
+       "Gastric cancer": 0.2599388062953949,
+       "Liver cancer": 0.24832230806350708,
+       "Breast cancer": 0.34194615483283997,
+       "Ovarian/Cervical cancer": 0.24128828942775726,
+       "Prostate cancer": 0.28448745608329773
+      }
+     },
+     "pred_age": 62.07069173455238,
+     "n_visits": 9
+    }
+   }
+  },
+  {
+   "pid": "62da73cf7785a6f1",
+   "meta": {
+    "cancers_present": [
+     "Breast cancer"
+    ],
+    "cancer_stage": "III",
+    "has_image": true
+   },
+   "modes": {
+    "fused": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.39109039306640625,
+       "Colorectal cancer": 0.2666703164577484,
+       "Gastric cancer": 0.25112423300743103,
+       "Liver cancer": 0.2096060961484909,
+       "Breast cancer": 0.25442662835121155,
+       "Ovarian/Cervical cancer": 0.18952451646327972,
+       "Prostate cancer": 0.22709015011787415
+      },
+      "future": {
+       "Lung cancer": 0.6007257699966431,
+       "Colorectal cancer": 0.2940584123134613,
+       "Gastric cancer": 0.24886246025562286,
+       "Liver cancer": 0.2649881839752197,
+       "Breast cancer": 0.310010701417923,
+       "Ovarian/Cervical cancer": 0.2425190657377243,
+       "Prostate cancer": 0.274016797542572
+      }
+     },
+     "pred_age": 61.99244387447834,
+     "n_visits": 10
+    },
+    "ehr_only": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.30276837944984436,
+       "Colorectal cancer": 0.24206160008907318,
+       "Gastric cancer": 0.2548997700214386,
+       "Liver cancer": 0.2548389434814453,
+       "Breast cancer": 0.2757715880870819,
+       "Ovarian/Cervical cancer": 0.25150182843208313,
+       "Prostate cancer": 0.2411615401506424
+      },
+      "future": {
+       "Lung cancer": 0.3939499855041504,
+       "Colorectal cancer": 0.22244837880134583,
+       "Gastric cancer": 0.19992700219154358,
+       "Liver cancer": 0.21661663055419922,
+       "Breast cancer": 0.35877877473831177,
+       "Ovarian/Cervical cancer": 0.2514146864414215,
+       "Prostate cancer": 0.23289160430431366
+      }
+     },
+     "pred_age": 47.57019102573395,
+     "n_visits": 10
+    },
+    "img_only": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.4151737093925476,
+       "Colorectal cancer": 0.23748400807380676,
+       "Gastric cancer": 0.223052978515625,
+       "Liver cancer": 0.1917639970779419,
+       "Breast cancer": 0.19475524127483368,
+       "Ovarian/Cervical cancer": 0.15527208149433136,
+       "Prostate cancer": 0.19853322207927704
+      },
+      "future": {
+       "Lung cancer": 0.5944851636886597,
+       "Colorectal cancer": 0.30983731150627136,
+       "Gastric cancer": 0.2637113928794861,
+       "Liver cancer": 0.2395930290222168,
+       "Breast cancer": 0.27330631017684937,
+       "Ovarian/Cervical cancer": 0.23909899592399597,
+       "Prostate cancer": 0.26106157898902893
+      }
+     },
+     "pred_age": 63.516350984573364,
+     "n_visits": 10
+    }
+   }
+  },
+  {
+   "pid": "d856a61962c4a666",
+   "meta": {
+    "cancers_present": [
+     "Colorectal cancer",
+     "Gastric cancer",
+     "Ovarian/Cervical cancer"
+    ],
+    "cancer_stage": "II",
+    "has_image": true
+   },
+   "modes": {
+    "fused": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.3499462306499481,
+       "Colorectal cancer": 0.31071755290031433,
+       "Gastric cancer": 0.28910163044929504,
+       "Liver cancer": 0.2492132931947708,
+       "Breast cancer": 0.32136109471321106,
+       "Ovarian/Cervical cancer": 0.2388300597667694,
+       "Prostate cancer": 0.3042168915271759
+      },
+      "future": {
+       "Lung cancer": 0.5453265905380249,
+       "Colorectal cancer": 0.3132033348083496,
+       "Gastric cancer": 0.25480782985687256,
+       "Liver cancer": 0.23361735045909882,
+       "Breast cancer": 0.43483954668045044,
+       "Ovarian/Cervical cancer": 0.3051275908946991,
+       "Prostate cancer": 0.2488824725151062
+      }
+     },
+     "pred_age": 52.85476595163345,
+     "n_visits": 16
+    },
+    "ehr_only": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.3620823919773102,
+       "Colorectal cancer": 0.32361727952957153,
+       "Gastric cancer": 0.3177308440208435,
+       "Liver cancer": 0.28468042612075806,
+       "Breast cancer": 0.336629182100296,
+       "Ovarian/Cervical cancer": 0.2732783555984497,
+       "Prostate cancer": 0.32858094573020935
+      },
+      "future": {
+       "Lung cancer": 0.41453638672828674,
+       "Colorectal cancer": 0.3037896752357483,
+       "Gastric cancer": 0.27198079228401184,
+       "Liver cancer": 0.2710229456424713,
+       "Breast cancer": 0.3397101163864136,
+       "Ovarian/Cervical cancer": 0.2887442111968994,
+       "Prostate cancer": 0.3083631694316864
+      }
+     },
+     "pred_age": 60.619688630104065,
+     "n_visits": 16
+    },
+    "img_only": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.2988375723361969,
+       "Colorectal cancer": 0.24871166050434113,
+       "Gastric cancer": 0.23290212452411652,
+       "Liver cancer": 0.18479590117931366,
+       "Breast cancer": 0.22938255965709686,
+       "Ovarian/Cervical cancer": 0.17220646142959595,
+       "Prostate cancer": 0.22134652733802795
+      },
+      "future": {
+       "Lung cancer": 0.5790259838104248,
+       "Colorectal cancer": 0.353943794965744,
+       "Gastric cancer": 0.31249216198921204,
+       "Liver cancer": 0.2714342772960663,
+       "Breast cancer": 0.2941165864467621,
+       "Ovarian/Cervical cancer": 0.21411317586898804,
+       "Prostate cancer": 0.3313283324241638
+      }
+     },
+     "pred_age": 68.30383747816086,
+     "n_visits": 16
+    }
+   }
+  },
+  {
+   "pid": "ab5a1a11d0732483",
+   "meta": {
+    "cancers_present": [
+     "Colorectal cancer",
+     "Ovarian/Cervical cancer"
+    ],
+    "cancer_stage": "III",
+    "has_image": true
+   },
+   "modes": {
+    "fused": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.30713552236557007,
+       "Colorectal cancer": 0.25818368792533875,
+       "Gastric cancer": 0.24485956132411957,
+       "Liver cancer": 0.24103836715221405,
+       "Breast cancer": 0.38690462708473206,
+       "Ovarian/Cervical cancer": 0.257311075925827,
+       "Prostate cancer": 0.25349006056785583
+      },
+      "future": {
+       "Lung cancer": 0.4588387608528137,
+       "Colorectal cancer": 0.2760627567768097,
+       "Gastric cancer": 0.24052028357982635,
+       "Liver cancer": 0.22798553109169006,
+       "Breast cancer": 0.4569096863269806,
+       "Ovarian/Cervical cancer": 0.3050094544887543,
+       "Prostate cancer": 0.2538488507270813
+      }
+     },
+     "pred_age": 49.265274703502655,
+     "n_visits": 16
+    },
+    "ehr_only": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.31519532203674316,
+       "Colorectal cancer": 0.2612219750881195,
+       "Gastric cancer": 0.2526111304759979,
+       "Liver cancer": 0.2586499750614166,
+       "Breast cancer": 0.35685572028160095,
+       "Ovarian/Cervical cancer": 0.26496270298957825,
+       "Prostate cancer": 0.2653792202472687
+      },
+      "future": {
+       "Lung cancer": 0.3258502781391144,
+       "Colorectal cancer": 0.234642893075943,
+       "Gastric cancer": 0.22015982866287231,
+       "Liver cancer": 0.24121740460395813,
+       "Breast cancer": 0.39317944645881653,
+       "Ovarian/Cervical cancer": 0.29007020592689514,
+       "Prostate cancer": 0.263175368309021
+      }
+     },
+     "pred_age": 50.897462368011475,
+     "n_visits": 16
+    },
+    "img_only": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.3628046214580536,
+       "Colorectal cancer": 0.2683751583099365,
+       "Gastric cancer": 0.2403871715068817,
+       "Liver cancer": 0.24276572465896606,
+       "Breast cancer": 0.36583060026168823,
+       "Ovarian/Cervical cancer": 0.25993749499320984,
+       "Prostate cancer": 0.25833559036254883
+      },
+      "future": {
+       "Lung cancer": 0.5405982136726379,
+       "Colorectal cancer": 0.32208049297332764,
+       "Gastric cancer": 0.2699061930179596,
+       "Liver cancer": 0.25098761916160583,
+       "Breast cancer": 0.3707409203052521,
+       "Ovarian/Cervical cancer": 0.26823872327804565,
+       "Prostate cancer": 0.27447178959846497
+      }
+     },
+     "pred_age": 60.88978707790375,
+     "n_visits": 16
+    }
+   }
+  },
+  {
+   "pid": "3750a55de68ad6c7",
+   "meta": {
+    "cancers_present": [
+     "Lung cancer",
+     "Prostate cancer"
+    ],
+    "cancer_stage": "I",
+    "has_image": true
+   },
+   "modes": {
+    "fused": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.3938639760017395,
+       "Colorectal cancer": 0.327750563621521,
+       "Gastric cancer": 0.3250345289707184,
+       "Liver cancer": 0.28462040424346924,
+       "Breast cancer": 0.2384214997291565,
+       "Ovarian/Cervical cancer": 0.2011629045009613,
+       "Prostate cancer": 0.3835097551345825
+      },
+      "future": {
+       "Lung cancer": 0.3182203471660614,
+       "Colorectal cancer": 0.23278674483299255,
+       "Gastric cancer": 0.23791192471981049,
+       "Liver cancer": 0.2323463410139084,
+       "Breast cancer": 0.17765381932258606,
+       "Ovarian/Cervical cancer": 0.19152522087097168,
+       "Prostate cancer": 0.25013718008995056
+      }
+     },
+     "pred_age": 80.17584800720215,
+     "n_visits": 11
+    },
+    "ehr_only": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.375631719827652,
+       "Colorectal cancer": 0.33328017592430115,
+       "Gastric cancer": 0.3291904032230377,
+       "Liver cancer": 0.2872612774372101,
+       "Breast cancer": 0.2089853584766388,
+       "Ovarian/Cervical cancer": 0.19691328704357147,
+       "Prostate cancer": 0.36934152245521545
+      },
+      "future": {
+       "Lung cancer": 0.2865965664386749,
+       "Colorectal cancer": 0.22098076343536377,
+       "Gastric cancer": 0.2315390259027481,
+       "Liver cancer": 0.22145938873291016,
+       "Breast cancer": 0.17362867295742035,
+       "Ovarian/Cervical cancer": 0.18569247424602509,
+       "Prostate cancer": 0.23962531983852386
+      }
+     },
+     "pred_age": 80.70754408836365,
+     "n_visits": 11
+    },
+    "img_only": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.4185161590576172,
+       "Colorectal cancer": 0.27181610465049744,
+       "Gastric cancer": 0.26899418234825134,
+       "Liver cancer": 0.22835835814476013,
+       "Breast cancer": 0.26094409823417664,
+       "Ovarian/Cervical cancer": 0.17983873188495636,
+       "Prostate cancer": 0.3069053590297699
+      },
+      "future": {
+       "Lung cancer": 0.4184631407260895,
+       "Colorectal cancer": 0.24973125755786896,
+       "Gastric cancer": 0.2102927565574646,
+       "Liver cancer": 0.23095634579658508,
+       "Breast cancer": 0.267783522605896,
+       "Ovarian/Cervical cancer": 0.2378951460123062,
+       "Prostate cancer": 0.25455623865127563
+      }
+     },
+     "pred_age": 70.02928555011749,
+     "n_visits": 11
+    }
+   }
+  },
+  {
+   "pid": "c70bb8967df6c5f2",
+   "meta": {
+    "cancers_present": [
+     "Prostate cancer"
+    ],
+    "cancer_stage": "III",
+    "has_image": true
+   },
+   "modes": {
+    "fused": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.35805588960647583,
+       "Colorectal cancer": 0.2950335443019867,
+       "Gastric cancer": 0.31351447105407715,
+       "Liver cancer": 0.24735480546951294,
+       "Breast cancer": 0.2127045840024948,
+       "Ovarian/Cervical cancer": 0.21139712631702423,
+       "Prostate cancer": 0.27908194065093994
+      },
+      "future": {
+       "Lung cancer": 0.3111993074417114,
+       "Colorectal cancer": 0.23161718249320984,
+       "Gastric cancer": 0.23689213395118713,
+       "Liver cancer": 0.2290891855955124,
+       "Breast cancer": 0.1708863079547882,
+       "Ovarian/Cervical cancer": 0.18788249790668488,
+       "Prostate cancer": 0.248935267329216
+      }
+     },
+     "pred_age": 66.88443303108215,
+     "n_visits": 3
+    },
+    "ehr_only": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.3446314036846161,
+       "Colorectal cancer": 0.29876622557640076,
+       "Gastric cancer": 0.3213697075843811,
+       "Liver cancer": 0.271221786737442,
+       "Breast cancer": 0.19643352925777435,
+       "Ovarian/Cervical cancer": 0.21410198509693146,
+       "Prostate cancer": 0.30191630125045776
+      },
+      "future": {
+       "Lung cancer": 0.282992422580719,
+       "Colorectal cancer": 0.22102795541286469,
+       "Gastric cancer": 0.22904996573925018,
+       "Liver cancer": 0.21861611306667328,
+       "Breast cancer": 0.16441552340984344,
+       "Ovarian/Cervical cancer": 0.18061456084251404,
+       "Prostate cancer": 0.23957118391990662
+      }
+     },
+     "pred_age": 69.46531534194946,
+     "n_visits": 3
+    },
+    "img_only": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.4199698865413666,
+       "Colorectal cancer": 0.21266691386699677,
+       "Gastric cancer": 0.226113423705101,
+       "Liver cancer": 0.1609361469745636,
+       "Breast cancer": 0.20110635459423065,
+       "Ovarian/Cervical cancer": 0.15417635440826416,
+       "Prostate cancer": 0.1683824509382248
+      },
+      "future": {
+       "Lung cancer": 0.41826894879341125,
+       "Colorectal cancer": 0.24937403202056885,
+       "Gastric cancer": 0.20989608764648438,
+       "Liver cancer": 0.23352645337581635,
+       "Breast cancer": 0.2660282254219055,
+       "Ovarian/Cervical cancer": 0.23694054782390594,
+       "Prostate cancer": 0.2533598244190216
+      }
+     },
+     "pred_age": 60.30793234705925,
+     "n_visits": 3
+    }
+   }
+  },
+  {
+   "pid": "d0a7019772de174b",
+   "meta": {
+    "cancers_present": [],
+    "cancer_stage": "II",
+    "has_image": true
+   },
+   "modes": {
+    "fused": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.3748004734516144,
+       "Colorectal cancer": 0.31834155321121216,
+       "Gastric cancer": 0.3201252520084381,
+       "Liver cancer": 0.27047887444496155,
+       "Breast cancer": 0.22029083967208862,
+       "Ovarian/Cervical cancer": 0.2173950970172882,
+       "Prostate cancer": 0.2993903160095215
+      },
+      "future": {
+       "Lung cancer": 0.32511046528816223,
+       "Colorectal cancer": 0.2337057739496231,
+       "Gastric cancer": 0.2369336634874344,
+       "Liver cancer": 0.23483425378799438,
+       "Breast cancer": 0.1837765872478485,
+       "Ovarian/Cervical cancer": 0.19411294162273407,
+       "Prostate cancer": 0.25071701407432556
+      }
+     },
+     "pred_age": 67.11387544870377,
+     "n_visits": 6
+    },
+    "ehr_only": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.35331466794013977,
+       "Colorectal cancer": 0.3039382994174957,
+       "Gastric cancer": 0.3290941119194031,
+       "Liver cancer": 0.28186407685279846,
+       "Breast cancer": 0.1912328600883484,
+       "Ovarian/Cervical cancer": 0.20612046122550964,
+       "Prostate cancer": 0.3056562542915344
+      },
+      "future": {
+       "Lung cancer": 0.2892982065677643,
+       "Colorectal cancer": 0.2196347564458847,
+       "Gastric cancer": 0.23312433063983917,
+       "Liver cancer": 0.22299012541770935,
+       "Breast cancer": 0.1807897686958313,
+       "Ovarian/Cervical cancer": 0.1880255490541458,
+       "Prostate cancer": 0.23859986662864685
+      }
+     },
+     "pred_age": 71.63003236055374,
+     "n_visits": 6
+    },
+    "img_only": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.39708489179611206,
+       "Colorectal cancer": 0.28456607460975647,
+       "Gastric cancer": 0.27857470512390137,
+       "Liver cancer": 0.2311655580997467,
+       "Breast cancer": 0.231587752699852,
+       "Ovarian/Cervical cancer": 0.19153469800949097,
+       "Prostate cancer": 0.25058966875076294
+      },
+      "future": {
+       "Lung cancer": 0.4248385429382324,
+       "Colorectal cancer": 0.24418820440769196,
+       "Gastric cancer": 0.226901575922966,
+       "Liver cancer": 0.24326258897781372,
+       "Breast cancer": 0.2478828877210617,
+       "Ovarian/Cervical cancer": 0.2266431450843811,
+       "Prostate cancer": 0.2530534565448761
+      }
+     },
+     "pred_age": 65.47236263751984,
+     "n_visits": 6
+    }
+   }
+  },
+  {
+   "pid": "c8e9839e6f0cb2ef",
+   "meta": {
+    "cancers_present": [],
+    "cancer_stage": "NA",
+    "has_image": true
+   },
+   "modes": {
+    "fused": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.32921719551086426,
+       "Colorectal cancer": 0.20189093053340912,
+       "Gastric cancer": 0.17857034504413605,
+       "Liver cancer": 0.1453520804643631,
+       "Breast cancer": 0.34693416953086853,
+       "Ovarian/Cervical cancer": 0.24877451360225677,
+       "Prostate cancer": 0.15827025473117828
+      },
+      "future": {
+       "Lung cancer": 0.4033898115158081,
+       "Colorectal cancer": 0.26867854595184326,
+       "Gastric cancer": 0.22281749546527863,
+       "Liver cancer": 0.25196054577827454,
+       "Breast cancer": 0.3725767135620117,
+       "Ovarian/Cervical cancer": 0.2752048671245575,
+       "Prostate cancer": 0.26510679721832275
+      }
+     },
+     "pred_age": 43.05677533149719,
+     "n_visits": 10
+    },
+    "ehr_only": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.32882964611053467,
+       "Colorectal cancer": 0.23993442952632904,
+       "Gastric cancer": 0.26007917523384094,
+       "Liver cancer": 0.2590823769569397,
+       "Breast cancer": 0.3022095263004303,
+       "Ovarian/Cervical cancer": 0.24774973094463348,
+       "Prostate cancer": 0.23567524552345276
+      },
+      "future": {
+       "Lung cancer": 0.322675496339798,
+       "Colorectal cancer": 0.23869310319423676,
+       "Gastric cancer": 0.23671215772628784,
+       "Liver cancer": 0.2673812210559845,
+       "Breast cancer": 0.31674376130104065,
+       "Ovarian/Cervical cancer": 0.23926466703414917,
+       "Prostate cancer": 0.2686094641685486
+      }
+     },
+     "pred_age": 50.51566421985626,
+     "n_visits": 10
+    },
+    "img_only": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.3940703272819519,
+       "Colorectal cancer": 0.22725728154182434,
+       "Gastric cancer": 0.21771934628486633,
+       "Liver cancer": 0.1693209409713745,
+       "Breast cancer": 0.25628772377967834,
+       "Ovarian/Cervical cancer": 0.19273696839809418,
+       "Prostate cancer": 0.1698175072669983
+      },
+      "future": {
+       "Lung cancer": 0.4467691481113434,
+       "Colorectal cancer": 0.2769436240196228,
+       "Gastric cancer": 0.22589585185050964,
+       "Liver cancer": 0.22617410123348236,
+       "Breast cancer": 0.28812697529792786,
+       "Ovarian/Cervical cancer": 0.2528591454029083,
+       "Prostate cancer": 0.2599964141845703
+      }
+     },
+     "pred_age": 56.70252062380314,
+     "n_visits": 10
+    }
+   }
+  },
+  {
+   "pid": "c7ffe8a255871469",
+   "meta": {
+    "cancers_present": [],
+    "cancer_stage": "NA",
+    "has_image": true
+   },
+   "modes": {
+    "fused": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.32206249237060547,
+       "Colorectal cancer": 0.18784426152706146,
+       "Gastric cancer": 0.17561858892440796,
+       "Liver cancer": 0.12671828269958496,
+       "Breast cancer": 0.24878686666488647,
+       "Ovarian/Cervical cancer": 0.20415844023227692,
+       "Prostate cancer": 0.14154194295406342
+      },
+      "future": {
+       "Lung cancer": 0.39439618587493896,
+       "Colorectal cancer": 0.2728066146373749,
+       "Gastric cancer": 0.223089337348938,
+       "Liver cancer": 0.2528071701526642,
+       "Breast cancer": 0.3813864588737488,
+       "Ovarian/Cervical cancer": 0.2767867147922516,
+       "Prostate cancer": 0.2692992389202118
+      }
+     },
+     "pred_age": 48.19307237863541,
+     "n_visits": 4
+    },
+    "ehr_only": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.330539733171463,
+       "Colorectal cancer": 0.23998740315437317,
+       "Gastric cancer": 0.26195570826530457,
+       "Liver cancer": 0.263380765914917,
+       "Breast cancer": 0.21219976246356964,
+       "Ovarian/Cervical cancer": 0.20240604877471924,
+       "Prostate cancer": 0.23186121881008148
+      },
+      "future": {
+       "Lung cancer": 0.32741647958755493,
+       "Colorectal cancer": 0.2436840534210205,
+       "Gastric cancer": 0.24356712400913239,
+       "Liver cancer": 0.26926690340042114,
+       "Breast cancer": 0.31031355261802673,
+       "Ovarian/Cervical cancer": 0.2370825856924057,
+       "Prostate cancer": 0.2709418535232544
+      }
+     },
+     "pred_age": 59.325339272618294,
+     "n_visits": 4
+    },
+    "img_only": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.4482056200504303,
+       "Colorectal cancer": 0.2502090334892273,
+       "Gastric cancer": 0.2462535947561264,
+       "Liver cancer": 0.20447243750095367,
+       "Breast cancer": 0.210128515958786,
+       "Ovarian/Cervical cancer": 0.1673092097043991,
+       "Prostate cancer": 0.20060953497886658
+      },
+      "future": {
+       "Lung cancer": 0.43657800555229187,
+       "Colorectal cancer": 0.2709962725639343,
+       "Gastric cancer": 0.22867223620414734,
+       "Liver cancer": 0.23721499741077423,
+       "Breast cancer": 0.27266350388526917,
+       "Ovarian/Cervical cancer": 0.23484233021736145,
+       "Prostate cancer": 0.2627529203891754
+      }
+     },
+     "pred_age": 62.495466470718384,
+     "n_visits": 4
+    }
+   }
+  },
+  {
+   "pid": "246fee1ed4cc34b1",
+   "meta": {
+    "cancers_present": [],
+    "cancer_stage": "NA",
+    "has_image": true
+   },
+   "modes": {
+    "fused": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.07532849907875061,
+       "Colorectal cancer": 0.07076993584632874,
+       "Gastric cancer": 0.06283204257488251,
+       "Liver cancer": 0.21420477330684662,
+       "Breast cancer": 0.06936565041542053,
+       "Ovarian/Cervical cancer": 0.11241008341312408,
+       "Prostate cancer": 0.27703484892845154
+      },
+      "future": {
+       "Lung cancer": 0.11685578525066376,
+       "Colorectal cancer": 0.1013086661696434,
+       "Gastric cancer": 0.10264073312282562,
+       "Liver cancer": 0.13698668777942657,
+       "Breast cancer": 0.1116563156247139,
+       "Ovarian/Cervical cancer": 0.10804536193609238,
+       "Prostate cancer": 0.13521957397460938
+      }
+     },
+     "pred_age": 4.596340656280518,
+     "n_visits": 16
+    },
+    "ehr_only": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.08975614607334137,
+       "Colorectal cancer": 0.08662816882133484,
+       "Gastric cancer": 0.0728783905506134,
+       "Liver cancer": 0.22409193217754364,
+       "Breast cancer": 0.1036270260810852,
+       "Ovarian/Cervical cancer": 0.138314887881279,
+       "Prostate cancer": 0.2829247713088989
+      },
+      "future": {
+       "Lung cancer": 0.12106557190418243,
+       "Colorectal cancer": 0.10401042550802231,
+       "Gastric cancer": 0.10264679044485092,
+       "Liver cancer": 0.14139556884765625,
+       "Breast cancer": 0.1228751540184021,
+       "Ovarian/Cervical cancer": 0.113266721367836,
+       "Prostate cancer": 0.13971294462680817
+      }
+     },
+     "pred_age": 5.497405529022217,
+     "n_visits": 16
+    },
+    "img_only": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.37128356099128723,
+       "Colorectal cancer": 0.29799985885620117,
+       "Gastric cancer": 0.28592655062675476,
+       "Liver cancer": 0.23377197980880737,
+       "Breast cancer": 0.27714258432388306,
+       "Ovarian/Cervical cancer": 0.19966351985931396,
+       "Prostate cancer": 0.28739020228385925
+      },
+      "future": {
+       "Lung cancer": 0.35488277673721313,
+       "Colorectal cancer": 0.2559431195259094,
+       "Gastric cancer": 0.21360252797603607,
+       "Liver cancer": 0.21933339536190033,
+       "Breast cancer": 0.18804343044757843,
+       "Ovarian/Cervical cancer": 0.18628878891468048,
+       "Prostate cancer": 0.24050748348236084
+      }
+     },
+     "pred_age": 73.7276753783226,
+     "n_visits": 16
+    }
+   }
+  },
+  {
+   "pid": "5b0c904b0588af5f",
+   "meta": {
+    "cancers_present": [],
+    "cancer_stage": "NA",
+    "has_image": true
+   },
+   "modes": {
+    "fused": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.33947914838790894,
+       "Colorectal cancer": 0.2129995971918106,
+       "Gastric cancer": 0.20947256684303284,
+       "Liver cancer": 0.15352322161197662,
+       "Breast cancer": 0.27315160632133484,
+       "Ovarian/Cervical cancer": 0.2317044734954834,
+       "Prostate cancer": 0.18303172290325165
+      },
+      "future": {
+       "Lung cancer": 0.5059622526168823,
+       "Colorectal cancer": 0.2544078230857849,
+       "Gastric cancer": 0.22360587120056152,
+       "Liver cancer": 0.2536660134792328,
+       "Breast cancer": 0.3743624687194824,
+       "Ovarian/Cervical cancer": 0.25480517745018005,
+       "Prostate cancer": 0.26863834261894226
+      }
+     },
+     "pred_age": 41.68115973472595,
+     "n_visits": 9
+    },
+    "ehr_only": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.281399130821228,
+       "Colorectal cancer": 0.23338665068149567,
+       "Gastric cancer": 0.24736036360263824,
+       "Liver cancer": 0.25269970297813416,
+       "Breast cancer": 0.28368547558784485,
+       "Ovarian/Cervical cancer": 0.2518983483314514,
+       "Prostate cancer": 0.2355685532093048
+      },
+      "future": {
+       "Lung cancer": 0.36062297224998474,
+       "Colorectal cancer": 0.203947052359581,
+       "Gastric cancer": 0.20611001551151276,
+       "Liver cancer": 0.2347412407398224,
+       "Breast cancer": 0.3567953109741211,
+       "Ovarian/Cervical cancer": 0.25470811128616333,
+       "Prostate cancer": 0.23702865839004517
+      }
+     },
+     "pred_age": 45.415459871292114,
+     "n_visits": 9
+    },
+    "img_only": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.41650593280792236,
+       "Colorectal cancer": 0.24770107865333557,
+       "Gastric cancer": 0.2604757249355316,
+       "Liver cancer": 0.20042139291763306,
+       "Breast cancer": 0.23774491250514984,
+       "Ovarian/Cervical cancer": 0.18857239186763763,
+       "Prostate cancer": 0.20628753304481506
+      },
+      "future": {
+       "Lung cancer": 0.611491322517395,
+       "Colorectal cancer": 0.3020721971988678,
+       "Gastric cancer": 0.25306153297424316,
+       "Liver cancer": 0.22962480783462524,
+       "Breast cancer": 0.2679554224014282,
+       "Ovarian/Cervical cancer": 0.2386782318353653,
+       "Prostate cancer": 0.25255319476127625
+      }
+     },
+     "pred_age": 63.24379563331604,
+     "n_visits": 9
+    }
+   }
+  },
+  {
+   "pid": "25c4a3885b292758",
+   "meta": {
+    "cancers_present": [],
+    "cancer_stage": "NA",
+    "has_image": true
+   },
+   "modes": {
+    "fused": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.3288058936595917,
+       "Colorectal cancer": 0.22244812548160553,
+       "Gastric cancer": 0.2812791168689728,
+       "Liver cancer": 0.2088223099708557,
+       "Breast cancer": 0.15654048323631287,
+       "Ovarian/Cervical cancer": 0.15302139520645142,
+       "Prostate cancer": 0.2219020426273346
+      },
+      "future": {
+       "Lung cancer": 0.41116705536842346,
+       "Colorectal cancer": 0.30598071217536926,
+       "Gastric cancer": 0.2860846221446991,
+       "Liver cancer": 0.2655288577079773,
+       "Breast cancer": 0.21841008961200714,
+       "Ovarian/Cervical cancer": 0.210732102394104,
+       "Prostate cancer": 0.32164984941482544
+      }
+     },
+     "pred_age": 68.41287732124329,
+     "n_visits": 2
+    },
+    "ehr_only": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.29340308904647827,
+       "Colorectal cancer": 0.22472546994686127,
+       "Gastric cancer": 0.2871527373790741,
+       "Liver cancer": 0.23378194868564606,
+       "Breast cancer": 0.1758584827184677,
+       "Ovarian/Cervical cancer": 0.16790543496608734,
+       "Prostate cancer": 0.2256176471710205
+      },
+      "future": {
+       "Lung cancer": 0.33139774203300476,
+       "Colorectal cancer": 0.26735225319862366,
+       "Gastric cancer": 0.2849266827106476,
+       "Liver cancer": 0.2547604441642761,
+       "Breast cancer": 0.2083151787519455,
+       "Ovarian/Cervical cancer": 0.2020605206489563,
+       "Prostate cancer": 0.2892589867115021
+      }
+     },
+     "pred_age": 69.01890724897385,
+     "n_visits": 2
+    },
+    "img_only": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.41977307200431824,
+       "Colorectal cancer": 0.18080973625183105,
+       "Gastric cancer": 0.2245677411556244,
+       "Liver cancer": 0.09699821472167969,
+       "Breast cancer": 0.20024432241916656,
+       "Ovarian/Cervical cancer": 0.15351006388664246,
+       "Prostate cancer": 0.1294672191143036
+      },
+      "future": {
+       "Lung cancer": 0.4378379285335541,
+       "Colorectal cancer": 0.27104705572128296,
+       "Gastric cancer": 0.2242048680782318,
+       "Liver cancer": 0.23091499507427216,
+       "Breast cancer": 0.28800371289253235,
+       "Ovarian/Cervical cancer": 0.2423059195280075,
+       "Prostate cancer": 0.26887446641921997
+      }
+     },
+     "pred_age": 57.45847016572952,
+     "n_visits": 2
+    }
+   }
+  },
+  {
+   "pid": "0dabf68cc09322e3",
+   "meta": {
+    "cancers_present": [],
+    "cancer_stage": "NA",
+    "has_image": true
+   },
+   "modes": {
+    "fused": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.05999111756682396,
+       "Colorectal cancer": 0.059627044945955276,
+       "Gastric cancer": 0.052044786512851715,
+       "Liver cancer": 0.18482685089111328,
+       "Breast cancer": 0.05902818962931633,
+       "Ovarian/Cervical cancer": 0.1023261770606041,
+       "Prostate cancer": 0.2513227164745331
+      },
+      "future": {
+       "Lung cancer": 0.11550764739513397,
+       "Colorectal cancer": 0.10235196352005005,
+       "Gastric cancer": 0.10708796977996826,
+       "Liver cancer": 0.14096862077713013,
+       "Breast cancer": 0.10352355241775513,
+       "Ovarian/Cervical cancer": 0.10891219228506088,
+       "Prostate cancer": 0.1354331225156784
+      }
+     },
+     "pred_age": 2.8730785846710205,
+     "n_visits": 8
+    },
+    "ehr_only": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.07789034396409988,
+       "Colorectal cancer": 0.07856382429599762,
+       "Gastric cancer": 0.062367022037506104,
+       "Liver cancer": 0.21003814041614532,
+       "Breast cancer": 0.06980150192975998,
+       "Ovarian/Cervical cancer": 0.12160838395357132,
+       "Prostate cancer": 0.2590659260749817
+      },
+      "future": {
+       "Lung cancer": 0.11106283962726593,
+       "Colorectal cancer": 0.10467173159122467,
+       "Gastric cancer": 0.10398909449577332,
+       "Liver cancer": 0.1400916576385498,
+       "Breast cancer": 0.10828427225351334,
+       "Ovarian/Cervical cancer": 0.10716696083545685,
+       "Prostate cancer": 0.13530518114566803
+      }
+     },
+     "pred_age": 2.891031503677368,
+     "n_visits": 8
+    },
+    "img_only": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.4056529104709625,
+       "Colorectal cancer": 0.2585304379463196,
+       "Gastric cancer": 0.2633644938468933,
+       "Liver cancer": 0.21589349210262299,
+       "Breast cancer": 0.21414369344711304,
+       "Ovarian/Cervical cancer": 0.1732122004032135,
+       "Prostate cancer": 0.2038465142250061
+      },
+      "future": {
+       "Lung cancer": 0.4161840081214905,
+       "Colorectal cancer": 0.24809813499450684,
+       "Gastric cancer": 0.21987494826316833,
+       "Liver cancer": 0.23543910682201385,
+       "Breast cancer": 0.25696229934692383,
+       "Ovarian/Cervical cancer": 0.2376594990491867,
+       "Prostate cancer": 0.2514689564704895
+      }
+     },
+     "pred_age": 62.35554903745651,
+     "n_visits": 8
+    }
+   }
+  },
+  {
+   "pid": "d3f0a46226dd58fc",
+   "meta": {
+    "cancers_present": [],
+    "cancer_stage": "NA",
+    "has_image": true
+   },
+   "modes": {
+    "fused": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.3488186001777649,
+       "Colorectal cancer": 0.1994987428188324,
+       "Gastric cancer": 0.18709982931613922,
+       "Liver cancer": 0.1350984424352646,
+       "Breast cancer": 0.24719130992889404,
+       "Ovarian/Cervical cancer": 0.2035224288702011,
+       "Prostate cancer": 0.15272122621536255
+      },
+      "future": {
+       "Lung cancer": 0.3762109875679016,
+       "Colorectal cancer": 0.24625274538993835,
+       "Gastric cancer": 0.21743939816951752,
+       "Liver cancer": 0.24527078866958618,
+       "Breast cancer": 0.3458026945590973,
+       "Ovarian/Cervical cancer": 0.24296222627162933,
+       "Prostate cancer": 0.26008346676826477
+      }
+     },
+     "pred_age": 34.042993783950806,
+     "n_visits": 5
+    },
+    "ehr_only": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.28131741285324097,
+       "Colorectal cancer": 0.225519061088562,
+       "Gastric cancer": 0.2397422343492508,
+       "Liver cancer": 0.2464073747396469,
+       "Breast cancer": 0.245206817984581,
+       "Ovarian/Cervical cancer": 0.24471451342105865,
+       "Prostate cancer": 0.2226741760969162
+      },
+      "future": {
+       "Lung cancer": 0.2862984836101532,
+       "Colorectal cancer": 0.203947052359581,
+       "Gastric cancer": 0.20611001551151276,
+       "Liver cancer": 0.2347412407398224,
+       "Breast cancer": 0.34349867701530457,
+       "Ovarian/Cervical cancer": 0.24718336760997772,
+       "Prostate cancer": 0.23702865839004517
+      }
+     },
+     "pred_age": 36.67997360229492,
+     "n_visits": 5
+    },
+    "img_only": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.4199692904949188,
+       "Colorectal cancer": 0.23245002329349518,
+       "Gastric cancer": 0.24456185102462769,
+       "Liver cancer": 0.19019103050231934,
+       "Breast cancer": 0.2136114537715912,
+       "Ovarian/Cervical cancer": 0.17520254850387573,
+       "Prostate cancer": 0.19024330377578735
+      },
+      "future": {
+       "Lung cancer": 0.5682181119918823,
+       "Colorectal cancer": 0.2893890142440796,
+       "Gastric cancer": 0.23960508406162262,
+       "Liver cancer": 0.23705804347991943,
+       "Breast cancer": 0.29763275384902954,
+       "Ovarian/Cervical cancer": 0.23965579271316528,
+       "Prostate cancer": 0.2536819577217102
+      }
+     },
+     "pred_age": 61.03851020336151,
+     "n_visits": 5
+    }
+   }
+  },
+  {
+   "pid": "97238ad8e57e2030",
+   "meta": {
+    "cancers_present": [],
+    "cancer_stage": "NA",
+    "has_image": true
+   },
+   "modes": {
+    "fused": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.3571323752403259,
+       "Colorectal cancer": 0.20107388496398926,
+       "Gastric cancer": 0.2039099931716919,
+       "Liver cancer": 0.1289181113243103,
+       "Breast cancer": 0.3082643449306488,
+       "Ovarian/Cervical cancer": 0.23615364730358124,
+       "Prostate cancer": 0.15523448586463928
+      },
+      "future": {
+       "Lung cancer": 0.38051876425743103,
+       "Colorectal cancer": 0.24544425308704376,
+       "Gastric cancer": 0.21728472411632538,
+       "Liver cancer": 0.2432221621274948,
+       "Breast cancer": 0.333996057510376,
+       "Ovarian/Cervical cancer": 0.24233807623386383,
+       "Prostate cancer": 0.25665342807769775
+      }
+     },
+     "pred_age": 47.335660457611084,
+     "n_visits": 4
+    },
+    "ehr_only": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.2794061601161957,
+       "Colorectal cancer": 0.2137102633714676,
+       "Gastric cancer": 0.2318248450756073,
+       "Liver cancer": 0.227365642786026,
+       "Breast cancer": 0.28103139996528625,
+       "Ovarian/Cervical cancer": 0.2489040195941925,
+       "Prostate cancer": 0.21978707611560822
+      },
+      "future": {
+       "Lung cancer": 0.2842063903808594,
+       "Colorectal cancer": 0.1985638290643692,
+       "Gastric cancer": 0.19962258636951447,
+       "Liver cancer": 0.2187914103269577,
+       "Breast cancer": 0.28455570340156555,
+       "Ovarian/Cervical cancer": 0.23185108602046967,
+       "Prostate cancer": 0.2285759299993515
+      }
+     },
+     "pred_age": 49.251926243305206,
+     "n_visits": 4
+    },
+    "img_only": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.395376980304718,
+       "Colorectal cancer": 0.2076665610074997,
+       "Gastric cancer": 0.22038160264492035,
+       "Liver cancer": 0.16922029852867126,
+       "Breast cancer": 0.19909586012363434,
+       "Ovarian/Cervical cancer": 0.15768955647945404,
+       "Prostate cancer": 0.17164072394371033
+      },
+      "future": {
+       "Lung cancer": 0.42452114820480347,
+       "Colorectal cancer": 0.25444236397743225,
+       "Gastric cancer": 0.2201198786497116,
+       "Liver cancer": 0.22650419175624847,
+       "Breast cancer": 0.2672387361526489,
+       "Ovarian/Cervical cancer": 0.24381333589553833,
+       "Prostate cancer": 0.25005781650543213
+      }
+     },
+     "pred_age": 59.56251885741949,
+     "n_visits": 4
+    }
+   }
+  },
+  {
+   "pid": "05611b3ba88d25db",
+   "meta": {
+    "cancers_present": [],
+    "cancer_stage": "NA",
+    "has_image": true
+   },
+   "modes": {
+    "fused": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.39217376708984375,
+       "Colorectal cancer": 0.3179742395877838,
+       "Gastric cancer": 0.3038705289363861,
+       "Liver cancer": 0.25223517417907715,
+       "Breast cancer": 0.25224363803863525,
+       "Ovarian/Cervical cancer": 0.20154954493045807,
+       "Prostate cancer": 0.3057507872581482
+      },
+      "future": {
+       "Lung cancer": 0.5588773488998413,
+       "Colorectal cancer": 0.3724178969860077,
+       "Gastric cancer": 0.3194841742515564,
+       "Liver cancer": 0.2945377230644226,
+       "Breast cancer": 0.350244402885437,
+       "Ovarian/Cervical cancer": 0.26111000776290894,
+       "Prostate cancer": 0.3219790458679199
+      }
+     },
+     "pred_age": 66.98030769824982,
+     "n_visits": 16
+    },
+    "ehr_only": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.3718853294849396,
+       "Colorectal cancer": 0.3259366750717163,
+       "Gastric cancer": 0.31272614002227783,
+       "Liver cancer": 0.298982709646225,
+       "Breast cancer": 0.2999563217163086,
+       "Ovarian/Cervical cancer": 0.22512121498584747,
+       "Prostate cancer": 0.325615793466568
+      },
+      "future": {
+       "Lung cancer": 0.41719716787338257,
+       "Colorectal cancer": 0.33599138259887695,
+       "Gastric cancer": 0.32846760749816895,
+       "Liver cancer": 0.3088022470474243,
+       "Breast cancer": 0.34688857197761536,
+       "Ovarian/Cervical cancer": 0.28907424211502075,
+       "Prostate cancer": 0.3462151288986206
+      }
+     },
+     "pred_age": 64.8278358578682,
+     "n_visits": 16
+    },
+    "img_only": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.3414524793624878,
+       "Colorectal cancer": 0.2789250314235687,
+       "Gastric cancer": 0.27528709173202515,
+       "Liver cancer": 0.20663152635097504,
+       "Breast cancer": 0.25254279375076294,
+       "Ovarian/Cervical cancer": 0.17584837973117828,
+       "Prostate cancer": 0.25302353501319885
+      },
+      "future": {
+       "Lung cancer": 0.5900021195411682,
+       "Colorectal cancer": 0.3549465835094452,
+       "Gastric cancer": 0.30803146958351135,
+       "Liver cancer": 0.2756592333316803,
+       "Breast cancer": 0.3010235130786896,
+       "Ovarian/Cervical cancer": 0.21584676206111908,
+       "Prostate cancer": 0.32730740308761597
+      }
+     },
+     "pred_age": 68.05981010198593,
+     "n_visits": 16
+    }
+   }
+  },
+  {
+   "pid": "e0a31599d029311e",
+   "meta": {
+    "cancers_present": [],
+    "cancer_stage": "NA",
+    "has_image": true
+   },
+   "modes": {
+    "fused": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.06818483769893646,
+       "Colorectal cancer": 0.064579539000988,
+       "Gastric cancer": 0.05450734496116638,
+       "Liver cancer": 0.18693535029888153,
+       "Breast cancer": 0.06445492058992386,
+       "Ovarian/Cervical cancer": 0.10977644473314285,
+       "Prostate cancer": 0.25676754117012024
+      },
+      "future": {
+       "Lung cancer": 0.11402811110019684,
+       "Colorectal cancer": 0.10260657221078873,
+       "Gastric cancer": 0.10241340845823288,
+       "Liver cancer": 0.13943256437778473,
+       "Breast cancer": 0.11379387974739075,
+       "Ovarian/Cervical cancer": 0.10928504168987274,
+       "Prostate cancer": 0.13447563350200653
+      }
+     },
+     "pred_age": 4.451497793197632,
+     "n_visits": 16
+    },
+    "ehr_only": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.07105972617864609,
+       "Colorectal cancer": 0.06953632831573486,
+       "Gastric cancer": 0.057885002344846725,
+       "Liver cancer": 0.19072094559669495,
+       "Breast cancer": 0.0783231183886528,
+       "Ovarian/Cervical cancer": 0.11632642149925232,
+       "Prostate cancer": 0.27116918563842773
+      },
+      "future": {
+       "Lung cancer": 0.11599596589803696,
+       "Colorectal cancer": 0.10261337459087372,
+       "Gastric cancer": 0.10327639430761337,
+       "Liver cancer": 0.13832668960094452,
+       "Breast cancer": 0.123953677713871,
+       "Ovarian/Cervical cancer": 0.11137880384922028,
+       "Prostate cancer": 0.135342076420784
+      }
+     },
+     "pred_age": 4.677819013595581,
+     "n_visits": 16
+    },
+    "img_only": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.32457831501960754,
+       "Colorectal cancer": 0.2870442271232605,
+       "Gastric cancer": 0.27074119448661804,
+       "Liver cancer": 0.2309570163488388,
+       "Breast cancer": 0.3026074469089508,
+       "Ovarian/Cervical cancer": 0.20923349261283875,
+       "Prostate cancer": 0.2698751389980316
+      },
+      "future": {
+       "Lung cancer": 0.331843763589859,
+       "Colorectal cancer": 0.21771952509880066,
+       "Gastric cancer": 0.19111503660678864,
+       "Liver cancer": 0.2218565046787262,
+       "Breast cancer": 0.2225927710533142,
+       "Ovarian/Cervical cancer": 0.2035456895828247,
+       "Prostate cancer": 0.22580835223197937
+      }
+     },
+     "pred_age": 67.32524693012238,
+     "n_visits": 16
+    }
+   }
+  },
+  {
+   "pid": "9f45b98cce459ee0",
+   "meta": {
+    "cancers_present": [],
+    "cancer_stage": "NA",
+    "has_image": true
+   },
+   "modes": {
+    "fused": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.37988612055778503,
+       "Colorectal cancer": 0.24526117742061615,
+       "Gastric cancer": 0.24588926136493683,
+       "Liver cancer": 0.19230808317661285,
+       "Breast cancer": 0.2278706133365631,
+       "Ovarian/Cervical cancer": 0.18164442479610443,
+       "Prostate cancer": 0.20918622612953186
+      },
+      "future": {
+       "Lung cancer": 0.4012998044490814,
+       "Colorectal cancer": 0.25952136516571045,
+       "Gastric cancer": 0.25030946731567383,
+       "Liver cancer": 0.27063989639282227,
+       "Breast cancer": 0.29136577248573303,
+       "Ovarian/Cervical cancer": 0.2477053999900818,
+       "Prostate cancer": 0.27732887864112854
+      }
+     },
+     "pred_age": 60.23599326610565,
+     "n_visits": 2
+    },
+    "ehr_only": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.29869306087493896,
+       "Colorectal cancer": 0.25233954191207886,
+       "Gastric cancer": 0.2696368992328644,
+       "Liver cancer": 0.27339398860931396,
+       "Breast cancer": 0.23220279812812805,
+       "Ovarian/Cervical cancer": 0.2239399254322052,
+       "Prostate cancer": 0.24640528857707977
+      },
+      "future": {
+       "Lung cancer": 0.28808510303497314,
+       "Colorectal cancer": 0.20649321377277374,
+       "Gastric cancer": 0.21310746669769287,
+       "Liver cancer": 0.24323292076587677,
+       "Breast cancer": 0.28652966022491455,
+       "Ovarian/Cervical cancer": 0.23385588824748993,
+       "Prostate cancer": 0.2397473007440567
+      }
+     },
+     "pred_age": 60.95167234539986,
+     "n_visits": 2
+    },
+    "img_only": {
+     "scores": {
+      "concurrent": {
+       "Lung cancer": 0.4229177236557007,
+       "Colorectal cancer": 0.2238193303346634,
+       "Gastric cancer": 0.24651524424552917,
+       "Liver cancer": 0.1719987839460373,
+       "Breast cancer": 0.22422204911708832,
+       "Ovarian/Cervical cancer": 0.1702168881893158,
+       "Prostate cancer": 0.18706631660461426
+      },
+      "future": {
+       "Lung cancer": 0.4173501133918762,
+       "Colorectal cancer": 0.2475566267967224,
+       "Gastric cancer": 0.20854030549526215,
+       "Liver cancer": 0.22938889265060425,
+       "Breast cancer": 0.26259368658065796,
+       "Ovarian/Cervical cancer": 0.2365970015525818,
+       "Prostate cancer": 0.2511068284511566
+      }
+     },
+     "pred_age": 59.834141470491886,
+     "n_visits": 2
+    }
+   }
+  }
+ ]
+}

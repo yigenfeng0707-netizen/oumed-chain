@@ -58,6 +58,10 @@ class Orchestrator:
         # 药品卫士：拍照识别药品/核验批准文号与有效期（避开 health_profile 的“用药”）
         "drug": ["药品识别", "扫药", "扫描药品", "拍照识别", "药盒", "药品包装",
                  "批准文号", "国药准字", "药品有效期", "药品过期", "这个药", "是什么药"],
+        # 泛癌卫士：Oncoformer 泛癌风险评估（温附医 Cell 2026 模型）
+        # 避开 health_profile 的“健康风险”，用癌种强特征词
+        "cancer": ["癌症", "患癌", "得癌", "肿瘤", "泛癌", "癌种", "癌风险",
+                   "患癌概率", "癌症筛查", "Oncoformer", "oncoformer"],
     }
 
     # Mock 数据（降级方案）
@@ -104,6 +108,12 @@ class Orchestrator:
             "response": "药品卫士已就绪：请通过首页“药品识别”入口拍摄药盒或包装照片，"
                         "我会识别通用名、批准文号与有效期，核查与您现有用药的相互作用。是否加入用药记录由您决定。",
             "data": {"scan_entry": "/api/drugs/scan", "recognition_modes": ["vision", "ocr_llm"]},
+        },
+        "cancer": {
+            "response": "泛癌卫士已就绪：我基于温附医团队发表在 Cell 的 Oncoformer 泛癌模型，"
+                        "结合您的健康档案评估 7 种常见癌种的即时与未来风险。您可以说“帮我评估患癌风险”，"
+                        "或在“泛癌卫士”页面查看 COMPASS 示例队列的三模态对比。研究演示用途，不构成临床诊断。",
+            "data": {"engine": "oncoformer", "endpoint": "/api/cancer/status"},
         },
     }
 
@@ -243,6 +253,7 @@ class Orchestrator:
         ("政策参谋", "policy"),
         ("健康管家", "health_profile"),
         ("药品卫士", "drug"),
+        ("泛癌卫士", "cancer"),
     )
 
     def has_keyword_intent(self, message: str) -> bool:
@@ -474,7 +485,7 @@ class Orchestrator:
             "health_profile": "健康卫士", "policy": "政策参谋",
             "security": "安全守门", "eeg": "脑电卫士",
             "imaging": "影像卫士", "body": "档案管家", "data": "数据管家",
-            "drug": "药品卫士",
+            "drug": "药品卫士", "cancer": "泛癌卫士",
         }
         parts = []
         for intent, result in agent_results.items():
@@ -497,7 +508,7 @@ class Orchestrator:
             "health_profile": "健康卫士", "policy": "政策参谋",
             "security": "安全守门", "eeg": "脑电卫士",
             "imaging": "影像卫士", "body": "档案管家", "data": "数据管家",
-            "drug": "药品卫士",
+            "drug": "药品卫士", "cancer": "泛癌卫士",
         }
 
         # 优先用 LLM 融合
@@ -590,11 +601,65 @@ class Orchestrator:
             return await self._handle_data_agent(message, user_id, user_profile)
         elif agent_type == "drug":
             return await self._handle_drug_agent(message, user_id, user_profile)
+        elif agent_type == "cancer":
+            return await self._handle_cancer_agent(message, user_id, user_profile)
         elif agent_type == "general":
             return await self._handle_general_agent(message, user_profile)
         else:
             # claims / security 等暂时使用 LLM 或 mock
             return await self._handle_generic_agent(agent_type, message, user_profile, extra_context)
+
+    async def _handle_cancer_agent(self, message: str, user_id: str | None = None,
+                                   user_profile: dict | None = None) -> dict[str, Any]:
+        """泛癌卫士：Oncoformer 泛癌风险评估（真模型实时 / 预计算队列双形态）。"""
+        from app.services.cancer import engine as cancer_engine
+
+        try:
+            report = await cancer_engine.predict_for_user(user_id or "anon", user_profile)
+            answer = cancer_engine.format_report_text(report)
+        except Exception as e:  # noqa: BLE001
+            logger.warning("泛癌卫士处理失败，使用 mock: %s", e)
+            mock = self.MOCK_RESPONSES.get("cancer", {})
+            return {"response": mock.get("response", "泛癌卫士暂不可用，请稍后再试"),
+                    "data": mock.get("data", {})}
+
+        data = {
+            "engine": report["engine"],
+            "mode": report["mode"],
+            "n_visits": report.get("n_visits"),
+            "top_risk": report.get("top_risk"),
+            "pred_age": report.get("pred_age"),
+            "profile_age": report.get("profile_age"),
+        }
+        evidence = []
+        for horizon, key in (("即时诊断风险", "concurrent"), ("未来风险", "future")):
+            for r in (report["risks"].get(key) or [])[:3]:
+                evidence.append({
+                    "type": "cancer_risk",
+                    "title": f"{r['cancer_zh']} · {horizon}",
+                    "content": f"模型概率 {r['prob'] * 100:.1f}%（{r['level']}）",
+                    "source": "Oncoformer demo ckpt（温附医团队，Cell 2026）",
+                })
+
+        # LLM 润色（超时/失败降级为结构化文本，与影像卫士一致；20s 封顶保演示节奏）
+        if self._llm is not None:
+            try:
+                polished = await asyncio.wait_for(
+                    self._llm.chat([
+                        {"role": "system", "content":
+                            "你是瓯医数链平台的泛癌卫士，负责解读 Oncoformer 泛癌风险预测结果。"
+                            "只使用给定的数据，不编造任何数字；语气专业克制；"
+                            "结尾必须提醒：这是研究演示输出，不构成临床诊断。"},
+                        {"role": "user", "content": f"用户提问：{message}\n\n模型风险报告：\n{answer}"},
+                    ]),
+                    timeout=20,
+                )
+                if polished:
+                    answer = polished
+            except Exception as e:  # noqa: BLE001
+                logger.debug("泛癌卫士 LLM 润色降级: %s", e)
+
+        return {"response": answer, "data": data, "evidence": evidence}
 
     async def _handle_governance_agent(self, message: str) -> dict[str, Any]:
         """数据治理官：病历脱敏 + 结构化（调用 governance 服务，本地大模型优先）。"""
@@ -1751,6 +1816,11 @@ class Orchestrator:
                 "怎么查看药品有效期和批准文号？",
                 "把扫描到的药加入用药记录",
             ],
+            "cancer": [
+                "帮我评估患癌风险",
+                "看看 COMPASS 示例队列的三模态对比",
+                "泛癌卫士用的是什么模型？",
+            ],
         }
         suggestions = suggestions_map.get(agent_type, [
             "您可以问我关于医保报销比例的问题",
@@ -1768,6 +1838,7 @@ class Orchestrator:
             "general": "assistant_agent",
             "data": "data_agent",
             "drug": "drug_agent",
+            "cancer": "cancer_agent",
         }.get(agent_type, "orchestrator_agent")
         return {
             "agent_type": agent_type_label,

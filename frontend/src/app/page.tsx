@@ -5,7 +5,7 @@ import { ChatInput } from "@/components/chat-input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Shield, Heart, FileText, BookOpen, Bot, User, Paperclip, Sparkles, Loader2, Brain, Pill, CheckCircle2 } from "lucide-react";
+import { Shield, Heart, FileText, BookOpen, Bot, User, Paperclip, Sparkles, Loader2, Brain, Pill, CheckCircle2, Target } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { sendChatMessage, sendComplexChat, uploadBodyDocument, prereviewUploaded, scanDrug, registerDrug, type BodyUploadResult, type DrugInfo } from "@/lib/api";
 import { useUser } from "@/lib/user-context";
@@ -41,6 +41,7 @@ const quickActions = [
   { icon: BookOpen, label: "政策匹配查询", prompt: "帮我查询匹配的医保政策", color: "bg-indigo-500/10 text-indigo-600" },
   // 第 6 个入口：打开药品照片选择器，识别结果进入对话流（第 11 步）
   { icon: Pill, label: "药品识别", prompt: "", id: "drug-scan", color: "bg-emerald-500/10 text-emerald-600" },
+  { icon: Target, label: "泛癌风险评估", prompt: "帮我评估患癌风险", color: "bg-rose-500/10 text-rose-600" },
 ];
 
 const agentColorMap: Record<string, string> = {
@@ -52,6 +53,7 @@ const agentColorMap: Record<string, string> = {
   eeg_agent: "bg-fuchsia-100 text-fuchsia-700",
   body_agent: "bg-teal-100 text-teal-700",
   drug_agent: "bg-emerald-100 text-emerald-700",
+  cancer_agent: "bg-rose-100 text-rose-700",
   orchestrator_agent: "bg-gradient-to-r from-blue-500 to-purple-500 text-white",
   assistant_agent: "bg-sky-100 text-sky-700",
   "权益管家": "bg-blue-100 text-blue-700",
@@ -61,6 +63,7 @@ const agentColorMap: Record<string, string> = {
   "脑电卫士": "bg-fuchsia-100 text-fuchsia-700",
   "档案管家": "bg-teal-100 text-teal-700",
   "药品卫士": "bg-emerald-100 text-emerald-700",
+  "泛癌卫士": "bg-rose-100 text-rose-700",
 };
 
 const agentLabelMap: Record<string, string> = {
@@ -72,6 +75,7 @@ const agentLabelMap: Record<string, string> = {
   eeg_agent: "脑电卫士",
   body_agent: "档案管家",
   drug_agent: "药品卫士",
+  cancer_agent: "泛癌卫士",
   orchestrator_agent: "编排智能体",
   assistant_agent: "瓯医数链助手",
 };

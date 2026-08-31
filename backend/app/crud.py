@@ -495,6 +495,51 @@ async def get_imaging_record(
     return result.scalar_one_or_none()
 
 
+# ---------------------------------------------------------------------------
+# 泛癌卫士（Oncoformer 预测存档）
+# ---------------------------------------------------------------------------
+
+async def create_cancer_prediction(
+    db: AsyncSession,
+    user_id: str | int,
+    engine: str,
+    mode: str,
+    source: str,
+    result: dict | list,
+) -> "CancerPredictionRecord":
+    """保存一次泛癌风险预测结果。"""
+    from app.models import CancerPredictionRecord
+
+    uid = _normalize_user_id(user_id)
+    record = CancerPredictionRecord(
+        user_id=uid,
+        engine=engine,
+        mode=mode,
+        source=source,
+        result=json.dumps(result, ensure_ascii=False),
+    )
+    db.add(record)
+    await db.commit()
+    await db.refresh(record)
+    return record
+
+
+async def get_cancer_predictions(
+    db: AsyncSession, user_id: str | int, limit: int = 20
+) -> list:
+    """获取用户泛癌预测历史（按时间倒序）。"""
+    from app.models import CancerPredictionRecord
+
+    uid = _normalize_user_id(user_id)
+    result = await db.execute(
+        select(CancerPredictionRecord)
+        .where(CancerPredictionRecord.user_id == uid)
+        .order_by(desc(CancerPredictionRecord.recorded_at))
+        .limit(limit)
+    )
+    return list(result.scalars().all())
+
+
 async def update_imaging_record(
     db: AsyncSession,
     record: ImagingRecord,

@@ -14,6 +14,7 @@ from app.routers import (
     auth,
     body,
     body_archive,
+    cancer,
     claims,
     coverage,
     data,
@@ -77,6 +78,7 @@ app.include_router(governance.router)
 app.include_router(marketplace.router)
 app.include_router(eeg.router)
 app.include_router(imaging.router)
+app.include_router(cancer.router)
 app.include_router(data.router)
 app.include_router(body.router)
 app.include_router(body_archive.router)
@@ -202,6 +204,21 @@ async def detailed_health_check():
         "available": drug_engine_ok,
         "recognition_modes": drug_modes,
         "endpoints": ["/api/drugs/scan", "/api/drugs/register"],
+    }
+
+    # 泛癌卫士引擎（Oncoformer 泛癌预测 · 真模型/预计算双形态）
+    try:
+        from app.services.cancer import engine as cancer_engine
+        cancer_status = cancer_engine.status()
+        cancer_ok = True
+    except Exception:
+        cancer_ok = False
+        cancer_status = {}
+    deps["cancer_engine"] = {
+        "available": cancer_ok,
+        "engine_mode": cancer_status.get("engine", "unavailable"),
+        "cohort_patients": cancer_status.get("cohort_patients", 0),
+        "model": cancer_status.get("model", ""),
     }
 
     # 联邦学习协作引擎（瓯医数链底座 · 数据要素协作）

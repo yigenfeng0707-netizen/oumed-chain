@@ -20,6 +20,13 @@ class Settings(BaseSettings):
     VISION_BASE_URL: str = "https://aiping.cn/api/v1"
     VISION_MODEL: str = "GLM-4.6V"
 
+    # 泛癌卫士（Oncoformer）：留空 = 真模型不可用，降级预计算队列模式
+    ONCOFORMER_CKPT_PATH: str = ""
+    # COMPASS 队列目录（含 metadata.parquet + cxr_images），本地实时推理用
+    ONCOFORMER_DATA_DIR: str = ""
+    # 预计算队列 JSON 覆盖路径（默认 <仓库根>/data/cancer_cohort.json）
+    ONCOFORMER_COHORT_JSON: str = ""
+
     CHROMA_PERSIST_DIR: str = "./chroma_data"
 
     # 路演离线模式：跳过 LLM/知识库初始化，全程使用关键词+mock降级（无网络依赖）

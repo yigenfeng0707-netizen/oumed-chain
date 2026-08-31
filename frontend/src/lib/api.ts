@@ -1119,3 +1119,65 @@ export async function listDataTransactions(limit = 20): Promise<DataTransactionI
 export async function getRegulatoryView(): Promise<RegulatoryView | null> {
   return apiFetch<RegulatoryView>("/api/marketplace/regulatory");
 }
+
+// ==================== 泛癌卫士（Oncoformer 泛癌预测） ====================
+
+import type {
+  CancerReport,
+  CancerStatus,
+  CancerCohortPatient,
+  CancerCohortDetail,
+} from "@/lib/mock-data";
+import {
+  mockCancerStatus,
+  mockCancerReport,
+  mockCancerCohort,
+  mockCancerCohortDetail,
+} from "@/lib/mock-data";
+
+/** 泛癌卫士服务形态（真模型 oncoformer / 预计算 precomputed） */
+export async function getCancerStatus(): Promise<CancerStatus | null> {
+  const data = await apiFetch<CancerStatus>("/api/cancer/status");
+  return data ?? mockCancerStatus;
+}
+
+/** 对当前用户做泛癌风险预测（真模型不可用时后端返回队列基线） */
+export async function predictCancer(userId: string): Promise<CancerReport | null> {
+  const data = await apiFetch<CancerReport>(`/api/cancer/${userId}/predict`, {
+    method: "POST",
+    body: JSON.stringify({ mode: "ehr_only" }),
+  });
+  return data ?? { ...mockCancerReport, record_id: 0 };
+}
+
+/** 泛癌预测历史 */
+export async function getCancerHistory(userId: string, limit = 10) {
+  const data = await apiFetch<Array<Record<string, unknown>>>(
+    `/api/cancer/records/${userId}?limit=${limit}`,
+  );
+  return data ?? [];
+}
+
+/** COMPASS 示例队列列表（每个模式只含 top3 风险预览） */
+export async function getCancerCohort(): Promise<{
+  patients: CancerCohortPatient[];
+  population: CancerStatus["population"];
+} | null> {
+  const data = await apiFetch<{
+    patients: CancerCohortPatient[];
+    population: CancerStatus["population"];
+  }>("/api/cancer/cohort/patients");
+  return data ?? mockCancerCohort;
+}
+
+/** 队列患者多模态预测详情（本地真模型实时 / 云端预计算） */
+export async function predictCohortPatient(
+  pid: string,
+  modes = "fused,ehr_only,img_only",
+): Promise<CancerCohortDetail | null> {
+  const data = await apiFetch<CancerCohortDetail>(
+    `/api/cancer/cohort/${encodeURIComponent(pid)}/predict?modes=${encodeURIComponent(modes)}`,
+    { method: "POST" },
+  );
+  return data ?? { ...mockCancerCohortDetail, pid };
+}

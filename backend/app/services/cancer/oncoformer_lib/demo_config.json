@@ -1,0 +1,118 @@
+{
+    "_comment": "Reviewer-facing demo config: loads the full-DINOv2 finetuned checkpoint (checkpoints/demo_finetune.ckpt) against the bundled 790-patient held-out test-fold subset (395 cancer-positive + 395 visit-count-matched cancer-free controls). Architectural fields (transformer.hidden_size, seq_max_len, img_size, use_vae, n_cohorts, n_*_feats) MUST match the checkpoint exactly or load_state_dict will fail. img_size=518 is the native DINOv2 ViT-L/14 resolution the checkpoint was trained at.",
+    "stage": "finetune",
+    "mode": "finetune",
+    "n_gpus": [
+        0
+    ],
+    "train": false,
+    "test": true,
+    "n_category_feats": 1,
+    "n_float_feats": 28,
+    "n_category_values": 4,
+    "n_float_values": 256,
+    "seq_max_len": 16,
+    "df_paths": [
+        "sample_data/compass"
+    ],
+    "dataset_col": "dataset_fold10",
+    "batch_size": 16,
+    "train_folds": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+    ],
+    "valid_folds": [
+        8
+    ],
+    "test_folds": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+    ],
+    "cls_label_cols": [
+        "c_cls_labels",
+        "f_cls_labels"
+    ],
+    "cls_label_name_cols": [
+        "diag_cols",
+        "diag_cols"
+    ],
+    "cls_label_n_cls": [
+        2,
+        2
+    ],
+    "reg_label_cols": [
+        "c_reg_labels"
+    ],
+    "reg_label_name_cols": [
+        "reg_cols"
+    ],
+    "reg_label_info": [
+        [
+            60.0,
+            15.0
+        ]
+    ],
+    "use_img_model": true,
+    "img_pretrained": false,
+    "freeze_cxr_backbone": true,
+    "img_size": 518,
+    "img_data_dir": "sample_data/compass",
+    "xray_path_col": "xray_path",
+    "visit_encoder_layers": 4,
+    "max_time_days": 3650,
+    "use_vae": true,
+    "latent_dim": 256,
+    "vae_loss_weight": 0.1,
+    "symmetric_kl_weight": 0.1,
+    "use_cohort_adv": true,
+    "use_missingness_adv": true,
+    "cohort_col": "cohort_id",
+    "n_cohorts": 2,
+    "cohort_adv_weight": 0.1,
+    "missingness_adv_weight": 0.1,
+    "grl_lambda_max": 1.0,
+    "transformer": {
+        "vocab_size": 32000,
+        "hidden_size": 384,
+        "num_hidden_layers": 6,
+        "num_attention_heads": 12,
+        "intermediate_size": 1536,
+        "hidden_act": "gelu",
+        "hidden_dropout_prob": 0.1,
+        "attention_probs_dropout_prob": 0.1,
+        "max_position_embeddings": 16,
+        "type_vocab_size": 2,
+        "initializer_range": 0.02,
+        "layer_norm_eps": 1e-12
+    },
+    "cls_label_names": [
+        "Lung cancer [concurrent]",
+        "Colorectal cancer [concurrent]",
+        "Gastric cancer [concurrent]",
+        "Liver cancer [concurrent]",
+        "Breast cancer [concurrent]",
+        "Ovarian/Cervical cancer [concurrent]",
+        "Prostate cancer [concurrent]",
+        "Lung cancer [future]",
+        "Colorectal cancer [future]",
+        "Gastric cancer [future]",
+        "Liver cancer [future]",
+        "Breast cancer [future]",
+        "Ovarian/Cervical cancer [future]",
+        "Prostate cancer [future]"
+    ]
+}

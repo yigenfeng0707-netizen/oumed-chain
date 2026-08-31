@@ -1,0 +1,188 @@
+{
+  "category_cols": [
+    "GENDER"
+  ],
+  "float_cols": {
+    "lab_float_CBC_BASO_perc": {
+      "min": 0.0,
+      "max": 4.8,
+      "mean": 0.3356037752084461,
+      "std": 0.3740766202403151
+    },
+    "lab_float_CBC_EOS_perc": {
+      "min": 0.0,
+      "max": 9.700000000000001,
+      "mean": 1.879158461008365,
+      "std": 1.6976042831753597
+    },
+    "lab_float_CBC_Hb": {
+      "min": 41.0,
+      "max": 189.0,
+      "mean": 124.49517676536527,
+      "std": 21.461943568652877
+    },
+    "lab_float_CBC_Hct": {
+      "min": 0.0,
+      "max": 56.49999999999999,
+      "mean": 37.358360970566714,
+      "std": 6.150394763629462
+    },
+    "lab_float_CBC_LYMPH_perc": {
+      "min": 1.0,
+      "max": 88.0,
+      "mean": 29.02351723040045,
+      "std": 12.387099680636148
+    },
+    "lab_float_CBC_MCH": {
+      "min": 17.1,
+      "max": 41.8,
+      "mean": 30.20395842241772,
+      "std": 2.781425934925932
+    },
+    "lab_float_CBC_MCHC": {
+      "min": 268.0,
+      "max": 374.0,
+      "mean": 332.37394262023236,
+      "std": 12.801215164260928
+    },
+    "lab_float_CBC_MCV": {
+      "min": 59.8,
+      "max": 122.7,
+      "mean": 90.80744532589347,
+      "std": 7.136867273935699
+    },
+    "lab_float_CBC_MONO_perc": {
+      "min": 0.0,
+      "max": 36.3,
+      "mean": 7.916317315297048,
+      "std": 3.9311216581276494
+    },
+    "lab_float_CBC_MPV": {
+      "min": 6.2,
+      "max": 14.6,
+      "mean": 10.202789467995558,
+      "std": 1.248561111602835
+    },
+    "lab_float_CBC_NEUT_perc": {
+      "min": 1.0,
+      "max": 95.7,
+      "mean": 60.261240020855595,
+      "std": 14.071420383354889
+    },
+    "lab_float_CBC_PCT": {
+      "min": 0.01,
+      "max": 0.94,
+      "mean": 0.22340772893201594,
+      "std": 0.08983195741856051
+    },
+    "lab_float_CBC_PDW": {
+      "min": 7.6,
+      "max": 23.6,
+      "mean": 13.398970923356508,
+      "std": 2.696137484504198
+    },
+    "lab_float_CBC_PLT": {
+      "min": 5.0,
+      "max": 947.0,
+      "mean": 219.57668325352478,
+      "std": 95.48270489033426
+    },
+    "lab_float_CBC_RBC": {
+      "min": 1.34,
+      "max": 6.69,
+      "mean": 4.14095961335384,
+      "std": 0.7125512481492969
+    },
+    "lab_float_CBC_RDW": {
+      "min": 11.3,
+      "max": 29.6,
+      "mean": 14.221493473006207,
+      "std": 2.294728805917735
+    },
+    "lab_float_CBC_WBC": {
+      "min": 0.47,
+      "max": 109.36100000001491,
+      "mean": 6.64539525971575,
+      "std": 5.266964037359863
+    },
+    "lab_float_Chem_ALB": {
+      "min": 18.8,
+      "max": 53.7,
+      "mean": 41.73496255986553,
+      "std": 5.2634394266549185
+    },
+    "lab_float_Chem_ALP": {
+      "min": 26.0,
+      "max": 1203.0,
+      "mean": 101.94065291278262,
+      "std": 83.73862619594071
+    },
+    "lab_float_Chem_ALT": {
+      "min": 4.0,
+      "max": 666.0,
+      "mean": 31.202815379275926,
+      "std": 41.310671521222794
+    },
+    "sign_DBP": {
+      "min": 42.0,
+      "max": 119.0,
+      "mean": 76.42373808905087,
+      "std": 10.455207068423466
+    },
+    "sign_SBP": {
+      "min": 77.0,
+      "max": 202.0,
+      "mean": 130.10077412177185,
+      "std": 18.00485075648073
+    },
+    "sign_body.temperature": {
+      "min": 35.6,
+      "max": 39.5,
+      "mean": 36.85910954115458,
+      "std": 0.3948980050036585
+    },
+    "sign_breath": {
+      "min": -9.51380729675293,
+      "max": 87.3455053710953,
+      "mean": 23.787838373309093,
+      "std": 10.406381051929827
+    },
+    "sign_heart.rate": {
+      "min": 46.0,
+      "max": 161.1111757812503,
+      "mean": 103.02915314632868,
+      "std": 12.9168493609742
+    },
+    "sign_height": {
+      "min": 66.0,
+      "max": 184.0,
+      "mean": 160.39309475535447,
+      "std": 8.646555455899906
+    },
+    "sign_pulse": {
+      "min": 46.0,
+      "max": 140.0,
+      "mean": 86.53933481668264,
+      "std": 13.419760424149684
+    },
+    "sign_weight": {
+      "min": -3.0,
+      "max": 125.0,
+      "mean": 58.59075895185356,
+      "std": 14.036044090653164
+    }
+  },
+  "n_float_bins": 256,
+  "cancer_cols": [
+    "diag_lung_cancer",
+    "diag_colon_cancer",
+    "diag_gastric_cancer",
+    "diag_liver_cancer",
+    "diag_Breast_Tumors",
+    "diag_Female Reproductive System Tumors",
+    "diag_Urological_Tumors",
+    "diag_Lymphoid_Hematopoietic_Tumors",
+    "diag_Endocrine_Tumors",
+    "diag_Head_Neck_Tumors"
+  ]
+}

@@ -19,6 +19,7 @@ import {
   Share2,
   FileSearch,
   ShoppingBag,
+  Target,
 } from "lucide-react";
 
 const navItems = [
@@ -31,6 +32,7 @@ const navItems = [
   { href: "/body-archive", label: "数字人体档案", icon: Accessibility },
   { href: "/eeg", label: "脑电健康", icon: Brain },
   { href: "/imaging", label: "影像标注", icon: ScanLine },
+  { href: "/cancer", label: "泛癌卫士", icon: Target },
   { href: "/claims", label: "报销预审", icon: FileText },
   { href: "/policy", label: "政策匹配", icon: BookOpen },
   { href: "/security", label: "数据授权", icon: Lock },

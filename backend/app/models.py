@@ -40,6 +40,7 @@ class User(Base):
     authorizations = relationship("DataAuthorization", back_populates="user")
     eeg_records = relationship("EEGRecord", back_populates="user")
     imaging_records = relationship("ImagingRecord", back_populates="user")
+    cancer_records = relationship("CancerPredictionRecord", back_populates="user")
     body_documents = relationship("BodyDocument", back_populates="user")
     body_records = relationship("BodyRecord", back_populates="user")
     body_archive_files = relationship("BodyArchiveFile", back_populates="user")
@@ -205,6 +206,30 @@ class ImagingRecord(Base):
     policy_link_count = Column(Integer, default=0)
 
     user = relationship("User", back_populates="imaging_records")
+
+
+class CancerPredictionRecord(Base):
+    """泛癌卫士预测存档（Oncoformer）
+
+    存储每次泛癌风险预测的结果摘要（风险分数 JSON），用于监管审计
+    与"模型作为数据产品被消费"的存证叙事。
+    """
+
+    __tablename__ = "cancer_prediction_records"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    recorded_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
+    # oncoformer（真模型实时）/ oncoformer-precomputed（预计算队列）
+    engine = Column(String(40), default="oncoformer")
+    # ehr_only / fused / img_only / cohort_fallback
+    mode = Column(String(20), default="ehr_only")
+    # synthetic_visits（模拟就诊序列）/ compass_cohort（真实脱敏队列）
+    source = Column(String(30), default="synthetic_visits")
+    # 完整风险报告（JSON 字符串）
+    result = Column(Text, nullable=False)
+
+    user = relationship("User", back_populates="cancer_records")
 
 
 class BodyDocument(Base):

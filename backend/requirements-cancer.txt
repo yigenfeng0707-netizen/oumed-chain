@@ -1,0 +1,16 @@
+# 泛癌卫士（Oncoformer）推理依赖 —— 仅本地/带权重部署需要安装
+# 安装: pip install -r requirements-cancer.txt -f https://download.pytorch.org/whl/cpu/torch_stable.html
+# 魔搭创空间轻量镜像不装本文件（泛癌卫士自动降级为预计算队列模式）
+--index-url https://download.pytorch.org/whl/cpu
+--extra-index-url https://pypi.org/simple
+torch>=2.2
+torchvision
+timm>=1.0
+einops
+pytorch-lightning>=2.0
+transformers>=4.40
+pyarrow
+tqdm
+pillow
+pandas
+numpy

@@ -880,3 +880,150 @@ export const mockImagingRecords: ImagingRecordItem[] = [
   { id: 100, user_id: "demo-user", study_id: "MOCK-STUDY-002", study_type: "brain_mri", study_label: "头颅 MRI", seed: 20240611, created_at: "2026-08-12 14:05", risk_level: "高风险", finding_count: 3, policy_link_count: 3 },
   { id: 99, user_id: "demo-user", study_id: "MOCK-STUDY-003", study_type: "lung_ct", study_label: "肺部 CT", seed: 20240608, created_at: "2026-07-30 10:18", risk_level: "中风险", finding_count: 5, policy_link_count: 2 },
 ];
+
+// ==================== 泛癌卫士（Oncoformer 泛癌预测） ====================
+
+export interface CancerRiskItem {
+  cancer: string;
+  cancer_zh: string;
+  prob: number;
+  level: string;
+}
+
+export interface CancerReport {
+  engine: string;
+  mode: string;
+  source: string;
+  note: string;
+  n_visits: number | null;
+  risks: { concurrent: CancerRiskItem[]; future: CancerRiskItem[] };
+  top_risk: CancerRiskItem | null;
+  pred_age: number | null;
+  profile_age: number | null;
+  disclaimer: string;
+  record_id?: number;
+}
+
+export interface CancerStatus {
+  agent: string;
+  model: string;
+  engine: string;
+  model_loaded: boolean;
+  cohort_precomputed: boolean;
+  cohort_patients: number;
+  population?: { total: number; prevalence: Record<string, number> } | null;
+  disclaimer: string;
+}
+
+export interface CancerCohortPatient {
+  pid: string;
+  meta: { cancers_present: string[]; cancer_stage: string; has_image: boolean };
+  modes: Record<
+    string,
+    {
+      top: Record<string, Array<{ cancer: string; prob: number }>>;
+      pred_age: number | null;
+      n_visits: number | null;
+    }
+  >;
+}
+
+export interface CancerCohortDetail {
+  pid: string;
+  engine: string;
+  modes: Record<
+    string,
+    {
+      scores: Record<string, Record<string, number>>;
+      pred_age: number | null;
+      n_visits: number | null;
+    }
+  >;
+  meta: { cancers_present: string[]; cancer_stage: string; has_image: boolean };
+}
+
+export const mockCancerStatus: CancerStatus = {
+  agent: "泛癌卫士",
+  model: "Oncoformer (demo ckpt, 上游 Apache-2.0)",
+  engine: "precomputed",
+  model_loaded: false,
+  cohort_precomputed: true,
+  cohort_patients: 2,
+  population: { total: 790, prevalence: { "Lung cancer": 118, "Colorectal cancer": 96 } },
+  disclaimer: "基于 Oncoformer 研究模型的演示输出（温附医团队，Cell 2026），非临床诊断依据。",
+};
+
+export const mockCancerReport: CancerReport = {
+  engine: "precomputed",
+  mode: "cohort_fallback",
+  source: "compass_cohort",
+  note: "当前部署未加载真模型权重，以下为 790 例真实脱敏队列的患癌人群占比基线",
+  n_visits: null,
+  risks: {
+    concurrent: [
+      { cancer: "Lung cancer", cancer_zh: "肺癌", prob: 0.149, level: "队列基线" },
+      { cancer: "Colorectal cancer", cancer_zh: "结直肠癌", prob: 0.122, level: "队列基线" },
+    ],
+    future: [],
+  },
+  top_risk: { cancer: "Lung cancer", cancer_zh: "肺癌", prob: 0.149, level: "队列基线" },
+  pred_age: null,
+  profile_age: 56,
+  disclaimer: "基于 Oncoformer 研究模型的演示输出（温附医团队，Cell 2026），非临床诊断依据。",
+};
+
+export const mockCancerCohort: { patients: CancerCohortPatient[]; population: CancerStatus["population"] } = {
+  patients: [
+    {
+      pid: "COMPASS-0001",
+      meta: { cancers_present: ["Lung cancer"], cancer_stage: "II", has_image: true },
+      modes: {
+        fused: { top: { concurrent: [{ cancer: "Lung cancer", prob: 0.91 }], future: [] }, pred_age: 63.2, n_visits: 14 },
+        ehr_only: { top: { concurrent: [{ cancer: "Lung cancer", prob: 0.74 }], future: [] }, pred_age: 62.8, n_visits: 14 },
+        img_only: { top: { concurrent: [{ cancer: "Lung cancer", prob: 0.55 }], future: [] }, pred_age: null, n_visits: 14 },
+      },
+    },
+    {
+      pid: "COMPASS-0002",
+      meta: { cancers_present: [], cancer_stage: "NA", has_image: true },
+      modes: {
+        fused: { top: { concurrent: [{ cancer: "Colorectal cancer", prob: 0.08 }], future: [] }, pred_age: 58.4, n_visits: 11 },
+        ehr_only: { top: { concurrent: [{ cancer: "Colorectal cancer", prob: 0.07 }], future: [] }, pred_age: 58.1, n_visits: 11 },
+        img_only: { top: { concurrent: [{ cancer: "Lung cancer", prob: 0.06 }], future: [] }, pred_age: null, n_visits: 11 },
+      },
+    },
+  ],
+  population: mockCancerStatus.population,
+};
+
+export const mockCancerCohortDetail: CancerCohortDetail = {
+  pid: "COMPASS-0001",
+  engine: "oncoformer-precomputed",
+  modes: {
+    fused: {
+      scores: {
+        concurrent: { "Lung cancer": 0.91, "Colorectal cancer": 0.12, "Gastric cancer": 0.09, "Liver cancer": 0.07, "Breast cancer": 0.05, "Ovarian/Cervical cancer": 0.04, "Prostate cancer": 0.06 },
+        future: { "Lung cancer": 0.18, "Colorectal cancer": 0.11, "Gastric cancer": 0.08, "Liver cancer": 0.06, "Breast cancer": 0.05, "Ovarian/Cervical cancer": 0.04, "Prostate cancer": 0.05 },
+      },
+      pred_age: 63.2,
+      n_visits: 14,
+    },
+    ehr_only: {
+      scores: {
+        concurrent: { "Lung cancer": 0.74, "Colorectal cancer": 0.11, "Gastric cancer": 0.08, "Liver cancer": 0.07, "Breast cancer": 0.05, "Ovarian/Cervical cancer": 0.04, "Prostate cancer": 0.05 },
+        future: { "Lung cancer": 0.15, "Colorectal cancer": 0.1, "Gastric cancer": 0.07, "Liver cancer": 0.06, "Breast cancer": 0.04, "Ovarian/Cervical cancer": 0.04, "Prostate cancer": 0.05 },
+      },
+      pred_age: 62.8,
+      n_visits: 14,
+    },
+    img_only: {
+      scores: {
+        concurrent: { "Lung cancer": 0.55, "Colorectal cancer": 0.06, "Gastric cancer": 0.05, "Liver cancer": 0.05, "Breast cancer": 0.04, "Ovarian/Cervical cancer": 0.04, "Prostate cancer": 0.04 },
+        future: { "Lung cancer": 0.12, "Colorectal cancer": 0.05, "Gastric cancer": 0.05, "Liver cancer": 0.04, "Breast cancer": 0.04, "Ovarian/Cervical cancer": 0.03, "Prostate cancer": 0.04 },
+      },
+      pred_age: null,
+      n_visits: 14,
+    },
+  },
+  meta: { cancers_present: ["Lung cancer"], cancer_stage: "II", has_image: true },
+};
