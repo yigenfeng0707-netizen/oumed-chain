@@ -43,6 +43,15 @@ const fadeIn = {
 
 const months = ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"];
 
+// 下次缴费时间：次月 15 日（动态计算，避免演示数据过期）
+function nextPaymentDate(): string {
+  const d = new Date();
+  d.setMonth(d.getMonth() + 1);
+  d.setDate(15);
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  return `${d.getFullYear()}-${m}-15`;
+}
+
 function CircularProgress({ value, size = 80, strokeWidth = 6, color }: { value: number; size?: number; strokeWidth?: number; color: string }) {
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -207,7 +216,7 @@ export default function CoveragePage() {
               </div>
               <div className="text-right">
                 <p className="text-sm text-white/70">下次缴费</p>
-                <p className="text-lg font-bold">2025-07-15</p>
+                <p className="text-lg font-bold">{nextPaymentDate()}</p>
               </div>
             </div>
           </CardContent>

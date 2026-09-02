@@ -70,16 +70,16 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
           );
         })}
       </nav>
-      <div className="border-t border-sky-100 bg-white/45 p-4">
+      <div className="border-t border-sky-100 bg-white/45 px-3 py-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-cyan-100 text-cyan-600">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-cyan-100 text-cyan-600">
             <Heart className="h-4 w-4" />
           </div>
-          <div className="flex flex-col">
+          <div className="flex min-w-0 flex-col">
             <span className="text-sm font-medium text-slate-700">
               瓯医数链助手
             </span>
-            <span className="text-xs leading-relaxed text-slate-400">
+            <span className="whitespace-nowrap text-[11px] leading-relaxed text-slate-400">
               关键医疗信号识别 × 患者信息连接
             </span>
           </div>
