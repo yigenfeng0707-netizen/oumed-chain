@@ -159,3 +159,23 @@ docs/婕旂ず瑙嗛/*4K60fps-姣嶇増.mp4
 
 # 临时快照转储（浏览器自动化调试产物）
 docs/screenshots/_snap*.txt
+
+# ==================== binary docs / regenerable artifacts ====================
+# videos (large files, local only)
+docs/婕旂ず瑙嗛/
+# Office binary (pptx/docx/pdf/zip can be rebuilt from Markdown + scripts)
+docs/*.pptx
+docs/*.docx
+docs/*.pdf
+docs/*.zip
+# PPT / BP preview images (script-generated)
+docs/BP绱犳潗/
+docs/PPT绱犳潗/preview/
+docs/PPT绱犳潗/preview_final/
+docs/PPT绱犳潗/preview_prelim/
+# copyright application materials (local archive)
+docs/杞憲鐢宠/*.docx
+# AI tool specs cache
+docs/superpowers/
+# old demo videos (webm, re-renderable)
+docs/婕旂ず瑙嗛/*.webm
