@@ -1,0 +1,14 @@
+﻿{
+  "order_no": "OM260902105109807F",
+  "kind": "agent_service",
+  "ref_id": "health_profile",
+  "subject": "健康卫士 · 深度画像",
+  "amount_cents": 390,
+  "status": "paid",
+  "gateway": "live",
+  "trade_no": "2026090222001435791410985789",
+  "pay_proof": "ced9bb2d9e4cbc66b09ea4a61136bba4eb9e4f6b357724d013d47f0c1167d6de",
+  "paid_at": "2026-09-02T10:55:51.954368",
+  "created_at": "2026-09-02T10:51:09.057345",
+  "_note": "live 真实收款终验证据（2026-09-02）：家人支付宝实付 ¥3.90，订单 pending→paid，真实交易号回写，存证哈希生成；GET /api/payments/order/{order_no} 于线上获取"
+}
