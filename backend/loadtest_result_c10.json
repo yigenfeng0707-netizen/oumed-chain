@@ -1,0 +1,253 @@
+{
+  "config": {
+    "url": "http://127.0.0.1:8010",
+    "concurrency": 10,
+    "rounds": 2,
+    "timeout": 150.0
+  },
+  "summary": {
+    "success_rate": 1.0,
+    "total": 20,
+    "ok": 20,
+    "wall_s": 40.02695830000084,
+    "p50": 15.030611099999078,
+    "p90": 28.805688200001896,
+    "p95": 28.901197199997114,
+    "max": 28.901197199997114,
+    "qps": 0.4996632482063864
+  },
+  "by_agent": {
+    "policy_agent": {
+      "n": 4,
+      "p50": 4.717506699998921,
+      "max": 5.456452200000058
+    },
+    "coverage_agent": {
+      "n": 2,
+      "p50": 7.567778399999952,
+      "max": 7.567778399999952
+    },
+    "health_agent": {
+      "n": 7,
+      "p50": 18.86476749999929,
+      "max": 28.901197199997114
+    },
+    "cancer_agent": {
+      "n": 2,
+      "p50": 15.030611099999078,
+      "max": 15.030611099999078
+    },
+    "eeg_agent": {
+      "n": 2,
+      "p50": 18.751727500002744,
+      "max": 18.751727500002744
+    },
+    "body_agent": {
+      "n": 3,
+      "p50": 24.91072350000104,
+      "max": 28.805688200001896
+    }
+  },
+  "samples": [
+    {
+      "worker": 9,
+      "seq": 0,
+      "question": "最新的门诊慢特病政策有什么变化？",
+      "status": 200,
+      "latency": 4.3376907000019855,
+      "agent_type": "policy_agent",
+      "resp_chars": 28,
+      "error": ""
+    },
+    {
+      "worker": 1,
+      "seq": 0,
+      "question": "最新的门诊慢特病政策有什么变化？",
+      "status": 200,
+      "latency": 4.717506699998921,
+      "agent_type": "policy_agent",
+      "resp_chars": 28,
+      "error": ""
+    },
+    {
+      "worker": 4,
+      "seq": 0,
+      "question": "帮我看看这份出院小结的报销要点",
+      "status": 200,
+      "latency": 7.567778399999952,
+      "agent_type": "coverage_agent",
+      "resp_chars": 37,
+      "error": ""
+    },
+    {
+      "worker": 0,
+      "seq": 0,
+      "question": "我的高血压门诊用药能报销多少比例？",
+      "status": 200,
+      "latency": 14.426739200000156,
+      "agent_type": "health_agent",
+      "resp_chars": 1045,
+      "error": ""
+    },
+    {
+      "worker": 6,
+      "seq": 0,
+      "question": "癌症风险预测是怎么做的？",
+      "status": 200,
+      "latency": 15.030611099999078,
+      "agent_type": "cancer_agent",
+      "resp_chars": 662,
+      "error": ""
+    },
+    {
+      "worker": 8,
+      "seq": 0,
+      "question": "我的高血压门诊用药能报销多少比例？",
+      "status": 200,
+      "latency": 18.69379839999965,
+      "agent_type": "health_agent",
+      "resp_chars": 1153,
+      "error": ""
+    },
+    {
+      "worker": 0,
+      "seq": 1,
+      "question": "最新的门诊慢特病政策有什么变化？",
+      "status": 200,
+      "latency": 4.302013600001374,
+      "agent_type": "policy_agent",
+      "resp_chars": 28,
+      "error": ""
+    },
+    {
+      "worker": 3,
+      "seq": 0,
+      "question": "脑电监测能发现什么问题？",
+      "status": 200,
+      "latency": 18.751727500002744,
+      "agent_type": "eeg_agent",
+      "resp_chars": 1390,
+      "error": ""
+    },
+    {
+      "worker": 2,
+      "seq": 0,
+      "question": "最近总是头晕，可能是什么原因？",
+      "status": 200,
+      "latency": 18.780680899999425,
+      "agent_type": "body_agent",
+      "resp_chars": 338,
+      "error": ""
+    },
+    {
+      "worker": 5,
+      "seq": 0,
+      "question": "我需要长期服用华法林，有什么用药注意事项？",
+      "status": 200,
+      "latency": 18.86476749999929,
+      "agent_type": "health_agent",
+      "resp_chars": 1009,
+      "error": ""
+    },
+    {
+      "worker": 8,
+      "seq": 1,
+      "question": "最新的门诊慢特病政策有什么变化？",
+      "status": 200,
+      "latency": 5.456452200000058,
+      "agent_type": "policy_agent",
+      "resp_chars": 28,
+      "error": ""
+    },
+    {
+      "worker": 7,
+      "seq": 0,
+      "question": "体检报告里的血脂偏高要紧吗？",
+      "status": 200,
+      "latency": 24.324325900000986,
+      "agent_type": "health_agent",
+      "resp_chars": 1002,
+      "error": ""
+    },
+    {
+      "worker": 3,
+      "seq": 1,
+      "question": "帮我看看这份出院小结的报销要点",
+      "status": 200,
+      "latency": 6.552247299998271,
+      "agent_type": "coverage_agent",
+      "resp_chars": 37,
+      "error": ""
+    },
+    {
+      "worker": 1,
+      "seq": 1,
+      "question": "最近总是头晕，可能是什么原因？",
+      "status": 200,
+      "latency": 24.91072350000104,
+      "agent_type": "body_agent",
+      "resp_chars": 213,
+      "error": ""
+    },
+    {
+      "worker": 5,
+      "seq": 1,
+      "question": "癌症风险预测是怎么做的？",
+      "status": 200,
+      "latency": 13.176091799999995,
+      "agent_type": "cancer_agent",
+      "resp_chars": 579,
+      "error": ""
+    },
+    {
+      "worker": 9,
+      "seq": 1,
+      "question": "最近总是头晕，可能是什么原因？",
+      "status": 200,
+      "latency": 28.805688200001896,
+      "agent_type": "body_agent",
+      "resp_chars": 258,
+      "error": ""
+    },
+    {
+      "worker": 2,
+      "seq": 1,
+      "question": "脑电监测能发现什么问题？",
+      "status": 200,
+      "latency": 14.60296069999822,
+      "agent_type": "eeg_agent",
+      "resp_chars": 885,
+      "error": ""
+    },
+    {
+      "worker": 7,
+      "seq": 1,
+      "question": "我的高血压门诊用药能报销多少比例？",
+      "status": 200,
+      "latency": 11.88250379999954,
+      "agent_type": "health_agent",
+      "resp_chars": 587,
+      "error": ""
+    },
+    {
+      "worker": 4,
+      "seq": 1,
+      "question": "我需要长期服用华法林，有什么用药注意事项？",
+      "status": 200,
+      "latency": 28.901197199997114,
+      "agent_type": "health_agent",
+      "resp_chars": 814,
+      "error": ""
+    },
+    {
+      "worker": 6,
+      "seq": 1,
+      "question": "体检报告里的血脂偏高要紧吗？",
+      "status": 200,
+      "latency": 24.980367399999523,
+      "agent_type": "health_agent",
+      "resp_chars": 37,
+      "error": ""
+    }
+  ]
+}
