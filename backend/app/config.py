@@ -10,10 +10,10 @@ class Settings(BaseSettings):
     LLM_BASE_URL: str = "https://aiping.cn/api/v1"
     LLM_MODEL: str = "Kimi-K3"
 
-    # 备选 LLM：阶跃星辰（step-3.7-flash，主力故障时自动切换；变量名沿用 DASHSCOPE_）
+    # 备选 LLM：奇绩算力（gpt-5.6-sol，主力 Kimi-K3 故障时自动切换；变量名沿用 DASHSCOPE_）
     DASHSCOPE_API_KEY: str = ""
-    DASHSCOPE_BASE_URL: str = "https://api.stepfun.com/step_plan/v1"
-    DASHSCOPE_MODEL: str = "step-3.7-flash"
+    DASHSCOPE_BASE_URL: str = "https://api.openai-next.com/v1"
+    DASHSCOPE_MODEL: str = "gpt-5.6-sol"
 
     # 视觉模型：aiping 网关（GLM-4.6V，供影像/图文理解扩展使用）
     VISION_API_KEY: str = ""

@@ -43,7 +43,12 @@ async def client(monkeypatch):
     # body 智能体等内部自开 session 走 app.database.async_session，
     # 同样重定向到内存库，避免测试写入本地开发库 yibao.db
     monkeypatch.setattr("app.database.async_session", session_factory)
-    # TestClient 不以 context manager 使用 → 不触发 lifespan → LLM 保持离线降级
+    # 强制隔离 LLM 污染：其他测试（如 test_alerting_scheduler.py 用
+    # `with TestClient(app)` 触发 lifespan）会初始化模块级单例 orchestrator._llm
+    # 为真实 LLM 客户端，导致本文件"offline"测试走 LLM 分支、文案漂移断言失败。
+    # 这里强制重置为 None，确保走结构化模板分支（确定性输出），测试名才名副其实。
+    import app.services as _services
+    monkeypatch.setattr(_services.orchestrator, "_llm", None)
     yield TestClient(app)
     app.dependency_overrides.clear()
     await engine.dispose()
@@ -101,6 +106,7 @@ class TestChatEndpoint:
         r = client.post("/api/agents/chat", json={"message": "帮我做脑电健康评估"})
         data = r.json()
         assert data["agent_type"] == "eeg_agent"
+        # fixture 强制隔离 LLM，走结构化模板分支（含"脑电健康评估完成"字面量）
         assert "脑电健康评估完成" in data["response"]
         assert data["data"]["metrics"]["stress_index"] >= 0
 

@@ -90,7 +90,7 @@ class LLMService:
             api_key: 主力模型 API 密钥（aiping 网关 Kimi-K3）
             base_url: 主力模型 API 基础地址
             model: 主力模型名称
-            fallback_api_key: 备选模型 API 密钥（阶跃星辰，变量名沿用 DASHSCOPE_）
+            fallback_api_key: 备选模型 API 密钥（奇绩算力 gpt-5.6-sol，变量名沿用 DASHSCOPE_）
             fallback_base_url: 备选模型 API 基础地址
             fallback_model: 备选模型名称
         """
@@ -100,7 +100,7 @@ class LLMService:
         self._client = None
         self._initialized = False
 
-        # 备选模型（阶跃星辰）
+        # 备选模型（奇绩算力 gpt-5.6-sol）
         self._fallback_api_key = fallback_api_key
         self._fallback_base_url = fallback_base_url.rstrip("/")
         self._fallback_model = fallback_model
@@ -148,7 +148,7 @@ class LLMService:
             self._initialized = False
 
     def _init_fallback_client(self):
-        """初始化备选模型 OpenAI 客户端（阶跃星辰）"""
+        """初始化备选模型 OpenAI 客户端（奇绩算力 gpt-5.6-sol）"""
         try:
             from openai import OpenAI
             self._fallback_client = OpenAI(
@@ -206,7 +206,7 @@ class LLMService:
             except Exception as e:
                 logger.warning("主力 LLM 对话失败，尝试备选模型: %s", e)
 
-        # 尝试备选模型（阶跃星辰）
+        # 尝试备选模型（奇绩算力 gpt-5.6-sol）
         if self._fallback_initialized:
             try:
                 response = await asyncio.to_thread(
