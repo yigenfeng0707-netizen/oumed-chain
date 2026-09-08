@@ -168,6 +168,8 @@ docs/*.pptx
 docs/*.docx
 docs/*.pdf
 docs/*.zip
+# PPT 本地编辑备份（不入库）
+docs/*.pptx.bak-*
 # PPT / BP preview images (script-generated)
 docs/BP素材/
 docs/PPT素材/preview/
