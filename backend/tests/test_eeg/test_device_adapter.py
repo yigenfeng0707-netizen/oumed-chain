@@ -307,15 +307,16 @@ class TestOptionalDependencies:
         with pytest.raises(ImportError, match="pylsl"):
             da.acquire_from_lsl(duration_seconds=0.1)
 
-    def test_edf_load_without_pyedflib_raises(self):
-        """未安装 pyedflib 时 load_from_edf 抛出 ImportError"""
+    def test_edf_load_without_pyedflib_falls_back_to_pure_python(self):
+        """未安装 pyedflib 时 load_from_edf 降级为纯 Python 解析（文件不存在 → FileNotFoundError）"""
         try:
             import pyedflib  # noqa: F401
             pytest.skip("pyedflib 已安装，跳过降级测试")
         except ImportError:
             pass
 
-        with pytest.raises(ImportError, match="pyedflib"):
+        # 降级路径不再抛 ImportError；不存在的文件走纯 Python 解析的文件读取失败
+        with pytest.raises(FileNotFoundError):
             da.load_from_edf("/tmp/nonexistent.edf")
 
 

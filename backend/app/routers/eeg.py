@@ -412,6 +412,8 @@ async def import_eeg_file(
                 tmp_path = tmp.name
             try:
                 signals, channels, sr, device_info = load_from_edf(tmp_path)
+                # 临时文件名不对外展示，回填用户上传的原始文件名
+                device_info.device_name = filename
             finally:
                 os.unlink(tmp_path)
         else:
