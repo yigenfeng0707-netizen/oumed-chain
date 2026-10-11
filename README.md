@@ -81,7 +81,7 @@ pnpm install && pnpm dev   # .env.local 已指向 http://localhost:8100
 
 ### 落地阶段（进行中，见 `docs/生产化改造计划.md`）
 
-- [ ] P0 安全合规：~~生产鉴权（JWT+RBAC）~~ ✅（双模鉴权 + 五角色 RBAC）；~~等保三级整改（代码侧）~~ ✅（审计留存 180 天归档 + 敏感字段 AES-256-GCM 存储加密 + 登录失败指数退避锁定 + SQLite 在线备份脚本 + 安全响应头/TLS 1.3 反代模板）；~~数据分类分级制度~~ ✅（[管理办法](docs/数据分类分级管理办法.md)：GB/T 39725×GB/T 43697 双框架 + 字段级台账 `app/data_classification.py` 23 表 100% 覆盖 CI 硬校验）；PIA 评估双审签署（外部）、等保测评初测（外部）；588 测试全绿
+- [ ] P0 安全合规：~~生产鉴权（JWT+RBAC）~~ ✅（双模鉴权 + 五角色 RBAC）；~~等保三级整改（代码侧）~~ ✅（审计留存 180 天归档 + 敏感字段 AES-256-GCM 存储加密 + 登录失败指数退避锁定 + SQLite 在线备份脚本 + 安全响应头/TLS 1.3 反代模板）；~~数据分类分级制度~~ ✅（[管理办法](docs/数据分类分级管理办法.md)：GB/T 39725×GB/T 43697 双框架 + 字段级台账 `app/data_classification.py` 23 表 100% 覆盖 CI 硬校验）；PIA 评估双审签署（外部）、等保测评初测（外部）；590 测试全绿
 - [ ] P1 联邦真实部署：~~医院侧节点程序~~ ✅（[Node Agent 独立包](backend/node_agent/)：Docker 单容器 + 本地训练 + AES-GCM 参数加密上行 + 平台 Coordinator（FedAvg 聚合/节点鉴权/存证链），16 项测试全绿，[部署与抓包演练方案](docs/联邦节点部署与演练方案.md)）；~~节点认证与传输安全（mTLS/密钥轮换）~~ ✅（enc2 信封多版本密钥环 + [轮换脚本](backend/scripts/rotate_federation_key.py)（泄露后历史密文永久不可解）+ nginx mTLS 模板与证书一键签发，18 项安全测试含 socketpair 真实握手中间人拒绝验证）；~~断点续训与容错~~ ✅（恶意参数余弦检测 422 拒绝不落库 + 任务 pause/resume 断点续训（final_auc 与不间断一致）+ last_seen 存活可见性/任务 progress，6 项容错测试，[拔节点演练步骤](docs/联邦节点部署与演练方案.md)）；~~正式隐私预算核算~~ ✅（零依赖 RDP 矩会计 + 任务 result.privacy 形式化 (ε, δ) 报告，8 项测试含已知值对照与集成互验）；双机实操演练、内部安全评审待办
-- [ ] P2 平台生产化：PostgreSQL 迁移、监控告警、多租户、存证链外部锚定、LLM 服务生产化
+- [ ] P2 平台生产化：~~PostgreSQL 迁移~~ ✅（[Alembic 迁移体系](backend/migrations/)：baseline 全量表 + 连接串统一读 DATABASE_URL，SQLite 开发/PG 生产同一套脚本，迁移幂等与 metadata 一致性测试，docker PG16 实测 + 应用读写冒烟通过，`cd backend && python -m alembic upgrade head`）；监控告警（[deploy/monitoring](deploy/monitoring/)：Prometheus 抓取 + 告警规则 + Grafana 看板，compose `--profile monitoring`）；多租户、存证链外部锚定、LLM 服务生产化待办
 - [ ] P3 商业化：计费对账、数据交易所挂牌、软著受理 + 专利
