@@ -27,6 +27,11 @@ API_KEY = os.getenv("YIBAO_API_KEY", "")
 # 用户 token 有效期（秒）：24h，与前端 localStorage 生命周期对齐
 USER_TOKEN_TTL = 86400
 
+# RBAC 角色枚举（P0-1.1 多角色，与 users.role 列 / app.deps.require_roles 同口径）：
+# member=患者用户（默认）/ hospital_admin=医院管理员 / doctor=医生 /
+# regulator=数据局监管 / operator=平台运营；超管走 X-Admin-Token（不入库）
+ROLES = ("member", "hospital_admin", "doctor", "regulator", "operator")
+
 # PBKDF2 迭代次数（OWASP 2023 建议 ≥600k，Demo 取平衡值）
 _PBKDF2_ITERATIONS = 260_000
 
@@ -49,21 +54,7 @@ def require_api_key(x_api_key: str | None = Header(None, alias="X-API-Key")) -> 
     return "authenticated"
 
 
-def get_current_user(
-    user_id: str | None = None,
-    x_user_token: str | None = Header(None, alias="X-User-Token"),
-) -> dict:
-    """获取当前用户（基于 token 的简易会话）。
-
-    Demo 阶段：直接信任 user_id 参数（来自路径）
-    生产阶段：解析 JWT token 提取 user_id
-    """
-    # Demo 模式：返回用户标识
-    return {
-        "user_id": user_id,
-        "authenticated": bool(x_user_token),
-        "demo_mode": True,
-    }
+# 注：完整身份依赖 get_current_user / RBAC 角色守卫 require_roles 见 app.deps（P0-1.1）
 
 
 # ------------------------------------------------------------------
@@ -103,32 +94,53 @@ def _session_secret() -> str:
     return os.getenv("YIBAO_SESSION_SECRET", "demo")
 
 
-def issue_user_token(user_id: int, ttl: int = USER_TOKEN_TTL) -> str:
-    """签发用户 token：payload=uid|exp，sig=HMAC-SHA256(payload)[:32]。"""
+def issue_user_token(user_id: int, ttl: int = USER_TOKEN_TTL, role: str = "member") -> str:
+    """签发用户 token：payload=uid|exp|role，sig=HMAC-SHA256(payload)[:32]。
+
+    角色写入签名 payload 防篡改；role 缺省 member（患者用户）。
+    """
+    if role not in ROLES:
+        raise ValueError(f"非法角色: {role}")
     exp = int(time.time()) + ttl
-    payload = f"{user_id}|{exp}"
+    payload = f"{user_id}|{exp}|{role}"
     sig = hmac.new(_session_secret().encode("utf-8"), payload.encode("utf-8"), hashlib.sha256).hexdigest()[:32]
     return f"{payload}|{sig}"
 
 
-def parse_user_token(token: str | None) -> int | None:
-    """解析并验证 token，返回 user_id；无效/过期返回 None。"""
+def parse_token_identity(token: str | None) -> tuple[int, str] | None:
+    """解析并验证 token，返回 (user_id, role)；无效/过期返回 None。
+
+    向后兼容旧 3 段格式 uid|exp|sig（角色按 member 处理）。
+    """
     if not token:
         return None
     parts = token.split("|")
-    if len(parts) != 3:
+    if len(parts) == 4:  # 新格式：uid|exp|role|sig
+        uid_s, exp_s, role, sig = parts
+        payload = f"{uid_s}|{exp_s}|{role}"
+        if role not in ROLES:
+            return None
+    elif len(parts) == 3:  # 旧格式：uid|exp|sig
+        uid_s, exp_s, sig = parts
+        role = "member"
+        payload = f"{uid_s}|{exp_s}"
+    else:
         return None
-    uid_s, exp_s, sig = parts
-    payload = f"{uid_s}|{exp_s}"
     expected = hmac.new(_session_secret().encode("utf-8"), payload.encode("utf-8"), hashlib.sha256).hexdigest()[:32]
     if not hmac.compare_digest(sig, expected):
         return None
     try:
         if int(exp_s) < time.time():
             return None  # 已过期
-        return int(uid_s)
+        return int(uid_s), role
     except ValueError:
         return None
+
+
+def parse_user_token(token: str | None) -> int | None:
+    """解析并验证 token，返回 user_id；无效/过期返回 None（兼容旧调用）。"""
+    ident = parse_token_identity(token)
+    return ident[0] if ident else None
 
 
 # ------------------------------------------------------------------

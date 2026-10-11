@@ -3,10 +3,13 @@
 提供：
 - POST /api/admin/login        管理员登录（账号密码 → token）
 - GET  /api/admin/overview     全用户使用概况 + 全局统计（推送/营销分群用）
+- GET  /api/admin/users              用户列表（含 RBAC 角色，P0-1.1）
 - GET  /api/admin/users/{id}/profile  单用户画像详情
-- GET  /api/admin/security/denials    越权访问审计日志（严格模式 401/403）
+- PUT  /api/admin/users/{id}/role    设置用户 RBAC 角色（P0-1.1 多角色）
+- GET  /api/admin/security/denials    越权访问审计日志（超管或监管/运营角色）
 
-鉴权：登录后签发 X-Admin-Token，后续请求携带该校验。
+鉴权：登录后签发 X-Admin-Token，后续请求携带该校验；RBAC 端点另接受
+携带对应角色的 X-User-Token（见 app.deps.require_roles）。
 账号密码通过环境变量 ADMIN_USERNAME / ADMIN_PASSWORD 配置。
 说明：Demo 阶段无真实登录日志，「使用情况」基于对话/脑电/影像等活动记录统计。
 """
@@ -17,14 +20,16 @@ import logging
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, Header, HTTPException, status
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import crud, metrics
+from app.auth import ROLES
 from app.config import settings
 from app.database import get_db
-from app.services import chain_anchor
+from app.deps import require_roles
+from app.services import chain_anchor, login_guard
 from app.models import (
     BodyRecord,
     ChatConversation,
@@ -32,6 +37,7 @@ from app.models import (
     EEGRecord,
     ImagingRecord,
     MedicalRecord,
+    User,
 )
 
 logger = logging.getLogger(__name__)
@@ -77,16 +83,32 @@ async def require_admin(x_admin_token: str | None = Header(None, alias="X-Admin-
 
 @router.post("/login")
 async def admin_login(payload: AdminLoginRequest):
-    """管理员登录，返回 token（有效期 24h，前端存 sessionStorage）。"""
+    """管理员登录，返回 token（有效期 24h，前端存 sessionStorage）。
+
+    等保三级·入侵防范（P0-1.2）：生产模式启用账号级失败锁定（指数退避）；
+    失败同时计入撞库滑窗指标 + Webhook 告警（既有机制）。
+    """
+    guard_key = f"admin:{payload.username}"
+    if not settings.DEMO_MODE:
+        remain = login_guard.is_locked(guard_key)
+        if remain > 0:
+            raise HTTPException(
+                status_code=status.HTTP_423_LOCKED,
+                detail=f"登录失败次数过多，账号已临时锁定，请 {remain} 秒后重试",
+            )
     username, password = _admin_credentials()
     if payload.username != username or payload.password != password:
         metrics.observe_admin_login_failure()  # 监控告警：撞库信号（指标）
+        if not settings.DEMO_MODE:
+            login_guard.record_failure(guard_key)
         try:
             from app.services import alerting
             await asyncio.to_thread(alerting.record_admin_login_failure, payload.username)
         except Exception:
             pass  # 告警触达失败不影响拒绝响应
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="账号或密码错误")
+    if not settings.DEMO_MODE:
+        login_guard.record_success(guard_key)
     return {
         "token": _issue_admin_token(username),
         "username": username,
@@ -229,6 +251,81 @@ async def admin_overview(
     }
 
 
+@router.get("/users")
+async def admin_users(
+    admin: str = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+    limit: int = 200,
+):
+    """用户列表（含 RBAC 角色）：管理后台用户与角色管理用（P0-1.1）。"""
+    rows = (
+        (await db.execute(
+            select(User).order_by(User.id).limit(min(limit, 1000))
+        ))
+        .scalars()
+        .all()
+    )
+    return {
+        "total": len(rows),
+        "roles": list(ROLES),
+        "users": [
+            {
+                "id": u.id,
+                "public_id": f"user_{u.id:03d}",
+                "name": u.name,
+                "email": u.email,
+                "role": u.role or "member",
+                "city": u.city,
+                "created_at": _fmt_dt(u.created_at),
+            }
+            for u in rows
+        ],
+    }
+
+
+class RoleUpdateRequest(BaseModel):
+    role: str
+
+    @field_validator("role")
+    @classmethod
+    def _check_role(cls, v: str) -> str:
+        v = v.strip()
+        if v not in ROLES:
+            raise ValueError(f"非法角色，可选：{'/'.join(ROLES)}")
+        return v
+
+
+@router.put("/users/{user_id}/role")
+async def admin_set_user_role(
+    user_id: str,
+    payload: RoleUpdateRequest,
+    admin: str = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """设置用户 RBAC 角色（仅超管；P0-1.1 多角色）。
+
+    无状态 token 权衡：角色写入签名 payload，被改角色用户重新登录后生效；
+    如需立即生效可轮换 YIBAO_SESSION_SECRET 全量失效会话。
+    """
+    user = await crud.get_user(db, user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail="用户不存在")
+    old_role = user.role or "member"
+    user.role = payload.role
+    await db.commit()
+    logger.info("RBAC 角色变更: %s %s → %s（操作者: %s）",
+                user.public_id if hasattr(user, "public_id") else f"user_{user.id:03d}",
+                old_role, payload.role, admin)
+    return {
+        "user_id": user.id,
+        "public_id": f"user_{user.id:03d}",
+        "name": user.name,
+        "old_role": old_role,
+        "role": user.role,
+        "note": "重新登录后新角色生效（token 无状态签名）",
+    }
+
+
 @router.get("/users/{user_id}/profile")
 async def admin_user_profile(
     user_id: str,
@@ -343,7 +440,7 @@ _DENIAL_REASON_LABELS = {
 
 @router.get("/security/denials")
 async def admin_security_denials(
-    admin: str = Depends(require_admin),
+    identity: dict = Depends(require_roles("regulator", "operator")),  # 超管或监管/运营角色
     db: AsyncSession = Depends(get_db),
     user_id: str | None = None,
     status_code: int | None = None,
@@ -351,6 +448,7 @@ async def admin_security_denials(
 ):
     """越权访问审计：严格模式（DEMO_MODE=false）下的 401/403 拒绝记录。
 
+    超管（X-Admin-Token）或携带 regulator/operator 角色的用户可查（P0-1.1 RBAC）。
     演示模式不产生拒绝（全部放行），列表为空属正常。
     """
     logs = await crud.get_access_denials(

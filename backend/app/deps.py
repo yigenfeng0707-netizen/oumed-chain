@@ -18,7 +18,7 @@ import logging
 
 from fastapi import Depends, Header, HTTPException, Request, status
 
-from app.auth import parse_user_token
+from app.auth import parse_token_identity, parse_user_token
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -144,3 +144,71 @@ async def require_session(
 # 便捷组合：路径参数端点一行挂载
 ScopeDep = Depends(scoped_user_id)
 SessionDep = Depends(require_session)
+
+
+# ------------------------------------------------------------------
+# P0-1.1 多角色 RBAC：完整身份依赖 + 角色守卫工厂
+# ------------------------------------------------------------------
+
+def get_current_user(
+    request: Request,
+    x_user_token: str | None = Header(None, alias="X-User-Token"),
+) -> dict:
+    """完整身份依赖（业务路由标准挂载）：从 token 解析 user_id 与角色。
+
+    - 生产模式：token 无效 → 401；返回 {"user_id", "public_id", "role", "demo_mode": False}
+    - 演示模式：返回 anonymous 演示身份（放行，demo_mode=True）
+    角色嵌在 HMAC 签名 payload 内，不可伪造；改库中角色后重新登录生效（无状态 token 权衡）。
+    """
+    if settings.DEMO_MODE:
+        return {"user_id": None, "public_id": "anonymous", "role": "member", "demo_mode": True}
+    ident = parse_token_identity(x_user_token)
+    if ident is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="未登录或登录已过期，请携带有效 X-User-Token",
+            headers={"WWW-Authenticate": "UserToken"},
+        )
+    uid, role = ident
+    return {"user_id": uid, "public_id": f"user_{uid:03d}", "role": role, "demo_mode": False}
+
+
+def require_roles(*allowed: str, allow_admin: bool = True):
+    """RBAC 角色守卫工厂：token 角色命中 allowed 任一即放行。
+
+    - allow_admin=True（默认）：X-Admin-Token 超管可代操作（与既有管理员体系兼容）；
+    - 拒绝落审计：无效 token → 401（missing_or_invalid_user_token）；
+      角色不匹配 → 403（role_forbidden）；
+    - 演示模式：放行并返回演示身份（与全站双模设计一致）。
+
+    用法：`Depends(require_roles("regulator", "operator"))`
+    """
+    allowed_set = frozenset(allowed)
+
+    async def guard(
+        request: Request,
+        x_user_token: str | None = Header(None, alias="X-User-Token"),
+        x_admin_token: str | None = Header(None, alias="X-Admin-Token"),
+    ) -> dict:
+        if settings.DEMO_MODE:
+            return {"user_id": None, "public_id": "anonymous", "role": "member", "demo_mode": True}
+        if allow_admin and _valid_admin_token(x_admin_token):
+            return {"user_id": None, "public_id": "super_admin", "role": "super_admin", "demo_mode": False}
+        ident = parse_token_identity(x_user_token)
+        if ident is None:
+            await _log_denial(request, 401, "missing_or_invalid_user_token", None, bool(x_user_token))
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="未登录或登录已过期，请携带有效 X-User-Token",
+                headers={"WWW-Authenticate": "UserToken"},
+            )
+        uid, role = ident
+        if role not in allowed_set:
+            await _log_denial(request, 403, "role_forbidden", f"user_{uid:03d}", True)
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"需要角色 {'/'.join(allowed)}，当前角色 {role}",
+            )
+        return {"user_id": uid, "public_id": f"user_{uid:03d}", "role": role, "demo_mode": False}
+
+    return guard

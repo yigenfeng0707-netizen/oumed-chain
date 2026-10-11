@@ -50,6 +50,9 @@ htmlcov/
 *.sqlite
 *.sqlite3
 *.db-journal
+# 等保三级：审计归档与备份产物（含历史审计记录，不入仓库）
+backend/audit_archive/
+backend/backups/
 
 # ==================== Node.js / 前端 ====================
 node_modules/

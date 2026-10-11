@@ -27,8 +27,10 @@ from app.auth import (
     parse_user_token,
     verify_password,
 )
+from app.config import settings
 from app.database import get_db
 from app.models import User
+from app.services import login_guard
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +88,7 @@ def _user_payload(user: User) -> dict:
         "city": user.city,
         "insurance_type": user.insurance_type,
         "employee_status": user.employee_status,
+        "role": user.role or "member",
         "conditions": [],
         "registered": bool(user.email and user.password_hash),
     }
@@ -98,7 +101,7 @@ async def _get_user_by_email(db: AsyncSession, email: str) -> User | None:
 
 async def _auth_response(db: AsyncSession, user: User) -> dict:
     return {
-        "token": issue_user_token(user.id),
+        "token": issue_user_token(user.id, role=user.role or "member"),
         "user": _user_payload(user),
         "expires_in": USER_TOKEN_TTL,
     }
@@ -127,11 +130,27 @@ async def register(payload: RegisterRequest, db: AsyncSession = Depends(get_db))
 
 @router.post("/login")
 async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)):
-    """邮箱登录：校验密码（PBKDF2），签发 HMAC token。"""
+    """邮箱登录：校验密码（PBKDF2），签发 HMAC token。
+
+    等保三级·入侵防范（P0-1.2）：生产模式启用账号级失败锁定（指数退避，
+    连续失败 5 次锁 30s 起翻倍封顶 15min）；演示模式跳过保持零摩擦。
+    """
+    guard_key = f"user:{payload.email}"
+    if not settings.DEMO_MODE:
+        remain = login_guard.is_locked(guard_key)
+        if remain > 0:
+            raise HTTPException(
+                status_code=status.HTTP_423_LOCKED,
+                detail=f"登录失败次数过多，账号已临时锁定，请 {remain} 秒后重试",
+            )
     user = await _get_user_by_email(db, payload.email)
     # 统一返回"邮箱或密码错误"，不区分账号不存在/密码错误（防枚举）
     if user is None or not verify_password(payload.password, user.password_hash):
+        if not settings.DEMO_MODE:
+            login_guard.record_failure(guard_key)  # 账号不存在同样计数（防爆破）
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="邮箱或密码错误")
+    if not settings.DEMO_MODE:
+        login_guard.record_success(guard_key)
     return await _auth_response(db, user)
 
 

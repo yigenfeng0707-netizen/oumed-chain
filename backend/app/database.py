@@ -20,11 +20,14 @@ async def init_db():
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-        # SQLite 轻量迁移：给已有 users 表补 email/password_hash 列
+        # SQLite 轻量迁移：给已有表补新增列
         # （create_all 只建新表不改旧表；重复执行时忽略 DuplicateColumn）
         for ddl in (
             "ALTER TABLE users ADD COLUMN email VARCHAR(255)",
             "ALTER TABLE users ADD COLUMN password_hash VARCHAR(255)",
+            "ALTER TABLE users ADD COLUMN role VARCHAR(30) NOT NULL DEFAULT 'member'",
+            # P1.3 节点存活可见性：最后活跃时间（可空，历史节点未上报前为 NULL）
+            "ALTER TABLE federated_nodes ADD COLUMN last_seen_at DATETIME",
         ):
             with suppress(Exception):  # 列已存在
                 await conn.execute(text(ddl))

@@ -1,0 +1,4 @@
+# 瓯医数链 · 医院侧节点 Agent 独立依赖（Docker 单容器）
+# 刻意最小化：AUC 用纯 numpy 实现（trainer.auc_score），平台侧 fastapi/sqlalchemy/sklearn 一律不需要
+numpy>=1.26.0
+cryptography>=42.0.0

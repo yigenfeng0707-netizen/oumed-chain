@@ -25,6 +25,7 @@ from app.routers import (
     drugs,
     eeg,
     federation,
+    federation_nodes,
     governance,
     health_profile,
     imaging,
@@ -44,13 +45,17 @@ async def lifespan(app: FastAPI):
     # 存证链定时锚定（周期可配；0 = 关闭仅手动锚定）
     from app.services.anchor_scheduler import start_anchor_task
     anchor_task = start_anchor_task()
+    # 等保三级·安全审计留存（超期归档清理；周期可配；0 = 关闭仅手动）
+    from app.services.audit_retention import start_retention_task
+    retention_task = start_retention_task()
     yield
-    if anchor_task is not None:
-        anchor_task.cancel()
-        try:
-            await anchor_task
-        except asyncio.CancelledError:
-            pass
+    for task in (anchor_task, retention_task):
+        if task is not None:
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
 
 
 app = FastAPI(
@@ -78,6 +83,30 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def security_headers_middleware(request, call_next):
+    """安全响应头（P0-1.2 等保三级·传输加密配套）：
+
+    - 全局：nosniff / DENY 点击劫持 / Referrer-Policy / Permissions-Policy；
+    - HSTS 仅生产模式下发（DEMO_MODE=false；演示环境为 HTTP，避免无谓的头）；
+      真正的 TLS 1.3 终结由反向代理承担（模板见 deploy/tls/）；
+    - CSP：API 纯 JSON 响应 default-src 'none'（最严格）；/docs、/redoc、
+      /openapi.json（Swagger UI 需外部脚本）与 /digital-body（3D 查看器）豁免。
+    """
+    response = await call_next(request)
+    path = request.url.path
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["Permissions-Policy"] = "geolocation=(), camera=(), microphone=()"
+    if not settings.DEMO_MODE:
+        response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains"
+    _docs_paths = ("/docs", "/redoc", "/openapi.json", "/digital-body")
+    if not path.startswith(_docs_paths):
+        response.headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'"
+    return response
 
 
 @app.middleware("http")
@@ -114,6 +143,7 @@ app.include_router(health_profile.router)
 app.include_router(policy.router)
 app.include_router(security.router)
 app.include_router(federation.router)
+app.include_router(federation_nodes.router)
 app.include_router(governance.router)
 app.include_router(marketplace.router)
 app.include_router(payments.router)

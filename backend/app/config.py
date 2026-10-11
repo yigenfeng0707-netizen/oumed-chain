@@ -42,6 +42,36 @@ class Settings(BaseSettings):
     # 定时锚定周期（小时；0 = 关闭，仅管理端手动锚定）
     CHAIN_ANCHOR_INTERVAL_HOURS: int = 24
 
+    # 等保三级·安全审计留存：库内保留天数（等保 2.0 三级要求 ≥6 个月，超期先归档库外再清理）
+    AUDIT_RETENTION_DAYS: int = 180
+    # 审计留存清理周期（小时；0 = 关闭，仅管理端/脚本手动归档）
+    AUDIT_CLEANUP_INTERVAL_HOURS: int = 24
+    # 审计归档目录（JSONL append-only，超期记录删除前的库外留存）
+    AUDIT_ARCHIVE_DIR: str = "./audit_archive"
+
+    # 等保三级·存储加密：敏感字段 AES-256-GCM 数据密钥（32 字节，base64/hex；留空 = 明文兼容模式）
+    YIBAO_DATA_KEY: str = ""
+
+    # P1.1 联邦节点：参数上行 AES-256-GCM 信封密钥（与医院侧节点 Agent 共享，32 字节
+    # base64/hex/口令；留空 = 明文兼容联调模式，生产必须配置）
+    FEDERATION_PARAM_KEY: str = ""
+
+    # P1.2 联邦密钥轮换：多版本密钥环（enc2 信封按 key_id 寻钥）。
+    # 格式 "key_id:key" 逗号分隔（key 为 32 字节 base64/hex），最后一个为活跃写入密钥，
+    # 其余为过渡期保留的解密密钥；key_id = sha256(key)[:8] 十六进制，可由
+    # scripts/rotate_federation_key.py 生成。留空时回退单密钥 FEDERATION_PARAM_KEY
+    # （自动计算 key_id）。轮换完成后移除旧密钥条目 → 历史密文永久不可解密。
+    FEDERATION_PARAM_KEYS: str = ""
+
+    # P1.3 恶意参数方向检测：节点上行参数与当前全局模型的 cosine 相似度低于阈值 →
+    # 422 拒绝（参数不落库）。0.0 = 仅拒绝方向反转/正交的明显篡改；设为负数关闭检测；
+    # 合法 DP 更新方向与全局模型高度一致（接近 1），不会误伤。
+    FEDERATION_COS_THRESHOLD: float = 0.0
+
+    # P1.4 隐私预算核算：RDP 矩会计的 (ε, δ) 转换目标 δ（每任务 per-node 视角）。
+    # 常规取 ≤1/数据集规模（如 10 万样本取 1e-5）；仅影响报告口径，不改噪声机制。
+    DP_ACCOUNTANT_DELTA: float = 1e-5
+
     # 告警触达通道：钉钉/飞书群机器人 Webhook（留空 = 仅日志不推送）
     ALERT_WEBHOOK_URL: str = ""
     # 管理端登录失败多少次触发撞库告警（滑窗内计数）

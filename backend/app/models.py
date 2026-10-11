@@ -13,6 +13,8 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import DeclarativeBase, relationship
 
+from app.crypto import DeterministicString, EncryptedString, EncryptedText
+
 
 class Base(DeclarativeBase):
     pass
@@ -29,9 +31,14 @@ class User(Base):
     insurance_type = Column(String(50), nullable=False)
     employee_status = Column(String(30), nullable=False)
     # 邮箱注册登录（Demo 演示用户无邮箱，字段可空）
-    email = Column(String(255), unique=True, index=True, nullable=True)
+    # 等保三级·存储加密：确定性 AES-GCM（同明文同密文，等值查询/唯一索引保序；
+    # 未配置 YIBAO_DATA_KEY 时自动退化为明文兼容模式）
+    email = Column(DeterministicString, unique=True, index=True, nullable=True)
     # PBKDF2-SHA256 哈希，格式：pbkdf2_sha256$<iterations>$<salt_hex>$<hash_hex>
     password_hash = Column(String(255), nullable=True)
+    # RBAC 角色（P0-1.1 多角色）：member=患者用户（默认）/ hospital_admin=医院管理员 /
+    # doctor=医生 / regulator=数据局监管 / operator=平台运营；超管走 X-Admin-Token 不入库
+    role = Column(String(30), nullable=False, default="member", server_default="member")
     created_at = Column(DateTime, default=datetime.utcnow)
 
     insurance_records = relationship("InsuranceRecord", back_populates="user")
@@ -100,7 +107,8 @@ class MedicalRecord(Base):
     date = Column(DateTime, nullable=False)
     hospital = Column(String(100), nullable=False)
     department = Column(String(50), nullable=False)
-    diagnosis = Column(String(200), nullable=False)
+    # 等保三级·存储加密：诊断（敏感个人信息），未配密钥时明文兼容
+    diagnosis = Column(EncryptedString, nullable=False)
     visit_type = Column(String(30), nullable=False)
     total_cost = Column(Float, nullable=False)
     reimbursed_amount = Column(Float, nullable=False)
@@ -114,7 +122,8 @@ class MedicationRecord(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     date = Column(DateTime, nullable=False)
-    medication_name = Column(String(100), nullable=False)
+    # 等保三级·存储加密：药品名（用药史，敏感个人信息），未配密钥时明文兼容
+    medication_name = Column(EncryptedString, nullable=False)
     category = Column(String(50), nullable=False)
     quantity = Column(Integer, nullable=False)
     unit_price = Column(Float, nullable=False)
@@ -268,9 +277,10 @@ class BodyRecord(Base):
     # 器官/部位 key（见 services/body/taxonomy.py）
     organ = Column(String(40), nullable=False, index=True)
     # 原文转述
-    description = Column(Text, nullable=False)
+    # 等保三级·存储加密：原文转述与原文片段（健康自述，敏感个人信息），未配密钥时明文兼容
+    description = Column(EncryptedText, nullable=False)
     # 原文片段（逐字）
-    raw_excerpt = Column(Text, default="")
+    raw_excerpt = Column(EncryptedText, default="")
     # 检查/发生时间，允许不完整："2026-02" / "2026-07-15" / ""
     event_date = Column(String(10), default="")
     # chat | upload
@@ -433,3 +443,72 @@ class AccessDenialLog(Base):
     reason = Column(String(60), nullable=False)  # missing_session/cross_user_access/…
     client_ip = Column(String(64), default="")
     token_present = Column(Boolean, default=False)
+
+
+class FederatedNode(Base):
+    """联邦节点注册表（P1.1 医院侧节点 Agent）。
+
+    平台只保存节点名称与凭证哈希（sha256），不接触任何患者数据；
+    节点 token 仅在注册响应中明文返回一次，此后节点持有、平台比对哈希。
+    """
+
+    __tablename__ = "federated_nodes"
+
+    id = Column(String(36), primary_key=True)
+    name = Column(String(100), nullable=False)  # 医院/节点名称
+    token_hash = Column(String(64), nullable=False, index=True)  # sha256(node_token)
+    status = Column(String(20), nullable=False, default="active")  # active/disabled
+    # P1.3 节点存活可见性：节点面任一认证通过的请求都会刷新（管理端据此发现掉线节点）
+    last_seen_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
+
+
+class DistributedJob(Base):
+    """分布式联邦任务（真实部署形态，区别于进程内仿真的 federation_jobs）。
+
+    coordinator 只持有：任务配置、聚合联邦统计（scaler）、聚合模型参数、
+    各节点上报的聚合指标；原始数据自始至终不出节点。
+    prev_hash/event_hash：任务级存证链（与 federation_jobs 同款 sha256 串联）。
+    """
+
+    __tablename__ = "distributed_federation_jobs"
+
+    id = Column(String(36), primary_key=True)
+    task = Column(String(100), nullable=False, default="hf_readmission")
+    rounds = Column(Integer, nullable=False, default=12)
+    local_epochs = Column(Integer, nullable=False, default=3)
+    dp_sigma = Column(Float, nullable=False, default=0.0)
+    clip_norm = Column(Float, nullable=False, default=1.0)
+    # P1.3 增加 paused：管理端手动暂停（节点拔线/检修），resume 后从 current_round 断点续训
+    status = Column(String(20), nullable=False, default="collecting")  # collecting/running/paused/done/failed
+    current_round = Column(Integer, nullable=False, default=0)  # 0=收集联邦统计阶段
+    expected_nodes = Column(Text, nullable=False, default="[]")  # JSON：被指派节点 id 列表
+    scaler_state = Column(Text, nullable=True)  # JSON {n, mean, std} 全局标准化器（聚合量）
+    global_coef = Column(Text, nullable=True)  # JSON 当前全局模型参数（聚合量）
+    result = Column(Text, nullable=True)  # JSON 最终结果（加权 AUC、逐节点指标）
+    duration_ms = Column(Integer, nullable=True)
+    prev_hash = Column(String(64), nullable=True)
+    event_hash = Column(String(64), nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
+
+
+class DistributedUpdate(Base):
+    """节点上行参数记录（应用层 AES-256-GCM 加密信封）。
+
+    payload_enc 存密文信封原文（`enc2:key_id:nonce:ct`，密钥环 FEDERATION_PARAM_KEYS/
+    FEDERATION_PARAM_KEY；旧 enc1:nonce:ct 过渡兼容）；
+    平台聚合时即时解密、落库仅存密文与聚合指标，明文参数不留存；
+    密钥轮换后旧密钥销毁 → 历史密文永久不可解密（P1.2 验收语义）。
+    """
+
+    __tablename__ = "distributed_job_updates"
+
+    id = Column(Integer, primary_key=True, index=True)
+    job_id = Column(String(36), nullable=False, index=True)
+    node_id = Column(String(36), nullable=False, index=True)
+    round_idx = Column("round", Integer, nullable=False)  # 0=联邦统计阶段
+    kind = Column(String(20), nullable=False)  # moments/update
+    payload_enc = Column(Text, nullable=False)  # 加密信封（或联调模式明文 JSON）
+    n_samples = Column(Integer, nullable=True)
+    local_auc = Column(Float, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
