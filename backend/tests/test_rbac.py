@@ -74,14 +74,18 @@ def _admin_token() -> str:
 def test_token_carries_role():
     token = issue_user_token(2, role="regulator")
     ident = parse_token_identity(token)
-    assert ident == (2, "regulator")
+    assert ident == (2, "regulator", None)
     # parse_user_token 兼容旧签名（只取 uid）
     assert parse_user_token(token) == 2
+
+    # P2.3：hospital_id 写入签名 payload 并可解析
+    token2 = issue_user_token(2, role="hospital_admin", hospital_id=7)
+    assert parse_token_identity(token2) == (2, "hospital_admin", 7)
 
 
 def test_token_default_member_and_legacy_compat():
     ident = parse_token_identity(issue_user_token(1))
-    assert ident == (1, "member")
+    assert ident == (1, "member", None)
     # 旧 3 段格式 uid|exp|sig → member（issue 后手工转旧格式）
     uid, exp = 1, 9999999999
     import hashlib
@@ -91,7 +95,11 @@ def test_token_default_member_and_legacy_compat():
     secret = os_mod.getenv("YIBAO_SESSION_SECRET", "demo").encode()
     payload = f"{uid}|{exp}"
     sig = hmac_mod.new(secret, payload.encode(), hashlib.sha256).hexdigest()[:32]
-    assert parse_token_identity(f"{payload}|{sig}") == (1, "member")
+    assert parse_token_identity(f"{payload}|{sig}") == (1, "member", None)
+    # 旧 4 段格式 uid|exp|role|sig（P2.3 之前）→ hospital_id=None
+    payload4 = f"{uid}|{exp}|operator"
+    sig4 = hmac_mod.new(secret, payload4.encode(), hashlib.sha256).hexdigest()[:32]
+    assert parse_token_identity(f"{payload4}|{sig4}") == (1, "operator", None)
 
 
 def test_token_role_tamper_rejected():

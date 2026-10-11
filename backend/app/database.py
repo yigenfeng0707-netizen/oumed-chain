@@ -28,6 +28,10 @@ async def init_db():
             "ALTER TABLE users ADD COLUMN role VARCHAR(30) NOT NULL DEFAULT 'member'",
             # P1.3 节点存活可见性：最后活跃时间（可空，历史节点未上报前为 NULL）
             "ALTER TABLE federated_nodes ADD COLUMN last_seen_at DATETIME",
+            # P2.3 多租户：医院级租户归属（可空，历史数据 NULL=平台直管）
+            "ALTER TABLE users ADD COLUMN hospital_id INTEGER",
+            "ALTER TABLE federated_nodes ADD COLUMN hospital_id INTEGER",
+            "ALTER TABLE distributed_federation_jobs ADD COLUMN hospital_id INTEGER",
         ):
             with suppress(Exception):  # 列已存在
                 await conn.execute(text(ddl))

@@ -9,7 +9,7 @@
 
 本台账是"字段级分级标签覆盖 100% 数据表"验收的唯一事实源：
 tests/test_data_classification.py 遍历 SQLAlchemy 元数据强制校验
-（新增表/列而未登记 → 测试红），覆盖 23 张表全字段。
+（新增表/列而未登记 → 测试红），覆盖 25 张表全字段。
 
 配套策略（按级别，详见管理办法）：
 - 4 级：存储加密 + 单独同意 + 禁出域交易 + 导出脱敏（encrypted=True 标记已落地加密）；
@@ -58,6 +58,15 @@ _REGISTRY: dict[str, dict[str, dict]] = {
                   "note": "确定性 AES-GCM（等值查询保序）；展示需打码 a***@x.cn"},
         "password_hash": {"category": "其他", "level": 3, "note": "PBKDF2 单向哈希，非明文可逆"},
         "role": {"category": "其他", "level": 1, "note": "RBAC 角色"},
+        "hospital_id": {"category": "其他", "level": 1,
+                        "note": "医院租户归属（P2.3 多租户，内部标识；NULL=平台/患者侧）"},
+        "created_at": {"category": "其他", "level": 1},
+    },
+    "hospitals": {
+        "id": {"category": "其他", "level": 1},
+        "name": {"category": "卫生资源", "level": 2, "note": "医院租户名称"},
+        "code": {"category": "卫生资源", "level": 2, "note": "租户编码（唯一）"},
+        "status": {"category": "其他", "level": 1},
         "created_at": {"category": "其他", "level": 1},
     },
     "chat_conversations": {
@@ -218,6 +227,8 @@ _REGISTRY: dict[str, dict[str, dict]] = {
     "federated_nodes": {
         "id": {"category": "其他", "level": 1},
         "name": {"category": "卫生资源", "level": 2, "note": "医院/节点名称"},
+        "hospital_id": {"category": "其他", "level": 1,
+                        "note": "节点归属医院租户（P2.3 多租户；NULL=平台直管）"},
         "token_hash": {"category": "其他", "level": 3,
                        "note": "节点凭证 sha256 单向哈希，非明文可逆"},
         "status": {"category": "其他", "level": 1},
@@ -234,6 +245,8 @@ _REGISTRY: dict[str, dict[str, dict]] = {
         "clip_norm": {"category": "其他", "level": 1},
         "status": {"category": "其他", "level": 1},
         "current_round": {"category": "其他", "level": 1},
+        "hospital_id": {"category": "其他", "level": 1,
+                        "note": "发起租户（P2.3 多租户；NULL=平台级任务）"},
         "expected_nodes": {"category": "其他", "level": 2, "note": "被指派节点 id 清单"},
         "scaler_state": {"category": "公共卫生", "level": 2,
                          "note": "聚合联邦统计（均值/方差），不含个体记录"},
@@ -257,6 +270,14 @@ _REGISTRY: dict[str, dict[str, dict]] = {
         "n_samples": {"category": "公共卫生", "level": 2, "note": "节点样本量（聚合量）"},
         "local_auc": {"category": "公共卫生", "level": 2, "note": "节点本地验证 AUC（聚合指标）"},
         "created_at": {"category": "其他", "level": 1},
+    },
+    "tenant_usage_daily": {
+        "id": {"category": "其他", "level": 1},
+        "usage_date": {"category": "其他", "level": 1, "note": "计量日期 YYYY-MM-DD（UTC）"},
+        "hospital_id": {"category": "其他", "level": 1, "note": "租户（内部标识）"},
+        "metric": {"category": "其他", "level": 1, "note": "计量指标：federated_jobs/node_updates"},
+        "value": {"category": "公共卫生", "level": 2, "note": "用量计数（聚合统计，计费计量用）"},
+        "updated_at": {"category": "其他", "level": 1},
     },
     "data_products": {
         "id": {"category": "其他", "level": 1},

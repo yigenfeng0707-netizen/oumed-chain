@@ -94,36 +94,47 @@ def _session_secret() -> str:
     return os.getenv("YIBAO_SESSION_SECRET", "demo")
 
 
-def issue_user_token(user_id: int, ttl: int = USER_TOKEN_TTL, role: str = "member") -> str:
-    """签发用户 token：payload=uid|exp|role，sig=HMAC-SHA256(payload)[:32]。
+def issue_user_token(user_id: int, ttl: int = USER_TOKEN_TTL, role: str = "member",
+                     hospital_id: int | None = None) -> str:
+    """签发用户 token：payload=uid|exp|role|hospital_id，sig=HMAC-SHA256(payload)[:32]。
 
-    角色写入签名 payload 防篡改；role 缺省 member（患者用户）。
+    角色与租户归属（P2.3 多租户）写入签名 payload 防篡改；
+    role 缺省 member（患者用户）；hospital_id 缺省 None（平台/患者侧无租户归属）。
     """
     if role not in ROLES:
         raise ValueError(f"非法角色: {role}")
     exp = int(time.time()) + ttl
-    payload = f"{user_id}|{exp}|{role}"
+    payload = f"{user_id}|{exp}|{role}|{hospital_id if hospital_id is not None else ''}"
     sig = hmac.new(_session_secret().encode("utf-8"), payload.encode("utf-8"), hashlib.sha256).hexdigest()[:32]
     return f"{payload}|{sig}"
 
 
-def parse_token_identity(token: str | None) -> tuple[int, str] | None:
-    """解析并验证 token，返回 (user_id, role)；无效/过期返回 None。
+def parse_token_identity(token: str | None) -> tuple[int, str, int | None] | None:
+    """解析并验证 token，返回 (user_id, role, hospital_id)；无效/过期返回 None。
 
-    向后兼容旧 3 段格式 uid|exp|sig（角色按 member 处理）。
+    向后兼容：旧 4 段 uid|exp|role|sig（hospital_id 按 None）与
+    更旧 3 段 uid|exp|sig（角色按 member、hospital_id 按 None）。
     """
     if not token:
         return None
     parts = token.split("|")
-    if len(parts) == 4:  # 新格式：uid|exp|role|sig
+    if len(parts) == 5:  # 新格式：uid|exp|role|hospital_id|sig
+        uid_s, exp_s, role, hid_s, sig = parts
+        payload = f"{uid_s}|{exp_s}|{role}|{hid_s}"
+        if role not in ROLES:
+            return None
+        hospital_id = int(hid_s) if hid_s.isdigit() else None
+    elif len(parts) == 4:  # 旧格式：uid|exp|role|sig（签名基串保持原样，不带尾随管道）
         uid_s, exp_s, role, sig = parts
         payload = f"{uid_s}|{exp_s}|{role}"
         if role not in ROLES:
             return None
-    elif len(parts) == 3:  # 旧格式：uid|exp|sig
+        hospital_id = None
+    elif len(parts) == 3:  # 更旧格式：uid|exp|sig（签名基串保持原样）
         uid_s, exp_s, sig = parts
         role = "member"
         payload = f"{uid_s}|{exp_s}"
+        hospital_id = None
     else:
         return None
     expected = hmac.new(_session_secret().encode("utf-8"), payload.encode("utf-8"), hashlib.sha256).hexdigest()[:32]
@@ -132,7 +143,7 @@ def parse_token_identity(token: str | None) -> tuple[int, str] | None:
     try:
         if int(exp_s) < time.time():
             return None  # 已过期
-        return int(uid_s), role
+        return int(uid_s), role, hospital_id
     except ValueError:
         return None
 

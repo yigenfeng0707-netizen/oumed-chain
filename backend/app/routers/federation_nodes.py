@@ -30,10 +30,11 @@ import numpy as np
 from app.config import settings
 from app.database import get_db
 from app.deps import require_roles
-from app.models import DistributedJob, DistributedUpdate, FederatedNode
+from app.models import DistributedJob, DistributedUpdate, FederatedNode, Hospital
 from app.services.federation_coordinator import (aggregate_coef, aggregate_moments,
                                                   open_envelope, weighted_auc)
 from app.services.privacy_accountant import privacy_report
+from app.services.tenant_usage import record_usage
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/federation/nodes", tags=["联邦节点协作"])
@@ -45,6 +46,8 @@ router = APIRouter(prefix="/api/federation/nodes", tags=["联邦节点协作"])
 
 class NodeCreate(BaseModel):
     name: str = Field(min_length=1, max_length=100, description="医院/节点名称")
+    # P2.3 多租户：operator 可指定归属租户；hospital_admin 忽略该字段（强制本院）
+    hospital_id: int | None = Field(default=None, description="归属医院租户 id（operator 用）")
 
 
 class DistJobCreate(BaseModel):
@@ -108,6 +111,36 @@ def _open_payload(payload: str) -> dict:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
 
+# ---------------------------------------------------------------------------
+# P2.3 多租户：管理面租户作用域
+# ---------------------------------------------------------------------------
+
+def _tenant_scope(actor: dict) -> int | None:
+    """管理面租户作用域：hospital_admin → 本院 id（token 未绑定 → 403）；
+    operator / 超管 → None（全局视图）。
+
+    hospital_id 写在 HMAC 签名 token payload 内，不可伪造；
+    用户被绑定租户后重新登录生效（无状态 token 权衡）。
+    """
+    if actor["role"] == "hospital_admin":
+        hid = actor.get("hospital_id")
+        if hid is None:
+            raise HTTPException(
+                status_code=403,
+                detail="医院管理员账号未绑定租户，请联系平台分配归属医院后重新登录")
+        return hid
+    return None
+
+
+async def _assert_owned_job(job: DistributedJob, scope: int | None):
+    """写/读操作资源归属校验：租户管理员只能操作本院发起的任务。
+
+    非本院任务按 404 处理（不泄露跨租户资源存在性）。
+    """
+    if scope is not None and job.hospital_id != scope:
+        raise HTTPException(status_code=404, detail=f"任务 {job.id} 不存在")
+
+
 def _check_update_sanity(job: DistributedJob, coef: list[float]):
     """P1.3 恶意参数方向检测：上行参数与当前全局模型 cosine 相似度过低 → 422。
 
@@ -166,7 +199,7 @@ def _job_to_dict(job: DistributedJob, include_result: bool = True) -> dict:
         "id": job.id, "task": job.task, "rounds": job.rounds,
         "local_epochs": job.local_epochs, "dp_sigma": job.dp_sigma,
         "clip_norm": job.clip_norm, "status": job.status,
-        "round": job.current_round,
+        "round": job.current_round, "hospital_id": job.hospital_id,
         "nodes": json.loads(job.expected_nodes),
         "prev_hash": job.prev_hash, "event_hash": job.event_hash,
         "created_at": job.created_at.isoformat() if job.created_at else None,
@@ -184,27 +217,49 @@ def _job_to_dict(job: DistributedJob, include_result: bool = True) -> dict:
 async def register_node(
     req: NodeCreate,
     db: AsyncSession = Depends(get_db),
-    _guard: dict = Depends(require_roles("hospital_admin", "operator")),
+    actor: dict = Depends(require_roles("hospital_admin", "operator")),
 ):
-    """注册医院侧节点：node_token 仅本次明文返回，平台只存 sha256 哈希。"""
-    node = FederatedNode(id=str(uuid.uuid4()), name=req.name)
+    """注册医院侧节点：node_token 仅本次明文返回，平台只存 sha256 哈希。
+
+    P2.3 多租户：hospital_admin 注册的节点强制归属本院；operator 可指定
+    hospital_id（须为已存在租户），不指定为平台直管节点（hospital_id=None）。
+    """
+    scope = _tenant_scope(actor)
+    if scope is not None:
+        hid = scope
+    elif req.hospital_id is not None:
+        hid = req.hospital_id
+        if await db.get(Hospital, hid) is None:
+            raise HTTPException(status_code=400, detail=f"医院租户 {hid} 不存在")
+    else:
+        hid = None
+    node = FederatedNode(id=str(uuid.uuid4()), name=req.name, hospital_id=hid)
     token = secrets.token_urlsafe(32)
     node.token_hash = _token_hash(token)
     db.add(node)
     await db.commit()
-    logger.info("联邦节点注册: %s (%s)", req.name, node.id)
-    return {"node_id": node.id, "name": node.name, "node_token": token,
+    logger.info("联邦节点注册: %s (%s, 租户=%s)", req.name, node.id, hid)
+    return {"node_id": node.id, "name": node.name, "hospital_id": node.hospital_id,
+            "node_token": token,
             "note": "节点凭证仅此一次返回，请立即配置到节点 Agent 环境变量 NODE_TOKEN"}
 
 
 @router.get("")
 async def list_nodes(
     db: AsyncSession = Depends(get_db),
-    _guard: dict = Depends(require_roles("hospital_admin", "operator")),
+    actor: dict = Depends(require_roles("hospital_admin", "operator")),
 ):
-    """节点列表（不含任何凭证信息；含最后活跃时间用于掉线发现）。"""
-    nodes = (await db.execute(select(FederatedNode).order_by(FederatedNode.created_at))).scalars().all()
-    return [{"id": n.id, "name": n.name, "status": n.status,
+    """节点列表（不含任何凭证信息；含最后活跃时间用于掉线发现）。
+
+    P2.3 多租户：hospital_admin 仅见本院节点；operator/超管全局。
+    """
+    stmt = select(FederatedNode).order_by(FederatedNode.created_at)
+    scope = _tenant_scope(actor)
+    if scope is not None:
+        stmt = stmt.where(FederatedNode.hospital_id == scope)
+    nodes = (await db.execute(stmt)).scalars().all()
+    return [{"id": n.id, "name": n.name, "hospital_id": n.hospital_id,
+             "status": n.status,
              "last_seen_at": n.last_seen_at.isoformat() if n.last_seen_at else None,
              "created_at": n.created_at.isoformat() if n.created_at else None} for n in nodes]
 
@@ -213,24 +268,33 @@ async def list_nodes(
 async def create_job(
     req: DistJobCreate,
     db: AsyncSession = Depends(get_db),
-    _guard: dict = Depends(require_roles("hospital_admin", "operator")),
+    actor: dict = Depends(require_roles("hospital_admin", "operator")),
 ):
-    """创建分布式联邦任务：指派节点进入 collecting 阶段（等待联邦统计）。"""
+    """创建分布式联邦任务：指派节点进入 collecting 阶段（等待联邦统计）。
+
+    P2.3 多租户：hospital_admin 发起的任务归属本院（发起租户），且只能指派
+    本院节点（跨租户指派 → 403）；operator 可混编多院节点（联邦本意）。
+    医院发起即计入计费计量（federated_jobs）。
+    """
+    scope = _tenant_scope(actor)
     ids = list(dict.fromkeys(req.node_ids))  # 去重保序
     nodes = []
     for nid in ids:
         node = await db.get(FederatedNode, nid)
         if node is None or node.status != "active":
             raise HTTPException(status_code=400, detail=f"节点 {nid} 不存在或已停用")
+        if scope is not None and node.hospital_id != scope:
+            raise HTTPException(status_code=403, detail=f"节点 {nid} 不属于本院，无法指派")
         nodes.append(node)
     job = DistributedJob(
         id=str(uuid.uuid4()), task=req.task, rounds=req.rounds,
         local_epochs=req.local_epochs, dp_sigma=req.dp_sigma,
         clip_norm=req.clip_norm if req.clip_norm is not None else (0.2 if req.dp_sigma > 0 else 1.0),
-        status="collecting", current_round=0,
+        status="collecting", current_round=0, hospital_id=scope,
         expected_nodes=json.dumps(ids, ensure_ascii=False),
     )
     db.add(job)
+    await record_usage(db, scope, "federated_jobs")  # 计费计量：任务发起（同事务）
     await db.commit()
     return _job_to_dict(job)
 
@@ -239,11 +303,14 @@ async def create_job(
 async def list_jobs(
     limit: int = 20,
     db: AsyncSession = Depends(get_db),
-    _guard: dict = Depends(require_roles("hospital_admin", "operator")),
+    actor: dict = Depends(require_roles("hospital_admin", "operator")),
 ):
-    jobs = (await db.execute(
-        select(DistributedJob).order_by(DistributedJob.created_at.desc()).limit(limit)
-    )).scalars().all()
+    """任务列表：hospital_admin 仅见本院发起任务；operator/超管全局。"""
+    stmt = select(DistributedJob).order_by(DistributedJob.created_at.desc()).limit(limit)
+    scope = _tenant_scope(actor)
+    if scope is not None:
+        stmt = stmt.where(DistributedJob.hospital_id == scope)
+    jobs = (await db.execute(stmt)).scalars().all()
     return [_job_to_dict(j, include_result=False) for j in jobs]
 
 
@@ -251,14 +318,16 @@ async def list_jobs(
 async def get_job(
     job_id: str,
     db: AsyncSession = Depends(get_db),
-    _guard: dict = Depends(require_roles("hospital_admin", "operator", "regulator")),
+    actor: dict = Depends(require_roles("hospital_admin", "operator", "regulator")),
 ):
     """任务详情（含结果、存证哈希与各节点提交进度；监管角色可查）。
 
     P1.3 progress：每个被指派节点的统计/参数提交状态与最后活跃时间，
     管理端据此定位卡住任务的掉线节点（如拔线 30 分钟演练）。
+    P2.3 多租户：非本院发起任务对租户管理员按 404 隐藏。
     """
     job = await _get_job(db, job_id)
+    await _assert_owned_job(job, _tenant_scope(actor))
     d = _job_to_dict(job)
     member_ids = json.loads(job.expected_nodes)
     updates = (await db.execute(
@@ -294,14 +363,16 @@ async def get_job(
 async def pause_job(
     job_id: str,
     db: AsyncSession = Depends(get_db),
-    _guard: dict = Depends(require_roles("hospital_admin", "operator")),
+    actor: dict = Depends(require_roles("hospital_admin", "operator")),
 ):
     """手动暂停任务（节点拔线检修/窗口期）：running→paused、collecting→paused。
 
     paused 期间节点面 assignment 仍可拉取（状态 paused，Agent 轮询自然等待），
     参数/统计上行被 409 拒绝；恢复用 /resume，从 current_round 断点续训。
+    P2.3 多租户：租户管理员仅可暂停本院发起任务（非本院 404）。
     """
     job = await _get_job(db, job_id)
+    await _assert_owned_job(job, _tenant_scope(actor))
     if job.status not in ("collecting", "running"):
         raise HTTPException(status_code=409, detail=f"任务当前 {job.status}，仅进行中任务可暂停")
     job.status = "paused"
@@ -315,14 +386,16 @@ async def pause_job(
 async def resume_job(
     job_id: str,
     db: AsyncSession = Depends(get_db),
-    _guard: dict = Depends(require_roles("hospital_admin", "operator")),
+    actor: dict = Depends(require_roles("hospital_admin", "operator")),
 ):
     """恢复暂停任务：按 current_round 回到原阶段（0=collecting，≥1=running）。
 
     断点续训语义：已提交参数与聚合状态（scaler/global_coef）在暂停期间原样保留，
     恢复后未提交节点补齐本轮即可推进——最终结果与不间断运行一致（有测试背书）。
+    P2.3 多租户：租户管理员仅可恢复本院发起任务（非本院 404）。
     """
     job = await _get_job(db, job_id)
+    await _assert_owned_job(job, _tenant_scope(actor))
     if job.status != "paused":
         raise HTTPException(status_code=409, detail=f"任务当前 {job.status}，仅暂停中任务可恢复")
     job.status = "collecting" if job.current_round == 0 else "running"
@@ -427,6 +500,7 @@ async def upload_moments(
 
     db.add(DistributedUpdate(job_id=job.id, node_id=node.id, round_idx=0,
                              kind="moments", payload_enc=body.payload, n_samples=n))
+    await record_usage(db, node.hospital_id, "node_updates")  # 计费计量：上行次数（同事务）
     await db.flush()
 
     submitted = {u.node_id for u in existing} | {node.id}
@@ -497,6 +571,7 @@ async def upload_update(
     db.add(DistributedUpdate(job_id=job.id, node_id=node.id, round_idx=round_no,
                              kind="update", payload_enc=body.payload,
                              n_samples=n, local_auc=float(local_auc)))
+    await record_usage(db, node.hospital_id, "node_updates")  # 计费计量：上行次数（同事务）
     await db.flush()
 
     rows = (await db.execute(

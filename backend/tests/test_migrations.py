@@ -8,7 +8,9 @@
 与生产 PG 共用同一套脚本——env.py 统一从 DATABASE_URL/settings 取连接串）。
 """
 
+import gc
 import os
+import shutil
 import sys
 import tempfile
 
@@ -29,9 +31,17 @@ def _alembic_config(db_url: str) -> Config:
     return cfg
 
 
+def _cleanup(tmp: str):
+    """Windows 兼容清理：aiosqlite 后台线程关闭文件句柄有延迟，
+    先 GC 促使连接池释放，再容错删除临时目录（删不掉交给系统临时区回收）。"""
+    gc.collect()
+    shutil.rmtree(tmp, ignore_errors=True)
+
+
 def test_migration_repeatable_and_matches_metadata():
     """空库执行 upgrade head（两次，验证幂等）→ 表集合与 ORM metadata 一致。"""
-    with tempfile.TemporaryDirectory() as tmp:
+    tmp = tempfile.mkdtemp()
+    try:
         db_path = os.path.join(tmp, "mig.db").replace("\\", "/")
         url = f"sqlite+aiosqlite:///{db_path}"
         cfg = _alembic_config(url)
@@ -48,11 +58,14 @@ def test_migration_repeatable_and_matches_metadata():
         # 应用 init_db（create_all 幂等）在迁移产物上共存无冲突
         Base.metadata.create_all(engine)
         engine.dispose()
+    finally:
+        _cleanup(tmp)
 
 
 def test_migration_schema_reusable_by_app_engine():
     """迁移建的库可直接连接读写（health 级冒烟：插入+查询一轮）。"""
-    with tempfile.TemporaryDirectory() as tmp:
+    tmp = tempfile.mkdtemp()
+    try:
         db_path = os.path.join(tmp, "mig2.db").replace("\\", "/")
         cfg = _alembic_config(f"sqlite+aiosqlite:///{db_path}")
         command.upgrade(cfg, "head")
@@ -71,3 +84,5 @@ def test_migration_schema_reusable_by_app_engine():
                     "SELECT name, role FROM users WHERE name='迁移冒烟'")).fetchone()
             assert row == ("迁移冒烟", "member")
         engine.dispose()
+    finally:
+        _cleanup(tmp)

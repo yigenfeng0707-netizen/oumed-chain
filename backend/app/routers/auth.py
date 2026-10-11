@@ -101,7 +101,8 @@ async def _get_user_by_email(db: AsyncSession, email: str) -> User | None:
 
 async def _auth_response(db: AsyncSession, user: User) -> dict:
     return {
-        "token": issue_user_token(user.id, role=user.role or "member"),
+        "token": issue_user_token(user.id, role=user.role or "member",
+                                  hospital_id=user.hospital_id),
         "user": _user_payload(user),
         "expires_in": USER_TOKEN_TTL,
     }

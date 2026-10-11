@@ -156,12 +156,13 @@ def get_current_user(
 ) -> dict:
     """完整身份依赖（业务路由标准挂载）：从 token 解析 user_id 与角色。
 
-    - 生产模式：token 无效 → 401；返回 {"user_id", "public_id", "role", "demo_mode": False}
+    - 生产模式：token 无效 → 401；返回 {"user_id", "public_id", "role", "hospital_id", "demo_mode": False}
     - 演示模式：返回 anonymous 演示身份（放行，demo_mode=True）
     角色嵌在 HMAC 签名 payload 内，不可伪造；改库中角色后重新登录生效（无状态 token 权衡）。
     """
     if settings.DEMO_MODE:
-        return {"user_id": None, "public_id": "anonymous", "role": "member", "demo_mode": True}
+        return {"user_id": None, "public_id": "anonymous", "role": "member",
+                "hospital_id": None, "demo_mode": True}
     ident = parse_token_identity(x_user_token)
     if ident is None:
         raise HTTPException(
@@ -169,8 +170,9 @@ def get_current_user(
             detail="未登录或登录已过期，请携带有效 X-User-Token",
             headers={"WWW-Authenticate": "UserToken"},
         )
-    uid, role = ident
-    return {"user_id": uid, "public_id": f"user_{uid:03d}", "role": role, "demo_mode": False}
+    uid, role, hospital_id = ident
+    return {"user_id": uid, "public_id": f"user_{uid:03d}", "role": role,
+            "hospital_id": hospital_id, "demo_mode": False}
 
 
 def require_roles(*allowed: str, allow_admin: bool = True):
@@ -191,9 +193,11 @@ def require_roles(*allowed: str, allow_admin: bool = True):
         x_admin_token: str | None = Header(None, alias="X-Admin-Token"),
     ) -> dict:
         if settings.DEMO_MODE:
-            return {"user_id": None, "public_id": "anonymous", "role": "member", "demo_mode": True}
+            return {"user_id": None, "public_id": "anonymous", "role": "member",
+                    "hospital_id": None, "demo_mode": True}
         if allow_admin and _valid_admin_token(x_admin_token):
-            return {"user_id": None, "public_id": "super_admin", "role": "super_admin", "demo_mode": False}
+            return {"user_id": None, "public_id": "super_admin", "role": "super_admin",
+                    "hospital_id": None, "demo_mode": False}
         ident = parse_token_identity(x_user_token)
         if ident is None:
             await _log_denial(request, 401, "missing_or_invalid_user_token", None, bool(x_user_token))
@@ -202,13 +206,14 @@ def require_roles(*allowed: str, allow_admin: bool = True):
                 detail="未登录或登录已过期，请携带有效 X-User-Token",
                 headers={"WWW-Authenticate": "UserToken"},
             )
-        uid, role = ident
+        uid, role, hospital_id = ident
         if role not in allowed_set:
             await _log_denial(request, 403, "role_forbidden", f"user_{uid:03d}", True)
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"需要角色 {'/'.join(allowed)}，当前角色 {role}",
             )
-        return {"user_id": uid, "public_id": f"user_{uid:03d}", "role": role, "demo_mode": False}
+        return {"user_id": uid, "public_id": f"user_{uid:03d}", "role": role,
+                "hospital_id": hospital_id, "demo_mode": False}
 
     return guard

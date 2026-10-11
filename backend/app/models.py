@@ -10,6 +10,7 @@ from sqlalchemy import (
     LargeBinary,
     String,
     Text,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import DeclarativeBase, relationship
 
@@ -39,6 +40,8 @@ class User(Base):
     # RBAC 角色（P0-1.1 多角色）：member=患者用户（默认）/ hospital_admin=医院管理员 /
     # doctor=医生 / regulator=数据局监管 / operator=平台运营；超管走 X-Admin-Token 不入库
     role = Column(String(30), nullable=False, default="member", server_default="member")
+    # P2.3 多租户：医院级租户归属（可空=平台/患者侧用户，无租户隔离）
+    hospital_id = Column(Integer, index=True, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     insurance_records = relationship("InsuranceRecord", back_populates="user")
@@ -52,6 +55,23 @@ class User(Base):
     body_records = relationship("BodyRecord", back_populates="user")
     body_archive_files = relationship("BodyArchiveFile", back_populates="user")
     chat_conversations = relationship("ChatConversation", back_populates="user")
+
+
+class Hospital(Base):
+    """医院租户（P2.3 多租户隔离的顶层归属实体）。
+
+    医院级租户：用户（hospital_admin/doctor 等）与联邦节点通过 hospital_id
+    挂到租户下；管理面列表/详情按租户 scope 过滤，写操作校验资源归属。
+    code 为对外租户编码（唯一），如 "wz-fy"。
+    """
+
+    __tablename__ = "hospitals"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), nullable=False)
+    code = Column(String(40), nullable=False, unique=True, index=True)
+    status = Column(String(20), nullable=False, default="active")  # active/disabled
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
 
 
 class ChatConversation(Base):
@@ -456,6 +476,8 @@ class FederatedNode(Base):
 
     id = Column(String(36), primary_key=True)
     name = Column(String(100), nullable=False)  # 医院/节点名称
+    # P2.3 多租户：节点归属医院租户（可空=平台直管节点，历史数据 NULL）
+    hospital_id = Column(Integer, index=True, nullable=True)
     token_hash = Column(String(64), nullable=False, index=True)  # sha256(node_token)
     status = Column(String(20), nullable=False, default="active")  # active/disabled
     # P1.3 节点存活可见性：节点面任一认证通过的请求都会刷新（管理端据此发现掉线节点）
@@ -482,6 +504,8 @@ class DistributedJob(Base):
     # P1.3 增加 paused：管理端手动暂停（节点拔线/检修），resume 后从 current_round 断点续训
     status = Column(String(20), nullable=False, default="collecting")  # collecting/running/paused/done/failed
     current_round = Column(Integer, nullable=False, default=0)  # 0=收集联邦统计阶段
+    # P2.3 多租户：发起租户（hospital_admin 创建=其医院；operator 创建=None=平台级）
+    hospital_id = Column(Integer, index=True, nullable=True)
     expected_nodes = Column(Text, nullable=False, default="[]")  # JSON：被指派节点 id 列表
     scaler_state = Column(Text, nullable=True)  # JSON {n, mean, std} 全局标准化器（聚合量）
     global_coef = Column(Text, nullable=True)  # JSON 当前全局模型参数（聚合量）
@@ -512,3 +536,25 @@ class DistributedUpdate(Base):
     n_samples = Column(Integer, nullable=True)
     local_auc = Column(Float, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False)
+
+
+class TenantUsageDaily(Base):
+    """租户计费计量日报（P2.3 多租户·计量报表唯一事实源）。
+
+    按 (日期, 医院, 指标) 聚合的用量计数，业务写入点 upsert 累加：
+    - federated_jobs：医院发起的分布式联邦任务数（create_job）
+    - node_updates：该院节点的参数/统计上行次数（moments/update 落库成功）
+    报表端点 /api/admin/tenants/usage 按 scope 输出（hospital_admin 强制本院）。
+    """
+
+    __tablename__ = "tenant_usage_daily"
+    __table_args__ = (UniqueConstraint("usage_date", "hospital_id", "metric",
+                                       name="uq_tenant_usage_day_hospital_metric"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    usage_date = Column(String(10), nullable=False, index=True)  # YYYY-MM-DD（UTC）
+    hospital_id = Column(Integer, nullable=False, index=True)
+    metric = Column(String(40), nullable=False)  # federated_jobs / node_updates / …
+    value = Column(Integer, nullable=False, default=0)
+    updated_at = Column(DateTime, default=lambda: datetime.now(UTC), nullable=False,
+                        onupdate=lambda: datetime.now(UTC))

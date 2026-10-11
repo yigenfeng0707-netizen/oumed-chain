@@ -29,16 +29,17 @@ from app.auth import ROLES
 from app.config import settings
 from app.database import get_db
 from app.deps import require_roles
-from app.services import chain_anchor, login_guard
 from app.models import (
     BodyRecord,
     ChatConversation,
     ChatMessage,
     EEGRecord,
+    Hospital,
     ImagingRecord,
     MedicalRecord,
     User,
 )
+from app.services import chain_anchor, login_guard, tenant_usage
 
 logger = logging.getLogger(__name__)
 
@@ -253,21 +254,29 @@ async def admin_overview(
 
 @router.get("/users")
 async def admin_users(
-    admin: str = Depends(require_admin),
+    actor: dict = Depends(require_roles("operator", "hospital_admin")),
     db: AsyncSession = Depends(get_db),
     limit: int = 200,
 ):
-    """用户列表（含 RBAC 角色）：管理后台用户与角色管理用（P0-1.1）。"""
-    rows = (
-        (await db.execute(
-            select(User).order_by(User.id).limit(min(limit, 1000))
-        ))
-        .scalars()
-        .all()
-    )
+    """用户列表（含 RBAC 角色）：管理后台用户与角色管理用（P0-1.1）。
+
+    P2.3 多租户：hospital_admin 仅见本院用户（scope 到本院，含无租户平台用户
+    均不可见）；operator/超管全局。返回体含 scope 说明。
+    """
+    stmt = select(User).order_by(User.id).limit(min(limit, 1000))
+    scope = None
+    if actor["role"] == "hospital_admin":
+        scope = actor.get("hospital_id")
+        if scope is None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="医院管理员账号未绑定租户，请联系平台分配归属医院后重新登录")
+        stmt = stmt.where(User.hospital_id == scope)
+    rows = (await db.execute(stmt)).scalars().all()
     return {
         "total": len(rows),
         "roles": list(ROLES),
+        "scope_hospital_id": scope,
         "users": [
             {
                 "id": u.id,
@@ -275,6 +284,7 @@ async def admin_users(
                 "name": u.name,
                 "email": u.email,
                 "role": u.role or "member",
+                "hospital_id": u.hospital_id,
                 "city": u.city,
                 "created_at": _fmt_dt(u.created_at),
             }
@@ -285,6 +295,8 @@ async def admin_users(
 
 class RoleUpdateRequest(BaseModel):
     role: str
+    # P2.3 多租户：可选同时绑定医院租户（hospital_admin 建议必绑，否则租户端点 403）
+    hospital_id: int | None = None
 
     @field_validator("role")
     @classmethod
@@ -304,25 +316,32 @@ async def admin_set_user_role(
 ):
     """设置用户 RBAC 角色（仅超管；P0-1.1 多角色）。
 
-    无状态 token 权衡：角色写入签名 payload，被改角色用户重新登录后生效；
-    如需立即生效可轮换 YIBAO_SESSION_SECRET 全量失效会话。
+    P2.3 多租户：可选 hospital_id 同时绑定医院租户（写入签名 token 后重新
+    登录生效）；绑定前校验租户存在。无状态 token 权衡：角色/租户写入签名
+    payload，被改用户重新登录后生效；如需立即生效可轮换 YIBAO_SESSION_SECRET
+    全量失效会话。
     """
     user = await crud.get_user(db, user_id)
     if user is None:
         raise HTTPException(status_code=404, detail="用户不存在")
+    if payload.hospital_id is not None and await db.get(Hospital, payload.hospital_id) is None:
+        raise HTTPException(status_code=400, detail=f"医院租户 {payload.hospital_id} 不存在")
     old_role = user.role or "member"
     user.role = payload.role
+    if payload.hospital_id is not None:
+        user.hospital_id = payload.hospital_id
     await db.commit()
-    logger.info("RBAC 角色变更: %s %s → %s（操作者: %s）",
+    logger.info("RBAC 角色变更: %s %s → %s（租户=%s，操作者: %s）",
                 user.public_id if hasattr(user, "public_id") else f"user_{user.id:03d}",
-                old_role, payload.role, admin)
+                old_role, payload.role, user.hospital_id, admin)
     return {
         "user_id": user.id,
         "public_id": f"user_{user.id:03d}",
         "name": user.name,
         "old_role": old_role,
         "role": user.role,
-        "note": "重新登录后新角色生效（token 无状态签名）",
+        "hospital_id": user.hospital_id,
+        "note": "重新登录后新角色/租户归属生效（token 无状态签名）",
     }
 
 
@@ -529,4 +548,132 @@ async def admin_payments(
         "paid_count": len(paid),
         "revenue_cents": sum(o.amount_cents for o in paid),
         "orders": [_order_to_dict(o) for o in orders],
+    }
+
+
+# ============================================================
+# 医院租户管理（P2.3 多租户）：CRUD + 计费计量报表
+# ============================================================
+
+class HospitalCreateRequest(BaseModel):
+    name: str
+    code: str
+
+    @field_validator("name", "code")
+    @classmethod
+    def _strip(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("不能为空")
+        return v
+
+
+class HospitalStatusRequest(BaseModel):
+    status: str
+
+    @field_validator("status")
+    @classmethod
+    def _check_status(cls, v: str) -> str:
+        if v not in ("active", "disabled"):
+            raise ValueError("status 需为 active/disabled")
+        return v
+
+
+@router.post("/hospitals")
+async def admin_create_hospital(
+    payload: HospitalCreateRequest,
+    admin: str = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """创建医院租户（仅超管）：code 全局唯一。"""
+    exists = (await db.execute(
+        select(Hospital).where(Hospital.code == payload.code)
+    )).scalar_one_or_none()
+    if exists is not None:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT,
+                            detail=f"租户编码 {payload.code} 已存在")
+    hospital = Hospital(name=payload.name, code=payload.code)
+    db.add(hospital)
+    await db.commit()
+    logger.info("医院租户创建: %s (%s, id=%s, 操作者: %s)",
+                hospital.name, hospital.code, hospital.id, admin)
+    return {"id": hospital.id, "name": hospital.name, "code": hospital.code,
+            "status": hospital.status,
+            "created_at": _fmt_dt(hospital.created_at)}
+
+
+@router.get("/hospitals")
+async def admin_list_hospitals(
+    actor: dict = Depends(require_roles("operator", "hospital_admin")),
+    db: AsyncSession = Depends(get_db),
+):
+    """医院租户列表（含各租户用量汇总）：hospital_admin 仅见本院。"""
+    stmt = select(Hospital).order_by(Hospital.id)
+    if actor["role"] == "hospital_admin":
+        scope = actor.get("hospital_id")
+        if scope is None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="医院管理员账号未绑定租户，请联系平台分配归属医院后重新登录")
+        stmt = stmt.where(Hospital.id == scope)
+    hospitals = (await db.execute(stmt)).scalars().all()
+    usage = {u["hospital_id"]: u["totals"] for u in await tenant_usage.usage_summary(db)}
+    return {
+        "scope_hospital_id": actor.get("hospital_id")
+        if actor["role"] == "hospital_admin" else None,
+        "hospitals": [{
+            "id": h.id, "name": h.name, "code": h.code, "status": h.status,
+            "usage_totals": usage.get(h.id, {}),
+            "created_at": _fmt_dt(h.created_at),
+        } for h in hospitals],
+    }
+
+
+@router.put("/hospitals/{hospital_id}/status")
+async def admin_set_hospital_status(
+    hospital_id: int,
+    payload: HospitalStatusRequest,
+    admin: str = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """启用/停用医院租户（仅超管）：停用为管理面标记，节点凭证校验不受影响。"""
+    hospital = await db.get(Hospital, hospital_id)
+    if hospital is None:
+        raise HTTPException(status_code=404, detail="医院租户不存在")
+    hospital.status = payload.status
+    await db.commit()
+    logger.info("医院租户状态变更: %s → %s（操作者: %s）", hospital.code, payload.status, admin)
+    return {"id": hospital.id, "name": hospital.name, "code": hospital.code,
+            "status": hospital.status}
+
+
+@router.get("/tenants/usage")
+async def admin_tenant_usage(
+    actor: dict = Depends(require_roles("operator", "hospital_admin")),
+    db: AsyncSession = Depends(get_db),
+    hospital_id: int | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+):
+    """租户计费计量报表（P2.3 验收：计量报表准确）。
+
+    - hospital_admin：强制本院 scope（hospital_id 参数被忽略，永远只看本院）；
+    - operator/超管：hospital_id 可选（None=全部租户），支持 date_from/date_to 过滤。
+    """
+    scope = None
+    if actor["role"] == "hospital_admin":
+        scope = actor.get("hospital_id")
+        if scope is None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="医院管理员账号未绑定租户，请联系平台分配归属医院后重新登录")
+    elif hospital_id is not None:
+        scope = hospital_id
+    report = await tenant_usage.usage_report(db, hospital_id=scope,
+                                             date_from=date_from, date_to=date_to)
+    return {
+        "scope_hospital_id": scope,
+        "date_from": date_from,
+        "date_to": date_to,
+        **report,
     }
