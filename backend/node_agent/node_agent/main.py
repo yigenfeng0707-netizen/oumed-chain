@@ -7,12 +7,17 @@
 4. running 阶段：每轮拉取全局模型 → 本地训练（DP 可选）→ 上传加密参数 + 本地 AUC；
 5. done：打印联邦结果退出；failed/异常：非零退出码。
 
+容错：全部 API 调用经指数退避重试（医院内网瞬时抖动/平台短暂重启不杀节点，
+POST 靠平台 409 幂等语义保证重试安全）；凭证无效（401）类错误不重试直接退出。
+
 HTTP 用标准库 urllib（Agent 零第三方 HTTP 依赖）。
 """
 
 from __future__ import annotations
 
+import http.client
 import json
+import ssl
 import sys
 import time
 import urllib.error
@@ -26,12 +31,25 @@ from node_agent.trainer import (FEATURES, local_auc, load_csv, moments,
                                 split_train_test, standardize, train_round)
 from node_agent.model import dp_sanitize
 
+# Agent 出站恒直连：禁用系统代理（医院内网直通地址，经代理会被劫持/拒绝）
+_OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+
+
+def _opener(context: ssl.SSLContext | None) -> urllib.request.OpenerDirector:
+    """无代理 opener；mTLS 时挂载自定义 SSLContext（OpenerDirector.open
+    不支持 context 参数，必须经 HTTPSHandler 注入）。"""
+    if context is None:
+        return _OPENER
+    return urllib.request.build_opener(urllib.request.ProxyHandler({}),
+                                       urllib.request.HTTPSHandler(context=context))
+
 
 def _api(method: str, path: str, body: dict | None = None) -> tuple[int, dict]:
     """节点侧 API 调用：恒携带 X-Node-Id / X-Node-Token 机器凭证。
 
     TLS/mTLS：配置了 TLS_CA_CERT/TLS_CLIENT_CERT 时通过自定义 SSLContext 发起
     （CA 验证服务端 + 客户端证书双向认证）；默认走系统 CA 的单向 TLS。
+    恒直连不走系统代理（coordinator 多为内网直通地址，经代理转发会被劫持/拒绝）。
     """
     url = config.COORDINATOR_URL.rstrip("/") + path
     data = json.dumps(body).encode("utf-8") if body is not None else None
@@ -41,14 +59,17 @@ def _api(method: str, path: str, body: dict | None = None) -> tuple[int, dict]:
     req.add_header("X-Node-Token", config.NODE_TOKEN)
     context = tls.ssl_context() if url.startswith("https://") else None
     try:
-        with urllib.request.urlopen(req, timeout=30, context=context) as resp:
+        with _opener(context).open(req, timeout=30) as resp:
             return resp.status, json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as e:
         try:
             return e.code, json.loads(e.read().decode("utf-8"))
         except Exception:  # noqa: BLE001
             return e.code, {}
-    except urllib.error.URLError as e:
+    except (urllib.error.URLError, ConnectionError, OSError,
+            http.client.HTTPException) as e:
+        # 瞬时网络故障（拒连/重置/超时/半途断开）统一归一为 ConnectionError，
+        # 交由上层 _api_retry 指数退避重试——单次抖动不应杀死医院内网节点
         raise ConnectionError(f"无法连接 coordinator {url}: {e}") from e
 
 
@@ -57,6 +78,28 @@ def discover_job() -> str | None:
     _, jobs = _api("GET", "/api/federation/nodes/my-jobs")
     active = [j for j in jobs if j.get("status") in ("collecting", "running")]
     return active[0]["id"] if active else None
+
+
+def _api_retry(method: str, path: str, body: dict | None = None,
+               max_wait: float = 900.0) -> tuple[int, dict]:
+    """瞬时网络故障指数退避重试（1s 起步、翻倍封顶 15s，默认最长等待 15 分钟）。
+
+    医院内网抖动/平台检修窗口不应让节点退出——断点续训语义下节点只需持续
+    重试到 coordinator 恢复。重试对 POST 安全：moments/update 重复提交均被
+    平台按 409 幂等语义处理，业务等价成功。
+    """
+    delay, waited = 1.0, 0.0
+    while True:
+        try:
+            return _api(method, path, body)
+        except ConnectionError as e:
+            if waited >= max_wait:
+                raise
+            print(f"[节点] coordinator 暂不可达（{e}），{delay:.0f}s 后重试"
+                  f"（已等待 {waited:.0f}s）", file=sys.stderr, flush=True)
+            time.sleep(delay)
+            waited += delay
+            delay = min(delay * 2, 15.0)
 
 
 def run(job_id: str | None = None) -> int:
@@ -80,7 +123,7 @@ def run(job_id: str | None = None) -> int:
     submitted_rounds: set[int] = set()
 
     while True:
-        status, asg = _api("GET", f"/api/federation/nodes/jobs/{job_id}/assignment")
+        status, asg = _api_retry("GET", f"/api/federation/nodes/jobs/{job_id}/assignment")
         if status == 401:
             print(f"[节点] 凭证无效: {asg.get('detail')}", file=sys.stderr)
             return 2
@@ -104,8 +147,8 @@ def run(job_id: str | None = None) -> int:
         if job_status == "collecting":
             if not moments_sent:
                 payload = seal_envelope(moments(X))
-                code, resp = _api("POST", f"/api/federation/nodes/jobs/{job_id}/moments",
-                                  {"payload": payload})
+                code, resp = _api_retry("POST", f"/api/federation/nodes/jobs/{job_id}/moments",
+                                        {"payload": payload})
                 if code in (200, 409):  # 409 = 已提交过（断点重连幂等）
                     moments_sent = True
                     print(f"[节点] 已上传联邦统计（n={len(y)}，仅聚合量）")
@@ -135,8 +178,8 @@ def run(job_id: str | None = None) -> int:
                 "n": int(len(y_tr)),
                 "local_auc": round(local_auc(Xs_te, y_te, np.array(state)), 6),
             })
-            code, resp = _api("POST", f"/api/federation/nodes/jobs/{job_id}/rounds/{round_no}/update",
-                              {"payload": payload})
+            code, resp = _api_retry("POST", f"/api/federation/nodes/jobs/{job_id}/rounds/{round_no}/update",
+                                    {"payload": payload})
             if code == 200:
                 submitted_rounds.add(round_no)
                 print(f"[节点] 第 {round_no}/{asg.get('rounds')} 轮参数已加密上传"

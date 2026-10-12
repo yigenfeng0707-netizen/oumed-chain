@@ -22,7 +22,7 @@ from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Header, HTTPException
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import numpy as np
@@ -501,27 +501,40 @@ async def upload_moments(
     db.add(DistributedUpdate(job_id=job.id, node_id=node.id, round_idx=0,
                              kind="moments", payload_enc=body.payload, n_samples=n))
     await record_usage(db, node.hospital_id, "node_updates")  # 计费计量：上行次数（同事务）
-    await db.flush()
+    # 先落库再判定聚合：两节点并发到达（物理双机常态）时，请求内的 existing
+    # 读不到对方未提交的行，双方都会判定"未集齐"→ 任务永久卡死 collecting
+    # （双机实操演练发现的真实竞态）。提交后重读 + 原子状态翻转保证恰好聚合一次。
+    await db.commit()
 
-    submitted = {u.node_id for u in existing} | {node.id}
-    if submitted >= set(json.loads(job.expected_nodes)):
-        # 集齐 → 聚合全局标准化器 → 进入第 1 轮
+    rows = (await db.execute(
+        select(DistributedUpdate).where(
+            DistributedUpdate.job_id == job.id, DistributedUpdate.kind == "moments")
+    )).scalars().all()
+    if ({u.node_id for u in rows} >= set(json.loads(job.expected_nodes))
+            and job.status == "collecting"):
         entries = []
-        rows = (await db.execute(
-            select(DistributedUpdate).where(
-                DistributedUpdate.job_id == job.id, DistributedUpdate.kind == "moments")
-        )).scalars().all()
+        dim: int | None = None
         for u in rows:
             d = _open_payload(u.payload_enc)
+            if dim is None:
+                dim = len(d["sum"])
+            elif len(d["sum"]) != dim:
+                raise HTTPException(status_code=400, detail="特征维度与其他节点不一致")
             entries.append({"n": d["n"], "sum": d["sum"], "sum_sq": d["sum_sq"]})
         mean, std = aggregate_moments(entries)
-        n_features = len(mean)
-        job.scaler_state = json.dumps({"n": sum(e["n"] for e in entries),
-                                       "mean": mean, "std": std})
-        job.global_coef = json.dumps([0.0] * (n_features + 1))  # 末位截距
-        job.status = "running"
-        job.current_round = 1
-    await db.commit()
+        # 原子抢占聚合权：仅 collecting→running 的一个并发赢家真正写入
+        claimed = await db.execute(
+            update(DistributedJob)
+            .where(DistributedJob.id == job.id, DistributedJob.status == "collecting")
+            .values(scaler_state=json.dumps({"n": sum(e["n"] for e in entries),
+                                             "mean": mean, "std": std}),
+                    global_coef=json.dumps([0.0] * (len(mean) + 1)),  # 末位截距
+                    status="running", current_round=1))
+        await db.commit()
+        if claimed.rowcount != 1:
+            logging.getLogger(__name__).info(
+                "moments 聚合权被并发请求抢占（幂等跳过）job=%s", job.id)
+    await db.refresh(job)
     return {"status": job.status, "round": job.current_round,
             "detail": "统计已接收" if job.status == "collecting" else "全部节点统计已聚合，训练开始"}
 

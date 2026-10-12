@@ -53,6 +53,8 @@ htmlcov/
 # 等保三级：审计归档与备份产物（含历史审计记录，不入仓库）
 backend/audit_archive/
 backend/backups/
+# 联邦双机演练工作区（run_federation_drill.py 可再生；含临时证书/合成数据/演练日志）
+backend/drill_workspace/
 
 # ==================== Node.js / 前端 ====================
 node_modules/
