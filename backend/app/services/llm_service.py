@@ -83,7 +83,7 @@ class LLMService:
 
     def __init__(self, api_key: str, base_url: str, model: str,
                  fallback_api_key: str = "", fallback_base_url: str = "",
-                 fallback_model: str = ""):
+                 fallback_model: str = "", max_concurrency: int | None = None):
         """初始化 LLM 服务
 
         Args:
@@ -93,6 +93,9 @@ class LLMService:
             fallback_api_key: 备选模型 API 密钥（奇绩算力 gpt-5.6-sol，变量名沿用 DASHSCOPE_）
             fallback_base_url: 备选模型 API 基础地址
             fallback_model: 备选模型名称
+            max_concurrency: 全局并发上限（P2.5 生产化；None = 读配置 LLM_MAX_CONCURRENCY）。
+                主力/备选/视觉通道共用一个信号量，超出上限的请求排队等待，
+                避免高并发击穿上游网关限频（10 路压测实测 429）。
         """
         self._api_key = api_key
         self._base_url = base_url.rstrip("/")
@@ -109,6 +112,15 @@ class LLMService:
 
         # 视觉模型客户端（aiping 网关 GLM-4.6V，懒加载）
         self._vision_client = None
+
+        # P2.5 全局并发限流：单信号量覆盖主力/备选/视觉所有出站调用。
+        # Python 3.10+ Semaphore 不绑定事件循环，构造安全（懒绑定首次 await）。
+        if max_concurrency is None:
+            from app.config import settings
+            max_concurrency = settings.LLM_MAX_CONCURRENCY
+        self._limiter = asyncio.Semaphore(max(1, int(max_concurrency)))
+        # 观测用：当前在飞请求数（/metrics 可后续接入）
+        self._in_flight = 0
 
         self._init_client()
         if fallback_api_key and not self._is_placeholder_key(fallback_api_key):
@@ -184,49 +196,56 @@ class LLMService:
         # 思考过程与正文共用额度，2048 会被 reasoning 吃光导致正文为空）。
         # 同步 SDK 必须用 asyncio.to_thread 包装，否则会阻塞事件循环，
         # 导致路由层的 asyncio.wait_for 超时保护失效（曾引发线上 504）。
-        if self._initialized:
+        # P2.5：主力+备选整体受全局限流保护（一个信号量槽位覆盖一次完整
+        # 调用链，含故障切换），并发上限外的请求在此排队而非打满上游。
+        async with self._limiter:
+            self._in_flight += 1
             try:
-                response = await asyncio.to_thread(
-                    self._client.chat.completions.create,
-                    model=self._model,
-                    messages=messages,
-                    temperature=temperature,
-                    max_tokens=4096,
-                )
-                choice = response.choices[0]
-                # 推理模型：content 可能为空，reasoning 字段包含思考过程
-                content = choice.message.content
-                if not content and hasattr(choice.message, 'reasoning') and choice.message.reasoning:
-                    # content 为空但 reasoning 有内容，说明模型在思考中耗尽了 token
-                    content = choice.message.reasoning
-                if content:
-                    logger.debug("主力 LLM 响应长度: %d 字符", len(content))
-                    return content.strip()
-                logger.warning("主力 LLM 返回空内容")
-            except Exception as e:
-                logger.warning("主力 LLM 对话失败，尝试备选模型: %s", e)
+                if self._initialized:
+                    try:
+                        response = await asyncio.to_thread(
+                            self._client.chat.completions.create,
+                            model=self._model,
+                            messages=messages,
+                            temperature=temperature,
+                            max_tokens=4096,
+                        )
+                        choice = response.choices[0]
+                        # 推理模型：content 可能为空，reasoning 字段包含思考过程
+                        content = choice.message.content
+                        if not content and hasattr(choice.message, 'reasoning') and choice.message.reasoning:
+                            # content 为空但 reasoning 有内容，说明模型在思考中耗尽了 token
+                            content = choice.message.reasoning
+                        if content:
+                            logger.debug("主力 LLM 响应长度: %d 字符", len(content))
+                            return content.strip()
+                        logger.warning("主力 LLM 返回空内容")
+                    except Exception as e:
+                        logger.warning("主力 LLM 对话失败，尝试备选模型: %s", e)
 
-        # 尝试备选模型（奇绩算力 gpt-5.6-sol）
-        if self._fallback_initialized:
-            try:
-                response = await asyncio.to_thread(
-                    self._fallback_client.chat.completions.create,
-                    model=self._fallback_model,
-                    messages=messages,
-                    temperature=temperature,
-                    max_tokens=2048,
-                )
-                content = response.choices[0].message.content
-                if content:
-                    logger.debug("备选 LLM 响应长度: %d 字符", len(content))
-                    return content.strip()
-            except Exception as e:
-                logger.error("备选 LLM 对话也失败: %s", e)
-                # 不把原始错误透传给用户：抛异常让调用方（编排器各智能体）
-                # 的 try/except 降级分支生效，走规则引擎/离线回答
-                raise RuntimeError("LLM 服务暂不可用（主力与备选均失败），已触发离线降级") from e
+                # 尝试备选模型（奇绩算力 gpt-5.6-sol）
+                if self._fallback_initialized:
+                    try:
+                        response = await asyncio.to_thread(
+                            self._fallback_client.chat.completions.create,
+                            model=self._fallback_model,
+                            messages=messages,
+                            temperature=temperature,
+                            max_tokens=2048,
+                        )
+                        content = response.choices[0].message.content
+                        if content:
+                            logger.debug("备选 LLM 响应长度: %d 字符", len(content))
+                            return content.strip()
+                    except Exception as e:
+                        logger.error("备选 LLM 对话也失败: %s", e)
+                        # 不把原始错误透传给用户：抛异常让调用方（编排器各智能体）
+                        # 的 try/except 降级分支生效，走规则引擎/离线回答
+                        raise RuntimeError("LLM 服务暂不可用（主力与备选均失败），已触发离线降级") from e
 
-        raise RuntimeError("LLM 服务未初始化，无法调用")
+                raise RuntimeError("LLM 服务未初始化，无法调用")
+            finally:
+                self._in_flight -= 1
 
     async def chat_vision(self, messages: list[dict], temperature: float = 0.1) -> str:
         """多模态（图片）对话：走 aiping 网关视觉模型（GLM-4.6V，VISION_* 配置）。
@@ -247,12 +266,16 @@ class LLMService:
                 timeout=90.0,
                 max_retries=0,
             )
-        response = self._vision_client.chat.completions.create(
-            model=settings.VISION_MODEL,
-            messages=messages,
-            temperature=temperature,
-            max_tokens=2048,
-        )
+        # P2.5：视觉通道与文本通道共用全局限流；同步 SDK 同样必须
+        # to_thread 包装，避免阻塞事件循环（与 chat 同款线上教训）。
+        async with self._limiter:
+            response = await asyncio.to_thread(
+                self._vision_client.chat.completions.create,
+                model=settings.VISION_MODEL,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=2048,
+            )
         return (response.choices[0].message.content or "").strip()
 
     async def chat_with_rag(

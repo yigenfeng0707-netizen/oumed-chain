@@ -56,6 +56,15 @@ def test_clean_structured_fills_missing_fields():
     assert cleaned["medications"] == []
 
 
+def test_clean_structured_history_null_phrases_normalized():
+    """既往史空值语义归一：模型把「无特殊」误收为要点时清洗为空列表（P2.5）。"""
+    cleaned = _clean_structured({"vitals": {"bp": "120/80"}, "history": ["无特殊"]})
+    assert cleaned["history"] == []
+    # 空值短语混在真实要点里时只剥空值，保留真实条目
+    cleaned = _clean_structured({"history": ["体健", "高血压病史10年", ""]})
+    assert cleaned["history"] == ["高血压病史10年"]
+
+
 def test_rule_structure_extracts_fields():
     note = ("患者李大爷，72岁，男。入院诊断：冠心病 心绞痛型，高血压2级。"
             "血压 146/88mmHg，心率 76次/分。")

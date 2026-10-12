@@ -20,6 +20,11 @@ class Settings(BaseSettings):
     VISION_BASE_URL: str = "https://aiping.cn/api/v1"
     VISION_MODEL: str = "GLM-4.6V"
 
+    # P2.5 LLM 生产化：全局并发限流（主力+备选+视觉共用一个信号量，
+    # 超出路数的请求排队等待）。10 路压测实测主力网关 429 限频，
+    # 8 路以内可主动避开限流阈值；1 = 关闭排队语义以外的并发。
+    LLM_MAX_CONCURRENCY: int = 8
+
     # 泛癌卫士（Oncoformer）：留空 = 真模型不可用，降级预计算队列模式
     ONCOFORMER_CKPT_PATH: str = ""
     # COMPASS 队列目录（含 metadata.parquet + cxr_images），本地实时推理用

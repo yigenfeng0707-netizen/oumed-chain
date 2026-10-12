@@ -187,6 +187,15 @@ def _clean_structured(data: dict) -> dict:
         nums = re.findall(r"\d{1,3}", str(vitals["bp"]))
         if len(nums) >= 2:
             vitals["bp"] = f"{nums[0]}/{nums[-1]}"  # 首个=收缩压，末个=舒张压
+    # 既往史空值语义归一：「无特殊/体健/否认疾病史」等不是既往史要点，
+    # 模型常将其误收为列表项 → 剥离后为空即空列表（P2.5 评测 9/200 失分项）
+    _HISTORY_NULL_PHRASES = {"无特殊", "体健", "否认疾病史", "否认特殊病史", "未见异常", "无"}
+    history = data.get("history")
+    if isinstance(history, list):
+        data["history"] = [
+            h for h in history
+            if isinstance(h, str) and h.strip() and h.strip() not in _HISTORY_NULL_PHRASES
+        ]
     for key in ("patient", "chief_complaint", "diagnoses", "vitals", "medications", "history"):
         data.setdefault(key, None if key in ("patient", "chief_complaint") else [])
     return data

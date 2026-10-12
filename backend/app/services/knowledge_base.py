@@ -376,6 +376,24 @@ class KnowledgeBase:
 
         return final[:top_k]
 
+    async def prewarm(self) -> bool:
+        """冷启动预热：强制完成嵌入模型的下载/加载（P2.5 生产化）。
+
+        默认嵌入走 ChromaDB 自带 sentence-transformers（ONNX），模型在
+        首次 _generate_embeddings 时才下载并载入内存（10-30s 级冷启动），
+        若由首个用户请求承担会造成首条消息超长延迟。启动时由编排器在
+        后台任务调用本方法提前预热；失败不影响功能（首次检索会再加载）。
+        """
+        if not self._initialized:
+            return False
+        try:
+            await asyncio.to_thread(self._generate_embeddings, ["瓯医数链知识库预热"])
+            logger.info("知识库嵌入模型预热完成（ONNX 已载入内存）")
+            return True
+        except Exception as e:  # noqa: BLE001 —— 预热失败只告警，不阻断启动
+            logger.warning("知识库预热失败（首次检索时会再尝试加载）: %s", e)
+            return False
+
     def _vector_search(self, query: str, n_results: int, category: str = None) -> list[SearchResult]:
         """向量相似度检索"""
         try:

@@ -122,6 +122,8 @@ class Orchestrator:
         self._llm: LLMService | None = None
         self._kb: KnowledgeBase | None = None
         self._services_initialized = False
+        # P2.5 知识库冷启动预热后台任务（持有引用防 GC）
+        self._kb_prewarm_task: asyncio.Task | None = None
         # user_id -> 活跃业务流程（如 claims_prereview），用于歧义消息的上下文路由
         self._active_flows: dict[str, str] = {}
         # user_id -> 最近一次确认路由的智能体，用于追问/细节类消息的连续性路由
@@ -187,7 +189,19 @@ class Orchestrator:
             logger.warning("知识库服务初始化失败: %s，将使用 mock 数据降级方案", e)
             self._kb = None
 
+        # P2.5 生产化：知识库嵌入模型（ONNX）冷启动预热放后台任务，
+        # 不阻塞启动（模型下载/加载 10-30s 级），首个用户请求前大概率完成
+        if self._kb is not None:
+            self._kb_prewarm_task = asyncio.create_task(self._prewarm_kb())
+
         self._services_initialized = True
+
+    async def _prewarm_kb(self) -> None:
+        """后台预热知识库嵌入模型；异常全兜底（预热失败不影响功能）。"""
+        try:
+            await self._kb.prewarm()
+        except Exception as e:  # noqa: BLE001
+            logger.warning("知识库后台预热异常（忽略）: %s", e)
 
     # ------------------------------------------------------------------
     # 意图识别
