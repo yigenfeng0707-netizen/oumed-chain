@@ -94,11 +94,13 @@ async def security_headers_middleware(request, call_next):
       真正的 TLS 1.3 终结由反向代理承担（模板见 deploy/tls/）；
     - CSP：API 纯 JSON 响应 default-src 'none'（最严格）；/docs、/redoc、
       /openapi.json（Swagger UI 需外部脚本）与 /digital-body（3D 查看器）豁免。
+    - X-Frame-Options：/digital-body 下发 SAMEORIGIN——数字人体档案页以同源
+      iframe 内嵌查看器，DENY 会导致浏览器拒绘（白屏）；其余路径保持 DENY。
     """
     response = await call_next(request)
     path = request.url.path
     response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-Frame-Options"] = "SAMEORIGIN" if path.startswith("/digital-body") else "DENY"
     response.headers["Referrer-Policy"] = "no-referrer"
     response.headers["Permissions-Policy"] = "geolocation=(), camera=(), microphone=()"
     if not settings.DEMO_MODE:
