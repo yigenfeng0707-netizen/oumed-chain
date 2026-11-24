@@ -157,6 +157,9 @@ jobs:
           if git rev-parse --verify origin/master >/dev/null 2>&1; then
             git merge origin/master --allow-unrelated-histories -X ours --no-edit -q
           fi
+          # 历史残留防护：合并可能带进旧的 backend/app/ 死目录（已被 yibao/ 取代），有则删掉
+          git rm -r -q --ignore-unmatch backend/app 2>/dev/null || true
+          if ! git diff --cached --quiet 2>/dev/null; then git -c i18n.commitEncoding=UTF-8 commit -q -m "chore: 移除残留 backend/app 旧目录"; fi
           push_tries=3
           pushed=1
           for i in $(seq 1 ${push_tries}); do
