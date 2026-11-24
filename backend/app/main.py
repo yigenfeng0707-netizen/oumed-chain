@@ -93,20 +93,27 @@ async def security_headers_middleware(request, call_next):
     - HSTS 仅生产模式下发（DEMO_MODE=false；演示环境为 HTTP，避免无谓的头）；
       真正的 TLS 1.3 终结由反向代理承担（模板见 deploy/tls/）；
     - CSP：API 纯 JSON 响应 default-src 'none'（最严格）；/docs、/redoc、
-      /openapi.json（Swagger UI 需外部脚本）与 /digital-body（3D 查看器）豁免。
-    - X-Frame-Options：/digital-body 下发 SAMEORIGIN——数字人体档案页以同源
-      iframe 内嵌查看器，DENY 会导致浏览器拒绘（白屏）；其余路径保持 DENY。
+      /openapi.json（Swagger UI 需外部脚本）豁免。
+    - /digital-body（3D 查看器）：不设 X-Frame-Options，改用 CSP frame-ancestors
+      精确放行——数字人体档案页经「魔搭创空间页(modelscope.cn) → 应用(ms.show) →
+      查看器」三级嵌套，X-Frame-Options 的 SAMEORIGIN/DENY 按顶层祖先判定会误禁；
+      frame-ancestors 'self' https://www.modelscope.cn 允许自身与创空间页嵌套，
+      其余站点仍被拦截。
     """
     response = await call_next(request)
     path = request.url.path
     response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["X-Frame-Options"] = "SAMEORIGIN" if path.startswith("/digital-body") else "DENY"
+    if path.startswith("/digital-body"):
+        del response.headers["X-Frame-Options"]  # 若下游已设则清除，改由 CSP frame-ancestors 精确控制
+        response.headers["Content-Security-Policy"] = "frame-ancestors 'self' https://www.modelscope.cn"
+    else:
+        response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "no-referrer"
     response.headers["Permissions-Policy"] = "geolocation=(), camera=(), microphone=()"
     if not settings.DEMO_MODE:
         response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains"
-    _docs_paths = ("/docs", "/redoc", "/openapi.json", "/digital-body")
-    if not path.startswith(_docs_paths):
+    _docs_paths = ("/docs", "/redoc", "/openapi.json")
+    if not path.startswith(_docs_paths) and not path.startswith("/digital-body"):
         response.headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'"
     return response
 
