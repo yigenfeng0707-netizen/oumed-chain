@@ -47,7 +47,7 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <div className="flex h-full flex-col">
       <div className="flex h-[84px] items-center border-b border-sky-100 px-5">
-        <DidaYiLogo />
+        <DidaYiLogo size="sm" />
       </div>
       <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-4">
         {navItems.map((item) => {
