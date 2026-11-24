@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
-"""瓯医数链商业计划书（决赛版）Word 生成：python-docx 富文本
+"""浙江电信·医疗数链平台商业计划书（决赛版）Word 生成：python-docx 富文本
 
 - 封面 / 自动目录域 / 页眉页脚页码 / 样式化标题 / 表格 / 300dpi 图表 / 实测截图
 - 事实口径：docs/superpowers/specs/2026-09-02-deliverables-redesign.md 事实基准
 运行：backend/.venv/Scripts/python scripts/build_bp_docx.py
-输出：docs/瓯医数链-商业计划书-决赛版.docx
+输出：docs/浙江电信·医疗数链平台-商业计划书-决赛版.docx
 """
 import os
 
@@ -18,7 +18,7 @@ from docx.shared import Cm, Inches, Pt, RGBColor
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CHARTS = os.path.join(ROOT, "docs", "BP素材", "charts")
 SHOTS = os.path.join(ROOT, "docs", "screenshots")
-OUT = os.path.join(ROOT, "docs", "瓯医数链-商业计划书-决赛版.docx")
+OUT = os.path.join(ROOT, "docs", "浙江电信·医疗数链平台-商业计划书-决赛版.docx")
 
 INK = RGBColor(0x1E, 0x29, 0x3B)
 BLUE = RGBColor(0x08, 0x91, 0xB2)
@@ -265,7 +265,7 @@ add_page_number_footer(section)
 # 页眉
 header_p = section.header.paragraphs[0]
 header_p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-run = header_p.add_run("瓯医数链 OuMedTrust · 商业计划书（决赛版）")
+run = header_p.add_run("浙江电信·医疗数链平台 · 商业计划书（决赛版）")
 set_run_font(run, size=8.5, color=GRAY)
 
 # ===== 封面 =====
@@ -275,7 +275,7 @@ add_para(doc, "第二届全球技术创新大赛 · AI+医疗专题赛", size=13
          align=WD_ALIGN_PARAGRAPH.CENTER, space_after=4)
 add_para(doc, "赛道二：医疗大模型与数据", size=12, color=GRAY,
          align=WD_ALIGN_PARAGRAPH.CENTER, space_after=36)
-add_para(doc, "瓯医数链 OuMedTrust", size=34, bold=True, color=BLUE,
+add_para(doc, "浙江电信·医疗数链平台", size=34, bold=True, color=BLUE,
          align=WD_ALIGN_PARAGRAPH.CENTER, space_after=8)
 add_para(doc, "医疗数据要素可信流通平台", size=19, bold=True, color=INK,
          align=WD_ALIGN_PARAGRAPH.CENTER, space_after=10)
@@ -295,7 +295,7 @@ page_break(doc)
 # ===== 一、执行摘要 =====
 add_heading(doc, "一、执行摘要", 1)
 add_rich(doc, [
-    ("瓯医数链是一个", False, INK),
+    ("浙江电信·医疗数链平台是一个", False, INK),
     ("医疗数据要素可信流通平台", True, INK),
     ("：以联邦学习实现医院间「数据不出院」联合建模，以本地大模型实现病历自动治理与 "
      "PHI 脱敏，以审计存证链保障全程合规，并打通数据产品目录、授权交易、收益分成与"
@@ -343,7 +343,7 @@ page_break(doc)
 
 # ===== 三、解决方案 =====
 add_heading(doc, "三、解决方案：四层架构闭环", 1)
-add_figure(doc, "03_architecture.png", 16.0, "图 3-1  瓯医数链四层架构")
+add_figure(doc, "03_architecture.png", 16.0, "图 3-1  浙江电信·医疗数链平台四层架构")
 add_heading(doc, "3.1 闭环故事（一条患者数据的旅程）", 2)
 add_para(doc, "社区卫生中心的病历经 AI 治理 Copilot 脱敏结构化 → 上架数据要素市场 → "
               "联邦任务消费三院数据训练风险模型（AUC 追平集中训练上界）→ 模型作为数据产品"
@@ -483,7 +483,7 @@ add_heading(doc, "9.2 知识产权", 2)
 add_table(doc,
           ["类型", "名称 / 登记号", "权属与状态"],
           [
-              ["软件著作权（主轨）", "瓯医数链平台 V1.0 / 治理 Copilot / 联邦引擎 ×3", "材料齐备，提交中（受理通知书将作资格凭证）"],
+              ["软件著作权（主轨）", "浙江电信·医疗数链平台平台 V1.0 / 治理 Copilot / 联邦引擎 ×3", "材料齐备，提交中（受理通知书将作资格凭证）"],
               ["软件著作权（已登记）", "基于目标检测的视频人数统计计算软件 V1.0（2023SR0719236）", "个人独有，2023-06 下证，证书原件已核验；与影像卫士同源"],
               ["软件著作权（已登记）", "基于AI大数据的智能充电桩故障检测计算软件 V1.0（2023SR0718714）", "个人独有，2023-06 下证；时序异常检测，与 EEG/健康预警同源"],
               ["软件著作权（共有）", "商业经营管理数据异常预警软件 V1.0（2023SR0723903）", "与银泰商业管理集团共有；团队技术能力佐证"],

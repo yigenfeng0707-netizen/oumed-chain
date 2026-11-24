@@ -43,7 +43,7 @@ def send_alert(key: str, title: str, detail: str, cooldown: float = COOLDOWN_SEC
     # 钉钉/飞书群机器人均兼容 {msgtype, text.content} 格式
     body = json.dumps({
         "msgtype": "text",
-        "text": {"content": f"[瓯医数链告警] {title}\n{detail}"},
+        "text": {"content": f"[浙江电信·医疗数链平台告警] {title}\n{detail}"},
     }).encode("utf-8")
     try:
         req = urllib.request.Request(

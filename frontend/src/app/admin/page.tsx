@@ -284,7 +284,7 @@ export default function AdminPage() {
                 <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-700 to-slate-900 shadow-lg">
                   <Lock className="h-7 w-7 text-white" />
                 </div>
-                <h1 className="text-xl font-bold text-foreground">OuMedTrust 管理后台</h1>
+                <h1 className="text-xl font-bold text-foreground">浙江电信·医疗数链平台 管理后台</h1>
                 <p className="mt-1 text-xs text-muted-foreground">
                   超级管理员登录 · 全用户使用概况与画像分析
                 </p>

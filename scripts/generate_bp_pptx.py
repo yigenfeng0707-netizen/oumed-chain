@@ -1,8 +1,8 @@
-"""瓯医数链初赛路演 PPT 生成（python-pptx，16:9）
+"""浙江电信·医疗数链平台初赛路演 PPT 生成（python-pptx，16:9）
 
-基于 docs/BP-瓯医数链-初赛版.md 的内容与 docs/screenshots/ 实测截图。
+基于 docs/BP-浙江电信·医疗数链平台-初赛版.md 的内容与 docs/screenshots/ 实测截图。
 运行：backend/.venv/Scripts/python scripts/generate_bp_pptx.py
-输出：docs/瓯医数链-初赛路演.pptx
+输出：docs/浙江电信·医疗数链平台-初赛路演.pptx
 """
 
 from pathlib import Path
@@ -14,7 +14,7 @@ from pptx.util import Emu, Inches, Pt
 
 ROOT = Path(__file__).resolve().parent.parent
 SHOTS = ROOT / "docs" / "screenshots"
-OUT = ROOT / "docs" / "瓯医数链-初赛路演.pptx"
+OUT = ROOT / "docs" / "浙江电信·医疗数链平台-初赛路演.pptx"
 
 CYAN = RGBColor(0x08, 0x91, 0xB2)
 DARK = RGBColor(0x1E, 0x29, 0x3B)
@@ -88,7 +88,7 @@ def page_no(slide, n):
 s = add_slide()
 rect(s, 0, 0, 13.333, 7.5, DARK)
 rect(s, 0, 5.1, 13.333, 0.06, CYAN)
-text(s, 1.0, 1.7, 11.3, 1.2, "瓯医数链 OuMedTrust", size=54, bold=True, color=WHITE)
+text(s, 1.0, 1.7, 11.3, 1.2, "浙江电信·医疗数链平台", size=54, bold=True, color=WHITE)
 text(s, 1.0, 3.0, 11.3, 0.8, "医疗数据要素可信流通平台", size=26, color=CYAN)
 text(s, 1.0, 3.9, 11.3, 0.6, "让医疗数据「可用不可见、可控可计量」", size=18, color=RGBColor(0xCB, 0xD5, 0xE1))
 text(s, 1.0, 5.5, 11.3, 0.6, "第二届全球技术创新大赛 · AI+医疗专题赛（赛道二：医疗大模型与数据）",
@@ -274,7 +274,7 @@ s = add_slide()
 rect(s, 0, 0, 13.333, 7.5, DARK)
 text(s, 1.0, 2.4, 11.3, 1.0, "让沉睡的医疗数据，", size=36, bold=True, color=WHITE)
 text(s, 1.0, 3.3, 11.3, 1.0, "变成可确权、可定价、可流通、可监管的数据要素。", size=36, bold=True, color=CYAN)
-text(s, 1.0, 5.2, 11.3, 0.6, "瓯医数链 OuMedTrust · 医疗数据 · 可用不可见", size=18, color=RGBColor(0x94, 0xA3, 0xB8))
+text(s, 1.0, 5.2, 11.3, 0.6, "浙江电信·医疗数链平台 · 医疗数据 · 可用不可见", size=18, color=RGBColor(0x94, 0xA3, 0xB8))
 text(s, 1.0, 6.3, 11.3, 0.6, "第二届全球技术创新大赛 AI+医疗专题赛 · 2026 中国温州", size=13, color=RGBColor(0x94, 0xA3, 0xB8))
 
 prs.save(OUT)

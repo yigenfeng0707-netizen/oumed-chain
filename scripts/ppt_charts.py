@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""瓯医数链初赛 PPT 数据图表生成（真实数据口径 2026-08-31）"""
+"""浙江电信·医疗数链平台初赛 PPT 数据图表生成（真实数据口径 2026-08-31）"""
 import os
 import matplotlib
 matplotlib.use("Agg")
@@ -190,7 +190,7 @@ def chart_architecture():
                 arrowprops=dict(arrowstyle="-|>", color=CYAN, lw=2.2))
     ax.text(11.62, 4.4, "交\n易\n反\n哺\n数\n据", color=CYAN, fontsize=12,
             ha="center", va="center", fontweight="bold")
-    ax.set_title("瓯医数链四层架构 · 治理-协作-流通-监管完整闭环",
+    ax.set_title("浙江电信·医疗数链平台四层架构 · 治理-协作-流通-监管完整闭环",
                  color=CYAN, fontsize=18, fontweight="bold", pad=15)
     plt.tight_layout()
     plt.savefig(os.path.join(OUT, "05_architecture.png"), dpi=300,

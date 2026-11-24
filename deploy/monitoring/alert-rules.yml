@@ -1,4 +1,4 @@
-# 瓯医数链告警规则（配合 Alertmanager / Grafana Alerting 使用）
+# 浙江电信·医疗数链平台告警规则（配合 Alertmanager / Grafana Alerting 使用）
 # 阈值口径：演示环境量小，窗口取 5 分钟避免毛刺误报。
 groups:
   - name: oumed-trust-availability

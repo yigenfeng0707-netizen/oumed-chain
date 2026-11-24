@@ -1,4 +1,4 @@
-"""瓯医数链 · 数据要素流通路由
+"""浙江电信·医疗数链平台 · 数据要素流通路由
 
 产品目录（上架/浏览）→ 交易申请（用途限定）→ 授权成交（收益分成）
 → 审计存证链 → 监管方统计看板。收益分成：医院70% / 平台20% / 数据贡献者10%。
@@ -37,7 +37,7 @@ SEED_PRODUCTS = [
          description="三家医院联邦训练的心衰30天再入院风险模型，AUC 0.70，数据不出院联合建模",
          sample_count=7700, price=80000, price_unit="年",
          privacy_tech="联邦学习 + 差分隐私"),
-    dict(name="脱敏结构化病历数据集", provider="瓯医数链治理平台", data_type="治理产物",
+    dict(name="脱敏结构化病历数据集", provider="浙江电信·医疗数链平台治理平台", data_type="治理产物",
          description="AI病历治理Copilot产出的标准化病历数据集，PHI零残留可审计",
          sample_count=10000, price=60000, price_unit="套",
          privacy_tech="本地LLM治理 + 规则脱敏"),

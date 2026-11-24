@@ -209,7 +209,7 @@ class EEGRecord(Base):
 
 
 class ImagingRecord(Base):
-    """医学影像检查记录（瓯医数链 影像引擎）
+    """医学影像检查记录（浙江电信·医疗数链平台 影像引擎）
 
     存储每次影像 AI 分析会话的结果摘要（影像数据以确定性合成参数
     study_type + seed + findings 可随时复现，不存大体积 base64）。
@@ -341,7 +341,7 @@ class BodyArchiveFile(Base):
 
 
 class FederationJob(Base):
-    """联邦学习任务（瓯医数链底座）。
+    """联邦学习任务（浙江电信·医疗数链平台底座）。
 
     event_hash 审计存证链：每个任务的存证哈希由上一任务哈希 + 本任务
     摘要串联计算（sha256），任何结果篡改都会导致链条断裂。

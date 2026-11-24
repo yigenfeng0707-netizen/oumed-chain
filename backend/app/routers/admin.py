@@ -47,7 +47,7 @@ router = APIRouter(prefix="/api/admin", tags=["管理后台"])
 
 # 默认管理员账号（生产环境务必通过环境变量/ .env 覆盖）
 default_admin_username = "admin"
-default_admin_password = "瓯医数链@2026"
+default_admin_password = "浙江电信·医疗数链平台@2026"
 
 
 def _admin_credentials() -> tuple[str, str]:

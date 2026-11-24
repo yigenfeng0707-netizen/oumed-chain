@@ -77,7 +77,7 @@ const agentLabelMap: Record<string, string> = {
   drug_agent: "药品卫士",
   cancer_agent: "泛癌卫士",
   orchestrator_agent: "编排智能体",
-  assistant_agent: "瓯医数链助手",
+  assistant_agent: "数链助手",
 };
 
 /**
@@ -156,7 +156,7 @@ export default function HomePage() {
       id: loadingId,
       role: "assistant",
       content: "",
-      agent: "瓯医数链",
+      agent: "浙江电信·医疗数链平台",
       agentColor: "bg-blue-100 text-blue-700",
       timestamp: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
       isLoading: true,
@@ -206,7 +206,7 @@ export default function HomePage() {
         id: (Date.now() + 2).toString(),
         role: "assistant",
         content: "抱歉，处理您的请求时出现了问题，请稍后重试。",
-        agent: "瓯医数链",
+        agent: "浙江电信·医疗数链平台",
         agentColor: "bg-blue-100 text-blue-700",
         timestamp: new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
         error: true,
@@ -757,7 +757,7 @@ function WelcomeScreen({ onAction, userName, userConditions }: { onAction: (acti
               健康守护中
             </div>
             <h2 className="text-2xl font-bold tracking-tight text-slate-800 sm:text-3xl">你好，{userName}</h2>
-            <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600">我是瓯医数链，帮你识别关键医疗信号，读懂报告、管理健康档案，并快速连接医保服务。</p>
+            <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600">我是浙江电信·医疗数链平台，帮你识别关键医疗信号，读懂报告、管理健康档案，并快速连接医保服务。</p>
             {userConditions.length > 0 && (
               <p className="mt-3 text-xs font-medium text-[#d56c4f]">已关注：{userConditions.join("、")}</p>
             )}
@@ -773,7 +773,7 @@ function WelcomeScreen({ onAction, userName, userConditions }: { onAction: (acti
         <div className="mb-3 flex items-center justify-between">
           <div>
             <h3 className="font-semibold text-slate-800">快捷服务</h3>
-            <p className="mt-0.5 text-xs text-muted-foreground">从常用任务开始，瓯医数链会自动匹配专业智能体</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">从常用任务开始，数链平台会自动匹配专业智能体</p>
           </div>
           <span className="hidden text-xs font-medium text-cyan-600 sm:inline">智能服务中心</span>
         </div>

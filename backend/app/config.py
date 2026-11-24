@@ -99,7 +99,7 @@ class Settings(BaseSettings):
 
     # 管理后台超级管理员（/admin 页面登录用）
     ADMIN_USERNAME: str = "admin"
-    ADMIN_PASSWORD: str = "瓯医数链@2026"
+    ADMIN_PASSWORD: str = "浙江电信·医疗数链平台@2026"
     # 管理员 token 签发密钥（改后所有已签发 token 失效）
     YIBAO_ADMIN_SECRET: str = "oumed-admin-secret"
 

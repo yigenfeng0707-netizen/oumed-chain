@@ -63,7 +63,7 @@ export default function LoginPage() {
               <DidaYiLogo compact />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-slate-900">瓯医数链 · OuMedTrust</h1>
+              <h1 className="text-xl font-bold text-slate-900">浙江电信·医疗数链平台</h1>
               <p className="mt-1 text-xs text-slate-500">
                 注册后您的健康档案、医保分析与用药记录都将归属此账号
               </p>

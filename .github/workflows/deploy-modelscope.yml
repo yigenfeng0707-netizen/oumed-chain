@@ -1,5 +1,5 @@
 # ============================================================
-# 自动部署瓯医数链 Demo 到魔搭创空间（ModelScope Studio）
+# 自动部署浙江电信·医疗数链平台 Demo 到魔搭创空间（ModelScope Studio）
 #
 # 触发方式：
 #   1. push 到 main 且涉及 后端/前端/部署文件 变更
@@ -117,7 +117,7 @@ jobs:
           git config user.name "oumedchain-deploy-bot"
           git config user.email "oumedchain-deploy-bot@users.noreply.github.com"
           git add -A
-          git -c i18n.commitEncoding=UTF-8 commit -q -m "deploy: 瓯医数链 demo @ $(date -u +%Y-%m-%dT%H:%M:%SZ) (${GITHUB_SHA::8})" || {
+          git -c i18n.commitEncoding=UTF-8 commit -q -m "deploy: 浙江电信·医疗数链平台 demo @ $(date -u +%Y-%m-%dT%H:%M:%SZ) (${GITHUB_SHA::8})" || {
             echo "::notice::没有内容变更，跳过推送"
             exit 0
           }

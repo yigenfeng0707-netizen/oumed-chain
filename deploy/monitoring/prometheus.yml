@@ -1,4 +1,4 @@
-# 瓯医数链 Prometheus 配置（docker compose --profile monitoring 启用）
+# 浙江电信·医疗数链平台 Prometheus 配置（docker compose --profile monitoring 启用）
 global:
   scrape_interval: 15s
   evaluation_interval: 15s

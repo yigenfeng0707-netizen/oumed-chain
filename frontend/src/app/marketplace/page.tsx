@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * 数据要素市场（瓯医数链 · 流通闭环）
+ * 数据要素市场（浙江电信·医疗数链平台 · 流通闭环）
  *
  * 产品目录 → 交易申请（用途限定）→ 授权成交 → 收益分成（医院70/平台20/贡献者10）
  * → 审计存证链 → 监管方统计看板。
@@ -141,7 +141,7 @@ export default function MarketplacePage() {
       label: { show: true, formatter: "{b}\n¥{c}", fontSize: 11 },
       data: [
         { name: "医院（数据提供方70%）", value: regulatory.revenue.provider, itemStyle: { color: "#0891b2" } },
-        { name: "平台（瓯医数链20%）", value: regulatory.revenue.platform, itemStyle: { color: "#7c3aed" } },
+        { name: "平台（浙江电信20%）", value: regulatory.revenue.platform, itemStyle: { color: "#7c3aed" } },
         { name: "数据贡献者10%", value: regulatory.revenue.contributor, itemStyle: { color: "#059669" } },
       ],
     }],

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 瓯医数链 栈的 WSL Docker 启停助手（Windows 侧 Git Bash 调用）
+# 浙江电信·医疗数链平台 栈的 WSL Docker 启停助手（Windows 侧 Git Bash 调用）
 # 用法: ./scripts/wsl-stack.sh up|down|ps|logs [dev|prod]
 set -e
 DISTRO=Ubuntu-D

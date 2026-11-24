@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""瓯医数链初赛路演 PPT 组装（12 页叙事版，2026-08-31 真实数据口径）"""
+"""浙江电信·医疗数链平台初赛路演 PPT 组装（12 页叙事版，2026-08-31 真实数据口径）"""
 import os
 from pptx import Presentation
 from pptx.util import Inches, Pt
@@ -12,7 +12,7 @@ BASE = os.path.join(os.path.dirname(__file__), "..", "docs", "PPT素材")
 CH = os.path.join(BASE, "charts")
 SC = os.path.join(BASE, "scenes")
 OUT_PPTX = os.path.join(os.path.dirname(__file__), "..", "docs",
-                        "瓯医数链-初赛路演-视觉版.pptx")
+                        "浙江电信·医疗数链平台-初赛路演-视觉版.pptx")
 
 BG = RGBColor(0x0A, 0x1A, 0x3F)
 CYAN = RGBColor(0x00, 0xD4, 0xFF)
@@ -115,7 +115,7 @@ band.fill.solid()
 band.fill.fore_color.rgb = BG
 band.line.fill.background()
 band.shadow.inherit = False
-add_text(s, 0.8, 5.05, 12, 0.95, "瓯医数链 OuMedTrust", 44, WHITE, bold=True)
+add_text(s, 0.8, 5.05, 12, 0.95, "浙江电信·医疗数链平台", 44, WHITE, bold=True)
 add_text(s, 0.8, 6.05, 12, 0.55, "医疗数据要素可信流通平台 · 让数据「可用不可见、可控可计量」",
          20, CYAN)
 add_text(s, 0.8, 6.72, 12, 0.5,
@@ -330,7 +330,7 @@ add_text(s, 0.8, 4.75, 12, 0.8, "让温州成为医疗数据要素流通的第�
          bold=True)
 add_text(s, 0.8, 5.7, 12, 0.5,
          "430 项单元测试全绿 · 线上 Demo 每日可验 · 软著×3 申报中", 16, CYAN)
-add_text(s, 0.8, 6.35, 12, 0.5, "瓯医数链 OuMedTrust · 恳请评委指正", 14, GREY)
+add_text(s, 0.8, 6.35, 12, 0.5, "浙江电信·医疗数链平台 · 恳请评委指正", 14, GREY)
 
 prs.save(OUT_PPTX)
 print("saved:", OUT_PPTX, "slides:", len(prs.slides._sldIdLst))

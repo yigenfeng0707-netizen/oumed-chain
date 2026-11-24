@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""瓯医数链 BP Word 专业图表生成（浅色印刷风，300dpi，2026-09-02 事实口径）
+"""浙江电信·医疗数链平台 BP Word 专业图表生成（浅色印刷风，300dpi，2026-09-02 事实口径）
 
 输出：docs/BP素材/charts/*.png（供 build_bp_docx.py 嵌入 Word）
 运行：backend/.venv/Scripts/python scripts/bp_charts.py
@@ -148,7 +148,7 @@ def chart_architecture():
                 arrowprops=dict(arrowstyle="-|>", color=BLUE, lw=2.0))
     ax.text(11.55, 4.25, "交\n易\n反\n哺\n数\n据", color=BLUE, fontsize=11,
             ha="center", va="center", fontweight="bold")
-    ax.set_title("瓯医数链四层架构 · 治理 - 协作 - 流通 - 监管完整闭环",
+    ax.set_title("浙江电信·医疗数链平台四层架构 · 治理 - 协作 - 流通 - 监管完整闭环",
                  fontsize=15, fontweight="bold", color=INK, pad=14)
     plt.tight_layout()
     plt.savefig(os.path.join(OUT, "03_architecture.png"), dpi=300,

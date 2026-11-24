@@ -6,7 +6,7 @@ type DidaYiLogoProps = {
   light?: boolean;
 };
 
-/** 瓯医数链品牌标志：数据要素可信流通。 */
+/** 浙江电信·医疗数链平台品牌标志：数据要素可信流通。 */
 export function DidaYiLogo({ className, compact = false, light = false }: DidaYiLogoProps) {
   return (
     <div className={cn("flex items-center gap-2", className)}>
@@ -18,7 +18,7 @@ export function DidaYiLogo({ className, compact = false, light = false }: DidaYi
       </span>
       {!compact && (
         <div className="min-w-0">
-          <div className={cn("text-xl font-bold leading-none tracking-[.04em]", light ? "text-slate-800" : "text-slate-900")}>瓯医数链</div>
+          <div className={cn("text-xl font-bold leading-none tracking-[.04em]", light ? "text-slate-800" : "text-slate-900")}>浙江电信·医疗数链平台</div>
           <div className={cn("mt-1 text-[10px] tracking-[.08em]", light ? "text-slate-500" : "text-slate-500")}>医疗数据 · 可用不可见</div>
         </div>
       )}

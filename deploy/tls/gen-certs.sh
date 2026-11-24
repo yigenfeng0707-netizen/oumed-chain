@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 瓯医数链联邦 mTLS 证书一键签发（P1.2 节点认证与传输安全）。
+# 浙江电信·医疗数链平台联邦 mTLS 证书一键签发（P1.2 节点认证与传输安全）。
 #
 # 用 openssl CLI 生成私有 CA + 服务端证书 + 节点客户端证书，零第三方依赖。
 # 在平台侧运行一次，把客户端证书分发给各医院节点（内网安全通道分发，
@@ -31,14 +31,14 @@ cd "$OUT_DIR"
 echo "==> [1/5] 生成联邦根 CA（${CA_DAYS} 天）"
 openssl req -x509 -newkey rsa:3072 -nodes \
     -keyout ca.key -out ca.crt -days "$CA_DAYS" \
-    -subj "/CN=oumed-chain-federation-ca/O=瓯医数链" \
+    -subj "/CN=oumed-chain-federation-ca/O=浙江电信·医疗数链平台" \
     -addext "basicConstraints=critical,CA:TRUE" \
     -addext "keyUsage=critical,keyCertSign,cRLSign" 2>/dev/null
 
 echo "==> [2/5] 生成服务端证书（SAN=${DOMAIN}，${DAYS} 天）"
 openssl req -newkey rsa:2048 -nodes \
     -keyout server.key -out server.csr \
-    -subj "/CN=${DOMAIN}/O=瓯医数链" 2>/dev/null
+    -subj "/CN=${DOMAIN}/O=浙江电信·医疗数链平台" 2>/dev/null
 openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial \
     -out server.crt -days "$DAYS" \
     -extfile <(printf "basicConstraints=CA:FALSE\nkeyUsage=digitalSignature,keyEncipherment\nextendedKeyUsage=serverAuth\nsubjectAltName=DNS:%s" "$DOMAIN") 2>/dev/null
@@ -47,7 +47,7 @@ echo "==> [3/5] 生成 ${NODE_COUNT} 个节点客户端证书（extendedKeyUsage
 for i in $(seq 1 "$NODE_COUNT"); do
     openssl req -newkey rsa:2048 -nodes \
         -keyout "client-node${i}.key" -out "client-node${i}.csr" \
-        -subj "/CN=fed-node-${i}/O=瓯医数链" 2>/dev/null
+        -subj "/CN=fed-node-${i}/O=浙江电信·医疗数链平台" 2>/dev/null
     openssl x509 -req -in "client-node${i}.csr" -CA ca.crt -CAkey ca.key -CAcreateserial \
         -out "client-node${i}.crt" -days "$DAYS" \
         -extfile <(printf "basicConstraints=CA:FALSE\nkeyUsage=digitalSignature\nextendedKeyUsage=clientAuth") 2>/dev/null

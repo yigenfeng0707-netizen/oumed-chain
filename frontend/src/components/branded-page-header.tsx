@@ -10,7 +10,7 @@ type BrandedPageHeaderProps = {
   status?: ReactNode;
 };
 
-/** 全站统一的瓯医数链业务页头。 */
+/** 全站统一的浙江电信·医疗数链平台业务页头。 */
 export function BrandedPageHeader({ title, description, badge = "智能服务", status }: BrandedPageHeaderProps) {
   return (
     <section className="relative overflow-hidden rounded-3xl border border-sky-100 bg-[linear-gradient(120deg,#e9faff_0%,#f6fdff_55%,#fff7f3_100%)] px-6 py-5 shadow-[0_14px_36px_rgba(30,134,185,.09)] lg:px-8">

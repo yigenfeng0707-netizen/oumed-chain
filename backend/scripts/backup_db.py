@@ -66,7 +66,7 @@ def backup(db_path: Path, out_dir: Path, keep: int = 0, verify: bool = False) ->
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="瓯医数链 数据库在线备份（等保三级·数据备份）")
+    parser = argparse.ArgumentParser(description="浙江电信·医疗数链平台 数据库在线备份（等保三级·数据备份）")
     parser.add_argument("--db", default="./yibao.db", help="源数据库路径（默认 ./yibao.db）")
     parser.add_argument("--out", default="./backups", help="备份目录（默认 ./backups）")
     parser.add_argument("--keep", type=int, default=30,

@@ -1,4 +1,4 @@
-# 瓯医数链 · 医院侧联邦节点 Agent（P1.1：Docker 单容器，部署在医院内网）
+# 浙江电信·医疗数链平台 · 医院侧联邦节点 Agent（P1.1：Docker 单容器，部署在医院内网）
 # 构建节点镜像：  docker build -t oumed-node-agent .
 # 运行示例见 docs/联邦节点部署与演练方案.md
 FROM python:3.12-slim

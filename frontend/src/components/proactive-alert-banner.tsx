@@ -3,7 +3,7 @@
 /**
  * 主动健康预警横幅（P2-3 范式创新）
  * 用户进入首页时主动调用 proactive-alerts，弹出预警卡片。
- * 体现“瓯医数链主动关心你”——不是被动问答。
+ * 体现“数链平台主动关心你”——不是被动问答。
  */
 
 import { useEffect, useState } from "react";
@@ -76,7 +76,7 @@ export function ProactiveAlertBanner() {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <span className="text-sm font-semibold text-slate-900">
-                瓯医数链主动提醒
+                数链平台主动提醒
               </span>
               {hasHigh && (
                 <span className="rounded-full bg-red-600 px-1.5 py-0.5 text-[10px] font-bold text-white">

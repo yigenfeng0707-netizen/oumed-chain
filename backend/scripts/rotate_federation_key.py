@@ -89,7 +89,7 @@ def main() -> None:
     now = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
 
     lines = [
-        "# 联邦参数信封密钥轮换结果（瓯医数链 P1.2）",
+        "# 联邦参数信封密钥轮换结果（浙江电信·医疗数链平台 P1.2）",
         f"",
         f"- 轮换时间：{now}",
         f"- 当前密钥环：{len(ring)} 把（{', '.join(ring)}）",

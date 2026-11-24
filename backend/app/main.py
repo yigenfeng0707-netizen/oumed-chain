@@ -59,7 +59,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="瓯医数链 OuMedTrust · 医疗数据要素可信流通平台",
+    title="浙江电信·医疗数链平台 · 医疗数据要素可信流通平台",
     description="第二届全球技术创新大赛 AI+医疗专题赛（赛道二）：联邦学习医疗协作 + AI 数据治理 Copilot + "
                 "差分隐私与审计存证 + 数据要素流通交易闭环，让医疗数据「可用不可见、可控可计量」",
     version="1.0.0",
@@ -169,7 +169,7 @@ if _digital_body_dir.is_dir():
 @app.get("/api/health")
 async def health_check():
     """基础健康检查"""
-    return {"status": "ok", "service": "瓯医数链 OuMedTrust", "version": "1.0.0"}
+    return {"status": "ok", "service": "浙江电信·医疗数链平台", "version": "1.0.0"}
 
 
 @app.get("/api/health/detailed")
@@ -292,7 +292,7 @@ async def detailed_health_check():
         "model": cancer_status.get("model", ""),
     }
 
-    # 联邦学习协作引擎（瓯医数链底座 · 数据要素协作）
+    # 联邦学习协作引擎（浙江电信·医疗数链平台底座 · 数据要素协作）
     try:
         from app.services.federated import get_overview
         fed = get_overview()

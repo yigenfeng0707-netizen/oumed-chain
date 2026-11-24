@@ -77,7 +77,7 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
           </div>
           <div className="flex min-w-0 flex-col">
             <span className="text-sm font-medium text-slate-700">
-              瓯医数链助手
+              数链助手
             </span>
             <span className="whitespace-nowrap text-[11px] leading-relaxed text-slate-400">
               关键医疗信号识别 × 患者信息连接

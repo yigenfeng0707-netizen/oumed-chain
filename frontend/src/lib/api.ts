@@ -1,4 +1,4 @@
-// 瓯医数链 - API 客户端层
+// 浙江电信·医疗数链平台 - API 客户端层
 // 优先调用后端 API，后端不可用时自动降级为模拟数据
 
 import {
@@ -164,7 +164,7 @@ export async function sendChatMessage(
   // 降级：使用模拟数据
   const mock = mockChatResponses[req.message];
   return {
-    agent_type: mock?.agent || "瓯医数链助手",
+    agent_type: mock?.agent || "数链助手",
     response:
       mock?.content ||
       "收到您的问题，正在为您分析中...我会尽快给出详细解答。",
@@ -949,7 +949,7 @@ export async function getRealImagingDetail(
   return apiFetch<RealImagingDetail>(`/api/imaging/real/${encodeURIComponent(studyId)}${q}`);
 }
 
-// ==================== 瓯医数链 · 联邦学习协作 ====================
+// ==================== 浙江电信·医疗数链平台 · 联邦学习协作 ====================
 
 export interface FederationHospital {
   site: string;
@@ -1037,7 +1037,7 @@ export async function getFederationBenchmark(force = false): Promise<FederationB
   return apiFetch<FederationBenchmark>(`/api/federation/benchmark?force=${force}`);
 }
 
-// ==================== 瓯医数链 · AI 病历治理 ====================
+// ==================== 浙江电信·医疗数链平台 · AI 病历治理 ====================
 
 export interface DeidEntity {
   start: number;
@@ -1073,7 +1073,7 @@ export async function governNote(text: string, useLlm = true): Promise<GovernRes
   });
 }
 
-// ==================== 瓯医数链 · 数据要素市场 ====================
+// ==================== 浙江电信·医疗数链平台 · 数据要素市场 ====================
 
 export interface DataProductItem {
   id: string;

@@ -33,7 +33,7 @@ export function ConditionalSidebar({ children }: { children: React.ReactNode }) 
                 </button>
               </SheetTrigger>
               <SheetContent side="left" className="w-72 bg-sidebar p-0">
-                <SheetTitle className="sr-only">OuMedTrust 导航菜单</SheetTitle>
+                <SheetTitle className="sr-only">浙江电信·医疗数链平台 导航菜单</SheetTitle>
                 <SidebarNav onNavigate={() => setNavOpen(false)} />
               </SheetContent>
             </Sheet>
@@ -41,7 +41,7 @@ export function ConditionalSidebar({ children }: { children: React.ReactNode }) 
               <Activity className="h-4 w-4" />
             </span>
             <span className="truncate text-sm font-medium text-slate-500">
-              瓯医数链 · 医疗数据要素协作平台
+              浙江电信·医疗数链平台
             </span>
           </div>
           <div className="flex items-center gap-3">

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""瓯医数链决赛路演 PPT（15 页故事版 · 视觉版同款视觉系统）
+"""浙江电信·医疗数链平台决赛路演 PPT（15 页故事版 · 视觉版同款视觉系统）
 
 视觉系统与《初赛路演-视觉版》(ppt_assemble.py) 完全一致：
   全屏场景图 + 青色大标题 + 描边圆角卡片 + 描边大数字卡 + 底部「▎」结论条
@@ -8,7 +8,7 @@
 故事主线：一间病房的处方数据，为什么救不了隔壁医院的病人？
 → 三重困境 → 四层架构 → 数据旅程 → 双基准实证 → 真实运行（支付闭环）→ 商业与落地 → 愿景
 运行：backend/.venv/Scripts/python scripts/generate_final_pptx.py
-输出：docs/瓯医数链-决赛路演.pptx
+输出：docs/浙江电信·医疗数链平台-决赛路演.pptx
 """
 import os
 
@@ -23,7 +23,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CH = os.path.join(ROOT, "docs", "PPT素材", "charts")
 SC = os.path.join(ROOT, "docs", "PPT素材", "scenes")
 SHOT = os.path.join(ROOT, "docs", "screenshots")
-OUT = os.path.join(ROOT, "docs", "瓯医数链-决赛路演.pptx")
+OUT = os.path.join(ROOT, "docs", "浙江电信·医疗数链平台-决赛路演.pptx")
 
 # ---- 设计令牌（与视觉版一致）----
 BG = RGBColor(0x0A, 0x1A, 0x3F)
@@ -174,7 +174,7 @@ band.fill.solid()
 band.fill.fore_color.rgb = BG
 band.line.fill.background()
 band.shadow.inherit = False
-text(s, 0.8, 5.05, 12, 0.95, "瓯医数链 OuMedTrust", 44, WHITE, bold=True)
+text(s, 0.8, 5.05, 12, 0.95, "浙江电信·医疗数链平台", 44, WHITE, bold=True)
 text(s, 0.8, 6.05, 12, 0.55,
      "医疗数据要素可信流通平台 · 让数据「可用不可见、可控可计量」", 20, CYAN)
 text(s, 0.8, 6.72, 12, 0.5,
@@ -203,7 +203,7 @@ text(s, 0.7, 4.4, 7.6, 1.6,
      "不是医院不想共享，而是：法律不敢、技术不会、市场没有。\n"
      "「数据大池化」在《数据安全法》《个人信息保护法》面前已经走不通。",
      15.5, GREY, line_spacing=1.4)
-takeaway(s, "瓯医数链的答案：数据不出院，价值出院门。", CYAN)
+takeaway(s, "浙江电信·医疗数链平台的答案：数据不出院，价值出院门。", CYAN)
 
 # ---------- 3 三重困境：描边圆角卡 ----------
 s = prs.slides.add_slide(BLANK)
@@ -377,7 +377,7 @@ bullets(s, 1.0, 2.75, 5.3, 3.3, [
 add_card(s, 6.85, 1.8, 5.9, 4.4, GOLD)
 text(s, 7.15, 2.05, 5.3, 0.55, "知识产权", 20, GOLD, bold=True)
 bullets(s, 7.15, 2.75, 5.3, 3.3, [
-    "软著主轨：瓯医数链 ×3 材料齐备提交中",
+    "软著主轨：浙江电信·医疗数链平台 ×3 材料齐备提交中",
     "已登记软著 ×2（个人独有，证书原件核验）：\n"
     "   视频人数统计（视觉 AI）· 充电桩故障检测（时序异常）",
     "共有软著 ×1（技术能力佐证）",
@@ -401,7 +401,7 @@ text(s, 0.8, 5.42, 12, 0.7, "变成可确权、可定价、可流通、可监管
 text(s, 0.8, 6.28, 12, 0.5,
      "448 项单元测试全绿 · 支付宝真实收款闭环 · 软著双轨并进 · 线上 Demo 全时可访问",
      15, CYAN)
-text(s, 0.8, 6.82, 12, 0.5, "瓯医数链 OuMedTrust · 恳请评委指正 · 2026 中国温州",
+text(s, 0.8, 6.82, 12, 0.5, "浙江电信·医疗数链平台 · 恳请评委指正 · 2026 中国温州",
      13, GREY)
 
 prs.save(OUT)

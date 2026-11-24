@@ -1,4 +1,4 @@
-"""瓯医数链 · AI 病历治理路由（数据供给侧）
+"""浙江电信·医疗数链平台 · AI 病历治理路由（数据供给侧）
 
 POST /api/governance/deidentify  —— PHI 脱敏（规则引擎，确定性）
 POST /api/governance/govern      —— 脱敏 + 结构化全流水线（本地 LLM 优先，规则兜底）

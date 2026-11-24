@@ -1,5 +1,5 @@
 """
-瓯医数链 - 政策知识库服务
+浙江电信·医疗数链平台 - 政策知识库服务
 
 基于 ChromaDB 的向量检索知识库，支持：
 - 文档分块索引（按 key_points 和 content 分段）
@@ -387,7 +387,7 @@ class KnowledgeBase:
         if not self._initialized:
             return False
         try:
-            await asyncio.to_thread(self._generate_embeddings, ["瓯医数链知识库预热"])
+            await asyncio.to_thread(self._generate_embeddings, ["浙江电信·医疗数链平台知识库预热"])
             logger.info("知识库嵌入模型预热完成（ONNX 已载入内存）")
             return True
         except Exception as e:  # noqa: BLE001 —— 预热失败只告警，不阻断启动

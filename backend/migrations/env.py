@@ -11,7 +11,7 @@ from alembic import context
 # access to the values within the .ini file in use.
 config = context.config
 
-# 瓯医数链（P2.1）：连接串与应用同源——统一读 settings.DATABASE_URL，
+# 浙江电信·医疗数链平台（P2.1）：连接串与应用同源——统一读 settings.DATABASE_URL，
 # 生产用 postgresql+asyncpg://…（docker-compose 已配），开发/测试默认 SQLite。
 # 环境变量 DATABASE_URL 优先于 alembic.ini 的 sqlalchemy.url 占位。
 import os

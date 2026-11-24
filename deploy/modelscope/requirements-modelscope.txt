@@ -1,5 +1,5 @@
 # ============================================================
-# 瓯医数链 魔搭创空间精简依赖
+# 浙江电信·医疗数链平台 魔搭创空间精简依赖
 # 剔除：sentence-transformers（依赖 torch，体积数 GB，代码未直接 import）
 #        PostgreSQL 驱动（Demo 用 SQLite）
 # 保留：chromadb（knowledge_base.py 顶层 import，必须存在）
@@ -19,7 +19,7 @@ python-multipart==0.0.9
 aiosqlite==0.20.0
 numpy>=1.26.0
 
-# 瓯医数链新增模块依赖（联邦学习/治理/市场）
+# 浙江电信·医疗数链平台新增模块依赖（联邦学习/治理/市场）
 pandas>=2.0.0
 scikit-learn>=1.4.0
 greenlet>=3.0.0
